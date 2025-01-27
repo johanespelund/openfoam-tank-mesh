@@ -31,7 +31,7 @@ class Tank(ABC):
 
     @property
     @abstractmethod
-    def height(self):
+    def height(self) -> float:
         """
         The height of the tank.
         """
@@ -41,20 +41,20 @@ class Tank(ABC):
         return self.get_partial_volume(self.y1, self.y2)
 
     @abstractmethod
-    def get_radius(self, y: float):
+    def get_radius(self, y: float) -> float:
         """
         Get the radius at a given height y, where y is in the range [-height/2, height/2].
         """
         pass
 
     @abstractmethod
-    def get_radius_derivative(self, y: float):
+    def get_radius_derivative(self, y: float) -> float:
         """
         Get the derivative of the radius at a given height y, where y is in the range [-height/2, height/2].
         """
         pass
 
-    def get_partial_volume(self, y1: float, y2: float):
+    def get_partial_volume(self, y1: float, y2: float) -> float:
         """
         Get the volume between y1 and y2, where y1 < y2
         and y1, y2 are in the range [-height/2, height/2].
@@ -63,7 +63,7 @@ class Tank(ABC):
         integrand = lambda y: np.pi * r(y) ** 2
         return spi.quad(integrand, y1, y2)[0]
 
-    def get_partial_area(self, y1: float, y2: float):
+    def get_partial_area(self, y1: float, y2: float) -> float:
         """
         Get the area between y1 and y2, where y1 < y2
         and y1, y2 are in the range [-height/2, height/2].
@@ -74,7 +74,7 @@ class Tank(ABC):
         integrand = lambda y: 2 * np.pi * r(y) * np.sqrt(1 + drdy(y) ** 2)
         return spi.quad(integrand, y1, y2)[0]
 
-    def calculate_interface_position(self):
+    def calculate_interface_position(self) -> float:
         """
         Calculate the position of the interface between the liquid and the gas.
         """
@@ -85,7 +85,7 @@ class Tank(ABC):
 
         return np.around(spo.fsolve(objective, 0)[0])
 
-    def calculate_outlet_position(self):
+    def calculate_outlet_position(self) -> float:
         """
         Calculate the position of the outlet.
         """
@@ -96,7 +96,7 @@ class Tank(ABC):
 
         return np.around(spo.least_squares(objective, 0.95 * self.y2, bounds=(0, self.y2)).x)
 
-    def plot_tank(self, ax):
+    def plot_tank(self, ax) -> None:
         """
         Plot the tank on the given axis.
         """
@@ -108,6 +108,6 @@ class Tank(ABC):
         ax.fill_betweenx(y, r, 0, where=y < self.y_interface, alpha=0.5)
         ax.set_aspect("equal")
 
-    def validate_y_range(self, y):
+    def validate_y_range(self, y) -> None:
         if y < self.y1 or y > self.y2:
             raise OutOfRange(y)
