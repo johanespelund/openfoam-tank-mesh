@@ -14,7 +14,7 @@ class TankMesh:
     def __init__(self, tank: Tank, debug: bool = False) -> None:
         self.tank = tank
         self.debug = debug
-        self.mesh_parameters = {}
+        self.mesh_parameters: dict = {}
 
         self.name = tank.name
         self.fill_level = tank.fill_level
