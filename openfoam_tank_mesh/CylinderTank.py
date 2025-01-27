@@ -16,7 +16,7 @@ class CylinderTank(Tank):
         cylinder_radius,
         cylinder_height,
         cap_height,
-    ):
+    ) -> None:
         self.cylinder_radius = cylinder_radius
         self.cylinder_height = cylinder_height
         self.cap_height = cap_height

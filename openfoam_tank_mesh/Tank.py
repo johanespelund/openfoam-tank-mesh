@@ -7,12 +7,12 @@ import scipy.optimize as spo
 
 
 class OutOfRange(Exception):
-    def __init__(self, y):
+    def __init__(self, y) -> None:
         super().__init__(f"y = {y} is out of range.")
 
 
 class Tank(ABC):
-    def __init__(self, name, fill_level, outlet_radius):
+    def __init__(self, name, fill_level, outlet_radius) -> None:
         self.name = name
         self.fill_level = fill_level
         self.outlet_radius = outlet_radius
@@ -61,7 +61,7 @@ class Tank(ABC):
         """
         r = lambda y: self.get_radius(y)
         integrand = lambda y: np.pi * r(y) ** 2
-        return spi.quad(integrand, y1, y2)[0]
+        return float(spi.quad(integrand, y1, y2)[0])
 
     def get_partial_area(self, y1: float, y2: float) -> float:
         """
@@ -72,7 +72,7 @@ class Tank(ABC):
         r = lambda y: self.get_radius(y)
         drdy = lambda y: self.get_radius_derivative(y)
         integrand = lambda y: 2 * np.pi * r(y) * np.sqrt(1 + drdy(y) ** 2)
-        return spi.quad(integrand, y1, y2)[0]
+        return float(spi.quad(integrand, y1, y2)[0])
 
     def calculate_interface_position(self) -> float:
         """
@@ -83,7 +83,7 @@ class Tank(ABC):
             current_volume = self.get_partial_volume(self.y1, y)
             return current_volume - self.fill_level * self.volume
 
-        return np.around(spo.fsolve(objective, 0)[0])
+        return float(np.around(spo.fsolve(objective, 0)[0]))
 
     def calculate_outlet_position(self) -> float:
         """
@@ -94,7 +94,7 @@ class Tank(ABC):
             current_radius = self.get_radius(y)
             return current_radius - self.outlet_radius
 
-        return np.around(spo.least_squares(objective, 0.95 * self.y2, bounds=(0, self.y2)).x)
+        return float(np.around(spo.least_squares(objective, 0.95 * self.y2, bounds=(0, self.y2)).x))
 
     def plot_tank(self, ax) -> None:
         """

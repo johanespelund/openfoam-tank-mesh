@@ -4,7 +4,7 @@ from openfoam_tank_mesh.Tank import Tank
 
 
 class SphericalTank(Tank):
-    def __init__(self, name, fill_level, outlet_radius, radius):
+    def __init__(self, name, fill_level, outlet_radius, radius) -> None:
         self.radius = radius
         super().__init__(name, fill_level, outlet_radius)
 
