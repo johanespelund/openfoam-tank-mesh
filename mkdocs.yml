@@ -1,0 +1,52 @@
+site_name: openfoam-tank-mesh
+repo_url: https://github.com/johanespelund/openfoam-tank-mesh
+site_url: https://johanespelund.github.io/openfoam-tank-mesh
+site_description: This is a python package for creating meshes to use in CFD simulations with OpenFOAM.
+site_author: Johan Raftevold Espelund
+edit_uri: edit/main/docs/
+repo_name: johanespelund/openfoam-tank-mesh
+copyright: Maintained by <a href="https://johanespelund.com">johanespelund</a>.
+
+nav:
+  - Home: index.md
+  - Modules: modules.md
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: ["openfoam_tank_mesh"]
+theme:
+  name: material
+  feature:
+    tabs: true
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: white
+      accent: deep orange
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: black
+      accent: deep orange
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  icon:
+    repo: fontawesome/brands/github
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/johanespelund/openfoam-tank-mesh
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/openfoam-tank-mesh
+
+markdown_extensions:
+  - toc:
+      permalink: true
+  - pymdownx.arithmatex:
+      generic: true
