@@ -2,17 +2,19 @@
 from abc import ABC, abstractmethod
 
 import numpy as np
-import scipy.integrate as spi
-import scipy.optimize as spo
+import scipy.integrate as spi  # type: ignore[import-untyped]
+import scipy.optimize as spo  # type: ignore[import-untyped]
+from matplotlib.axes import Axes
 
 
 class OutOfRange(Exception):
-    def __init__(self, y) -> None:
+    def __init__(self, y: float) -> None:
         super().__init__(f"y = {y} is out of range.")
+        return None
 
 
 class Tank(ABC):
-    def __init__(self, name, fill_level, outlet_radius) -> None:
+    def __init__(self, name: str, fill_level: float, outlet_radius: float) -> None:
         self.name = name
         self.fill_level = fill_level
         self.outlet_radius = outlet_radius
@@ -37,7 +39,7 @@ class Tank(ABC):
         """
         pass
 
-    def get_volume(self):
+    def get_volume(self) -> float:
         return self.get_partial_volume(self.y1, self.y2)
 
     @abstractmethod
@@ -79,7 +81,7 @@ class Tank(ABC):
         Calculate the position of the interface between the liquid and the gas.
         """
 
-        def objective(y):
+        def objective(y: float) -> float:
             current_volume = self.get_partial_volume(self.y1, y)
             return current_volume - self.fill_level * self.volume
 
@@ -90,13 +92,13 @@ class Tank(ABC):
         Calculate the position of the outlet.
         """
 
-        def objective(y):
+        def objective(y: float) -> float:
             current_radius = self.get_radius(y)
             return current_radius - self.outlet_radius
 
         return float(np.around(spo.least_squares(objective, 0.95 * self.y2, bounds=(0, self.y2)).x))
 
-    def plot_tank(self, ax) -> None:
+    def plot_tank(self, ax: Axes) -> None:
         """
         Plot the tank on the given axis.
         """
@@ -105,9 +107,9 @@ class Tank(ABC):
         r = np.array([self.get_radius(yi) for yi in y])
 
         ax.plot(r, y, label=self.name)
-        ax.fill_betweenx(y, r, 0, where=y < self.y_interface, alpha=0.5)
+        ax.fill_betweenx(y, r, 0, where=y < self.y_interface, alpha=0.5)  # type: ignore[arg-type]
         ax.set_aspect("equal")
 
-    def validate_y_range(self, y) -> None:
+    def validate_y_range(self, y: float) -> None:
         if y < self.y1 or y > self.y2:
             raise OutOfRange(y)
