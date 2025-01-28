@@ -85,11 +85,11 @@ class KSiteMesh(TankMesh):
         Liquid surface heat transfer, sum of insulation and parasitic,
         i.e. assume all parasitic heat is transferred to the liquid.
         """
-        return self.tank.area_liquid * self.q_MLI() + self.Q_parasitic()
+        return float(self.tank.area_liquid * self.q_MLI() + self.Q_parasitic())
 
     def Q_gas(self) -> float:
         """
         Gas surface heat transfer, sum of insulation and parasitic,
         i.e. assume all parasitic heat is transferred to the gas.
         """
-        return self.tank.area_gas * self.q_MLI()
+        return float(self.tank.area_gas * self.q_MLI())
