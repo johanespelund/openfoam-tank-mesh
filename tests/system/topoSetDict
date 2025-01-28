@@ -1,0 +1,50 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  2.1.0                                 |
+|   \\  /    A nd           | Web:      www.OpenFOAM.org                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      topoSetDict;
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+#include "meshdata"
+
+y $y_interface;
+Rout #eval{ sqrt($R*$R - $y*$y) + 1.2*$wall_cell_size; };
+Rin #eval{ sqrt($R*$R - $y*$y) - 1.2*$wall_cell_size; };
+
+actions
+(
+
+{
+  action new;
+  name yconst;
+  type pointSet;
+  source boxToPoint;
+  min (-1e6 #eval{ $y - 0.5*$l_bl } -1e6);
+  max (1e6 #eval{ $y + 0.5*$l_bl } 1e6);
+
+}
+
+{
+  action new;
+  name rconst;
+  type pointSet;
+  source sphereToPoint;
+  centre (0 0 0);
+  radius #eval { 2*$R };
+  innerRadius #eval{ $R - 0.75*$l_bl };
+}
+
+
+);
+
+// ************************************************************************* //

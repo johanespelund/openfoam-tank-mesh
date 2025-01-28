@@ -1,0 +1,54 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  2.1.0                                 |
+|   \\  /    A nd           | Web:      www.OpenFOAM.org                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+  version     2.0;
+  format      ascii;
+  class       dictionary;
+  object      laplacianSmoothDict;
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+// Prevent moving points in the boundary normal direction, for points a distance from the boundaries.
+// Not working properly. Instead, refineWallLayer is used after smoothing.
+preserveBoundaryLayer -1;//#eval {2*$cell_size};
+iters 50;
+smoothFactor 1;
+
+#include "meshdata"
+
+constrainedPoints
+  (
+
+    // {
+    //   type set;
+    //   set fixedPoints;
+    //   constraintType fixed;
+    // }
+
+    {
+      type set;
+      set yconst;
+      constraintType constDir;
+      direction (0 1 0);
+    }
+
+    {
+      type set;
+      set rconst;
+      constraintType constRadius;
+    }
+
+
+
+
+  );
+
+
+// ************************************************************************* //
