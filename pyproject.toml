@@ -52,8 +52,8 @@ build-backend = "setuptools.build_meta"
 # packages = ["openfoam_tank_mesh"]
 # include-package-data = true  # This ensures non-Python files are included
 
-# [tool.setuptools.package-data]
-# "openfoam_tank_mesh" = ["dicts/*"]
+[tool.setuptools.package-data]
+"openfoam_tank_mesh" = ["dicts/*"]
 
 [tool.setuptools.packages.find]
 where = ["."]
