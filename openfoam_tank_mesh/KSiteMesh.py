@@ -18,7 +18,6 @@ class KSiteMesh(TankMesh):
         if self.tank.fill_level != 0.49:
             raise NotImplementedError("Only fill level of 0.49 is supported.")
 
-        self.generate()
         return None
 
     def generate(self) -> None:
