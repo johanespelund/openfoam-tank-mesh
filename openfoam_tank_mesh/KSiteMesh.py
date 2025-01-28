@@ -73,7 +73,7 @@ class KSiteMesh(TankMesh):
         """
         return 2.97
 
-    def Q_parasittic(self) -> float:
+    def Q_parasitic(self) -> float:
         """
         Return parasitic heat loss for the tank,
         mainly support and plumbing.
