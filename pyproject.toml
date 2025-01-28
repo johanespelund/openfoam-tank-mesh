@@ -48,16 +48,16 @@ dev = [
 requires = ["setuptools >= 61.0"]
 build-backend = "setuptools.build_meta"
 
-# [tool.setuptools]
-# packages = ["openfoam_tank_mesh"]
-# include-package-data = true  # This ensures non-Python files are included
-
-[tool.setuptools.package-data]
-"openfoam_tank_mesh" = ["dicts/*"]
+[tool.setuptools]
+include-package-data = true
 
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["openfoam_tank_mesh*"]
+
+[tool.setuptools.package-data]
+spheremesh = ["system/**"]
+
 
 [tool.mypy]
 files = ["openfoam_tank_mesh"]
