@@ -48,8 +48,9 @@ dev = [
 requires = ["setuptools >= 61.0"]
 build-backend = "setuptools.build_meta"
 
-[tool.setuptools]
-py-modules = ["openfoam_tank_mesh"]
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["openfoam_tank_mesh*"]
 
 [tool.mypy]
 files = ["openfoam_tank_mesh"]
