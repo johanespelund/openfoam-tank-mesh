@@ -1,4 +1,3 @@
-# Base class for tank
 from abc import ABC, abstractmethod
 
 import numpy as np
@@ -6,14 +5,14 @@ import scipy.integrate as spi  # type: ignore[import-untyped]
 import scipy.optimize as spo  # type: ignore[import-untyped]
 from matplotlib.axes import Axes
 
-
-class OutOfRange(Exception):
-    def __init__(self, y: float) -> None:
-        super().__init__(f"y = {y} is out of range.")
-        return None
+from openfoam_tank_mesh.exceptions import OutOfRange
 
 
 class Tank(ABC):
+    """
+    Base class for tank geometries.
+    """
+
     def __init__(self, name: str, fill_level: float, outlet_radius: float) -> None:
         self.name = name
         self.fill_level = fill_level
@@ -24,12 +23,14 @@ class Tank(ABC):
 
         self.volume = self.get_volume()
         self.y_interface = self.calculate_interface_position()
+        self.interface_radius = self.get_radius(self.y_interface)
         self.y_outlet = self.calculate_outlet_position()
         self.gas_height = self.y_outlet - self.y_interface
         self.volume_liquid = self.get_partial_volume(self.y1, self.y_interface)
         self.volume_gas = self.get_partial_volume(self.y_interface, self.y2)
         self.area_liquid = self.get_partial_area(self.y1, self.y_interface)
         self.area_gas = self.get_partial_area(self.y_interface, self.y2)
+        super().__init__()
 
     @property
     @abstractmethod
@@ -96,7 +97,7 @@ class Tank(ABC):
             current_radius = self.get_radius(y)
             return current_radius - self.outlet_radius
 
-        return float(np.around(spo.least_squares(objective, 0.95 * self.y2, bounds=(0, self.y2)).x))
+        return float(spo.least_squares(objective, 0.95 * self.y2, bounds=(0, self.y2)).x)
 
     def plot_tank(self, ax: Axes) -> None:
         """

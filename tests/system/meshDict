@@ -1,0 +1,155 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                |
+| \\      /  F ield         | cfMesh: A library for mesh generation          |
+|  \\    /   O peration     |                                                |
+|   \\  /    A nd           | Author: Franjo Juretic                         |
+|    \\/     M anipulation  | E-mail: franjo.juretic@c-fields.com            |
+\*---------------------------------------------------------------------------*/
+
+FoamFile
+{
+  version   2.0;
+  format    ascii;
+  class     dictionary;
+  location  "system";
+  object    meshDict;
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+#include "meshdata"
+
+N 1;
+
+surfaceFile "surfaces.stl";
+
+maxCellSize $cell_size;
+
+boundaryCellSize $maxCellSize;
+
+// minCellSize 0.015;
+
+localRefinement
+{
+  // ".*"
+  // {
+  //   additionalRefinementLevels 1;
+  // }
+  // pipe
+  // {
+  //   additionalRefinementLevels $N;
+  // }
+  "(walls|bottom)"
+  {
+    additionalRefinementLevels $N;
+  }
+  outlet
+  {
+    additionalRefinementLevels #eval {$N + 0};
+    // refinementThickness #eval {2*$cell_size};
+  }
+}
+//
+  objectRefinements
+{
+  // outlet
+  // {
+  //   cellSize 0.005;
+  //   type sphere;
+  //   centre (0 0.62 0);
+  //   radius 0.04;
+  // }
+  corner1
+  {
+    additionalRefinementLevels #eval {max(0,$N - 1)};
+    type hollowCone;
+    p0 (0 -1e6 0);
+    p1 (0 1e6 0);
+    radius0_Inner #eval {$A - 3*$cell_size};
+    radius1_Inner $radius0_Inner;
+    radius0_Outer 1e6;
+    radius1_Outer $radius0_Outer;
+  }
+  corner2
+  {
+    additionalRefinementLevels $N;
+    type hollowCone;
+    p0 (0 -1e6 0);
+    p1 (0 1e6 0);
+    radius0_Inner #eval {$A - 2*$cell_size};
+    radius1_Inner $radius0_Inner;
+    radius0_Outer 1e6;
+    radius1_Outer $radius0_Outer;
+  }
+  cone1
+  {
+    additionalRefinementLevels #eval {max($N - 1,0)};
+    type cone;
+    p0 (0 #eval {$R - 3*$cell_size} 0);
+    p1 (0 1e6 0);
+    radius0 1e6;
+    radius1 1e6;
+  }
+  cone2
+  {
+    additionalRefinementLevels $N;
+    type cone;
+    p0 (0 #eval {$R - 2*$cell_size} 0);
+    p1 (0 1e6 0);
+    radius0 1e6;
+    radius1 1e6;
+  }
+  axisLine
+  {
+    type line;
+    additionalRefinementLevels $N;
+    p0 (0 -1e6 0);
+    p1 (0 1e6 0);
+    // refinementThickness 0.02;
+  }
+}
+
+anisotropicSources
+{
+  outletBox
+  {
+    type box;
+    centre (0 $R 0);
+    lengthX 0.03;
+    lengthY 0.01;
+    lengthZ 0.03;
+    scaleX 0.5;
+    scaleZ 0.5;
+    scaleY 1;
+  }
+}
+
+renameBoundary
+{
+  // defaultName walls;
+  // defaultType wall;
+  // newPatchNames
+  // {
+  //   patch0_1
+  //   {
+  //     newName bottom;
+  //     type wall;
+  //   }
+  // }
+}
+
+boundaryLayers
+{
+  patchBoundaryLayers
+  {
+    "(walls|bottom|pipe)"
+    {
+      nLayers 0;
+      thicknessRatio 1.2;
+      maxFirstLayerThickness 0.0015;
+      // allowDiscontinuity 0;
+    }
+  }
+}
+
+// ************************************************************************* //

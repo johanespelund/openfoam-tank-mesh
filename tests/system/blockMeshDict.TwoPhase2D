@@ -1,0 +1,116 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2206                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      blockMeshDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+scale   1;
+verbose yes;
+
+#include "TwoPhase2D_data"
+
+blocks
+(
+
+    hex (7 8 1 0 13 14 1 0) ($N01 $NX 1) grading ($G01 1 1)
+    hex (6 9 8 7 12 15 14 13) ($N01 $N67 1) grading ($G01 $G67 1)
+    hex (5 10 9 6 11 16 15 12) ($N01 $N65 1) grading ($G01 $G65 1)
+    hex (4 3 10 5 4 3 16 11) ($N01 $NX 1) grading ($G01 1 1)
+
+    hex (3 2 9 10 3 2 15 16) ($N65 $NX 1) grading ($G65 1 1)
+    hex (2 1 8 9 2 1 14 15) ($N67 $NX 1) grading ($G67 1 1)
+
+);
+
+edges
+(
+
+    arc  4  5  origin  (0 0 0)
+    arc 5 6 origin (0 0 0)
+    arc  6  7  origin  (0 0 0)
+    arc 7 0 origin (0 0 0)
+
+    arc  4  11  origin  (0 0 0)
+    arc 11 12 origin (0 0 0)
+    arc  12 13  origin  (0 0 0)
+    arc 13 0 origin (0 0 0)
+
+    arc  3  10  origin 1.5  (0 0 0)
+    arc 3 16 origin  1.5 (0 0 0)
+    arc  9  10  origin 1.5  (0 0 0)
+    arc 15 16 origin  1.5 (0 0 0)
+
+    arc  1 8  origin 1.5  (0 0 0)
+    arc 1 14 origin  1.5 (0 0 0)
+    arc  9  8  origin 1.5  (0 0 0)
+    arc 15 14 origin  1.5 (0 0 0)
+
+);
+
+faces
+(
+);
+
+boundary
+(
+
+ walls_gas
+ {
+   type wall;
+   faces
+     (
+        (4 5 11 4)
+        (5 11 12 6)
+      );
+ }
+
+ walls_liq
+ {
+   type wall;
+   faces
+     (
+        (6 12 13 7)
+        (7 13 0 0)
+      );
+ }
+
+wedge_front
+{
+  type wedge;
+  faces
+  (
+    (13 14 1 0)
+    (12 15 14 13)
+    (11 16 15 12)
+    (4 3 16 11)
+    (3 2 15 16)
+    (2 1 14 15)
+  );
+}
+wedge_back
+{
+  type wedge;
+  faces
+  (
+    (7 8 1 0)
+    (6 9 8 7)
+    (5 10 9 6)
+    (4 3 10 5)
+    (3 2 9 10)
+    (2 1 8 9)
+  );
+}
+);
+
+
+// ************************************************************************* //

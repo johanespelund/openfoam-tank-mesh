@@ -1,0 +1,83 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  2.1.0                                 |
+|   \\  /    A nd           | Web:      www.OpenFOAM.org                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      topoSetDict;
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+#include "meshdata"
+
+refinement_radius_factor 1.0;
+bl_factor 1;
+final_refinement 1;
+l 0;
+
+L #eval {$r * $refinement_radius_factor};
+// l #eval {$final_refinement * $r * (2 - $refinement_radius_factor )};
+
+actions
+(
+ {
+
+   action new;
+   name refinementCells;
+   source boxToCell;
+    // source sphereToCell;
+   sourceInfo
+     {
+        origin (0 $R 0);
+        radius $L;
+        box (-$L 0 - $L) ($L #eval {2*$R} $L);
+     }
+   type cellSet;
+ }
+
+// {
+//   action subtract;
+//   name refinementCells;
+//   type cellSet;
+//   source sphereToCell;
+//   sourceInfo
+//   {
+//     origin (0 0 0);
+//     radius #eval{$R - $r * $refinement_radius_factor};
+//   }
+// }
+
+{
+  action subtract;
+  name refinementCells;
+  type cellSet;
+  source sphereToCell;
+  sourceInfo
+  {
+    origin (0 0 0);
+    // radius #eval{$R - $bl_factor*$t_bl};
+    radius #eval{$R - $bl_factor};
+  }
+}
+
+{
+   action subtract;
+   name refinementCells;
+   source boxToCell;
+   sourceInfo
+     {
+        box (-$L 0 -1e6) ($l $R 1e6);
+     }
+   type cellSet;
+ }
+
+);
+
+// ************************************************************************* //

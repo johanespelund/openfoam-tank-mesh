@@ -1,36 +1,89 @@
 import time
 from subprocess import run
+from typing import ClassVar, Optional
 
 from rich import print as rprint
+from rich.console import Console
+from rich.table import Table
 
-from openfoam_tank_mesh.Tank import Tank
+from openfoam_tank_mesh.exceptions import CommandFailed, MissingParameter, OpenFoamNotLoaded
+from openfoam_tank_mesh.Tank import ABC, Tank, abstractmethod
 
 
-class TankMesh:
+class TankMesh(ABC):
     """
     Base class for OpenFOAM tank meshes.
     """
 
-    def __init__(self, tank: Tank, debug: bool = False) -> None:
+    REQUIRED_PARAMETERS: ClassVar[list[str]] = [
+        "bulk_cell_size",
+        "wall_cell_size",
+        "outlet_radius",
+        "fill_level",
+        "debug",
+    ]
+
+    def __init__(self, tank: Tank, input_parameters: dict) -> None:
         self.tank = tank
-        self.debug = debug
-        self.mesh_parameters: dict = {}
 
         self.name = tank.name
         self.fill_level = tank.fill_level
         self.y_interface = tank.y_interface
         self.y_outlet = tank.y_outlet
+        self.outlet_radius = tank.outlet_radius
+        self.interface_radius = tank.interface_radius
         self.area_liquid = tank.area_liquid
         self.area_gas = tank.area_gas
 
-        self.check_openfoam_loaded()
+        # Will be defined in set_parameters()
+        self.bulk_cell_size: float = 0
+        self.wall_cell_size: float = 0
+        self.debug: bool = False
 
-    def write_mesh_parameters(self, filename: str) -> None:
+        # Default parameters (can be overwritten by input_parameters)
+        self.r_BL: float = 1.1  # Boundary layer growth rate
+        self.revolve: float = 0  # Revolution angle (0 means 2D)
+        self.wedge_angle: float = 1  # Revolution angle if 2D
+
+        self.check_openfoam_loaded(version="com")
+        self.validate_parameters(input_parameters)
+        self.set_parameters(input_parameters)
+        self.n_BL, self.t_BL, self.e_BL = self.calculate_boundary_layer()
+        self.wedge_angle = self.revolve if self.revolve else self.wedge_angle
+        super().__init__()
+
+    @property
+    @abstractmethod
+    def dict_path(self) -> str:
+        """
+        The path to the OpenFOAM dict folder.
+        """
+
+    @property
+    @abstractmethod
+    def parameters_path(self) -> str:
+        """
+        The path to the mesh parameters.
+        """
+
+    def validate_parameters(self, input_parameters: dict) -> None:
+        for param in self.REQUIRED_PARAMETERS:
+            if param not in input_parameters:
+                raise MissingParameter(param)
+
+    def set_parameters(self, input_parameters: dict) -> None:
+        """
+        Set the mesh parameters.
+        """
+        for key, value in input_parameters.items():
+            setattr(self, key, value)
+
+    def write_mesh_parameters(self) -> None:
         """
         Write the mesh parameters to a file.
         """
-        with open(filename, "w") as f:
-            for key, value in self.mesh_parameters.items():
+        with open(self.parameters_path, "w") as f:
+            for key, value in self.__dict__.items():
                 f.write(f"{key} {value};\n")
 
     def run_command(self, command: str, no_output: bool = False) -> None:
@@ -39,36 +92,80 @@ class TankMesh:
         and an error should be raised if the command fails (even if no_output is True).
         """
         t = time.time()
-        if self.debug:
-            rprint(f"Running command: {command}")
 
-        result = run(command, shell=True, capture_output=no_output)  # noqa: S602
+        command_words = command.split()
+        for i, word in enumerate(command_words):
+            command_words[i] = word.replace(self.dict_path, f"<{self.name}.dict_path>")
+        rprint(" ".join(command_words), end="")
+
+        capture_output = True
+        result = run(command, shell=True, capture_output=capture_output)  # noqa: S602
         dt = time.time() - t
         if result.returncode != 0:
             rprint(result.stderr.decode())
-            rprint(f"Command failed: {command}")
-            exit(1)
+            CommandFailed(command)
 
         if not no_output:
             rprint(f" ({dt:.6f} s)")
 
-            if self.debug:
-                rprint(result.stdout.decode())
+        if self.debug:
+            rprint(result.stdout.decode())
 
-    def check_openfoam_loaded(self, version: str = "org") -> bool:
+    def check_openfoam_loaded(self, version: str = "com") -> None:
         """
         Check if OpenFOAM is loaded.
         version: str ("org" or "com")
         """
         command = "simpleFoam -help"
         result = run(command, shell=True, capture_output=True)  # noqa: S602
-        return f"openfoam.{version}" in result.stdout.decode()
+        if f"openfoam.{version}" not in result.stdout.decode():
+            raise OpenFoamNotLoaded
 
+    def run_openfoam_utility(self, utility: str, foam_dict: str = "") -> None:
+        """
+        Run an OpenFOAM utility with optional input dictionary.
+        """
+        command = f"{utility} -dict {self.dict_path}/{foam_dict}"
+        self.run_command(command)
 
-if __name__ == "__main__":
-    # Test the run_command method and check_openfoam_loaded function
-    from openfoam_tank_mesh.SphericalTank import SphericalTank
+    def calculate_boundary_layer(self) -> tuple[int, float, float]:
+        """
+        Calculate boundary layer parameters.
+        returns:
+            n_bl: int = number of boundary layer cells
+            t_bl: float = thickness of boundary layer
+            e_bl: float = boundary layer expansion
+        """
+        if self.r_BL == 1 or self.wall_cell_size == self.bulk_cell_size:
+            self.r_BL = 1.0
+            return 2, self.wall_cell_size * 2, 1
+        n = 1
+        x = self.wall_cell_size
+        t = self.wall_cell_size
+        while x <= self.bulk_cell_size / self.r_BL:
+            n += 1
+            x *= self.r_BL
+            t += x
 
-    tank = SphericalTank("test", 0.5, 0.1, 1.0)
-    mesh = TankMesh(tank, debug=False)
-    mesh.run_command("simpleFoam -help", no_output=True)
+        return n, t, x / self.wall_cell_size
+
+    def check_mesh(self, regions: Optional[list] = None) -> None:
+        console = Console()
+        regions = [""] if not regions else [f"-region {region}" for region in regions]
+        for region in regions:
+            table = Table(title=f"Mesh Summary ({region})", show_header=False)
+            output = run(["checkMesh", *region.split()], capture_output=True, text=True)  # noqa: S603 S607
+            if "FAILED" in output.stdout:
+                rprint(output.stdout)
+                raise CommandFailed("checkMesh")
+            for line in output.stdout.split("\n"):
+                if "Mesh non-orthogonality Max" in line:
+                    angle = float(line.split()[3])
+                    table.add_row("Max. non-orthogonality", f"{angle:.2f}°")
+                if "Max skewness" in line:
+                    skewness = float(line.split()[3])
+                    table.add_row("Max. skewness", f"{skewness:.2f}")
+                if "  cells: " in line:
+                    cells = int(line.split()[1])
+                    table.add_row("Cells", f"{cells:,}")
+            console.print(table)
