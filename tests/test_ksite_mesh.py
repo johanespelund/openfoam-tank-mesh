@@ -1,6 +1,11 @@
+import os
+
+import pytest
+
 from openfoam_tank_mesh.KSiteMesh import KSiteMesh
 
 
+@pytest.mark.skipif("CI" in os.environ, reason="OpenFOAM is not available in CI")
 def test_ksite_mesh():
     mesh = KSiteMesh(
         input_parameters={
