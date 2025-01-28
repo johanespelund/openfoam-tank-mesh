@@ -56,7 +56,7 @@ where = ["."]
 include = ["openfoam_tank_mesh*"]
 
 [tool.setuptools.package-data]
-spheremesh = ["dicts/**"]
+spheremesh = ["openfoam_tank_mesh/dicts/**"]
 
 
 [tool.mypy]
