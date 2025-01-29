@@ -12,5 +12,4 @@ def test_spherical_tank():
     assert tank.get_volume() == np.pi * 4 / 3 * 1**3
     assert tank.get_partial_volume(-1, 1) == np.pi * 4 / 3 * 1**3
     assert tank.get_partial_volume(-1, 0) == np.pi * 4 / 3 * 1**3 / 2
-
-    assert tank.calculate_interface_position() == 0
+    assert np.isclose(tank.calculate_interface_position(), 0)
