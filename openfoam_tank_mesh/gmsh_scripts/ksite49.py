@@ -95,11 +95,11 @@ def run(mesh: "KSiteMesh.KSiteMesh") -> None:
     l_7_1 = add_line(p7, p1)
     l_1_11 = add_line(p1, p11)
     l_10_11 = add_line(p10, p11)
-    l_7_10 = add_line(p7, p10)
     l_3_3w = add_line(p3, pw3)
     l6_6w = add_line(p6, pw6)
 
     if y4 < y5:
+        print_debug(mesh, "y4<y5 / y_BL < y_cylinder")
         l_3_5 = add_ellipse(p3, origo, major_point, p5)
         l_8_5B = add_ellipse(p8, origo, major_point, p5B)
         l_4_6 = add_line(p4, p6)
@@ -136,7 +136,6 @@ def run(mesh: "KSiteMesh.KSiteMesh") -> None:
     gmsh.model.geo.mesh.setTransfiniteCurve(l_9_2, n_BL, "Progression", -r_BL)
     gmsh.model.geo.mesh.setTransfiniteCurve(l_2_3, N_2_3)
     gmsh.model.geo.mesh.setTransfiniteCurve(l_8_9, N_2_3)
-    # gmsh.model.geo.mesh.setTransfiniteCurve(l_7_10, n_BL, "Progression", r_BL)
     gmsh.model.geo.mesh.setTransfiniteCurve(l_6_7, n_BL, "Progression", r_BL)
     gmsh.model.geo.mesh.setTransfiniteCurve(l_10_4, n_BL, "Progression", -r_BL)
     gmsh.model.geo.mesh.setTransfiniteCurve(l_1_11, n_BL, "Progression", r_BL)
@@ -185,7 +184,8 @@ def run(mesh: "KSiteMesh.KSiteMesh") -> None:
         gmsh.model.geo.mesh.setTransfiniteCurve(l_4_5w, N_4_5)
         gmsh.model.geo.mesh.setTransfiniteCurve(l_8_5B, N_3_5)
         gmsh.model.geo.mesh.setTransfiniteCurve(l_5B_10, N_4_5)
-        gmsh.model.geo.mesh.setTransfiniteCurve(l_10_4, n_BL, "Progression", -r_BL)
+        # gmsh.model.geo.mesh.setTransfiniteCurve(l_10_4, n_BL, "Progression", -r_BL)
+        # gmsh.model.geo.mesh.setTransfiniteCurve(l_6_7, n_BL, "Progression", r_BL)
         gmsh.model.geo.mesh.setTransfiniteSurface(s1, "Left", [p2, p4, p10, p9])
         gmsh.model.geo.mesh.setTransfiniteCurve(l_4_6, n_BL, "Progression", -r_BL)
         gmsh.model.geo.mesh.setTransfiniteCurve(l_4_6w, n_BL, "Progression", -r_BL)
@@ -195,7 +195,7 @@ def run(mesh: "KSiteMesh.KSiteMesh") -> None:
 
     gmsh.model.geo.mesh.setTransfiniteSurface(swall, "Left", [p3, pw3, pw6, p6])
     gmsh.model.geo.synchronize()
-    gmsh.model.mesh.generate(2)
+    # gmsh.model.mesh.generate(2)
 
     gmsh.model.geo.synchronize()
 
@@ -349,3 +349,8 @@ def add_curve_loop(lines: list[int]) -> int:
 
 def add_surface(loop: int) -> int:
     return int(gmsh.model.geo.addPlaneSurface([loop]))
+
+
+def print_debug(mesh: "KSiteMesh.KSiteMesh", msg: str) -> None:
+    if mesh.debug:
+        print(msg)
