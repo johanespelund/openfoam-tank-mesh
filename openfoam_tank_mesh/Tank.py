@@ -86,7 +86,7 @@ class Tank(ABC):
             current_volume = self.get_partial_volume(self.y1, y)
             return current_volume - self.fill_level * self.volume
 
-        return float(np.around(spo.fsolve(objective, 0)[0]))
+        return float(spo.fsolve(objective, 0)[0])
 
     def calculate_outlet_position(self) -> float:
         """

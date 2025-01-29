@@ -901,7 +901,7 @@ wheels = [
 
 [[package]]
 name = "openfoam-tank-mesh"
-version = "0.0.1"
+version = "0.0.2"
 source = { editable = "." }
 dependencies = [
     { name = "gmsh" },

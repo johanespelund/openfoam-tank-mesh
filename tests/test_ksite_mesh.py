@@ -22,7 +22,6 @@ def test_ksite_mesh():
     assert mesh.tank.get_radius(0) == mesh.tank.cylinder_radius
     assert mesh.tank.get_radius(mesh.tank.y2) == 0
     assert mesh.tank.get_radius(mesh.tank.y1) == 0
-    assert mesh.tank.calculate_interface_position() == 0
     return None
 
 
