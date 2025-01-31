@@ -41,6 +41,20 @@ class CylinderTank(Tank):
         else:
             return float(A * np.sqrt(1 - (y + C / 2) ** 2 / B**2))
 
+    # def get_radius_derivative(self, y: float) -> float:
+    #     self.validate_y_range(y)
+
+    #     A = self.cylinder_radius
+    #     B = self.cap_height
+    #     C = self.cylinder_height
+
+    #     if y > C / 2:
+    #         return -float(A * (y - C / 2) / (B * np.sqrt(B**2 - (y - C / 2) ** 2)))
+    #     elif y > -C / 2:
+    #         return 0
+    #     else:
+    #         return -float(A * (y + C / 2) / (B * np.sqrt(B**2 - (y + C / 2) ** 2)))
+
     def get_radius_derivative(self, y: float) -> float:
         self.validate_y_range(y)
 
@@ -49,8 +63,10 @@ class CylinderTank(Tank):
         C = self.cylinder_height
 
         if y > C / 2:
-            return -float(A * (y - C / 2) / (B * np.sqrt(B**2 - (y - C / 2) ** 2)))
+            denominator = np.sqrt(1 - (y - C / 2) ** 2 / B**2)
+            return float(-A * (y - C / 2) / (B**2 * denominator)) if denominator > 0 else 0.0
         elif y > -C / 2:
-            return 0
+            return 0.0
         else:
-            return -float(A * (y + C / 2) / (B * np.sqrt(B**2 - (y + C / 2) ** 2)))
+            denominator = np.sqrt(1 - (y + C / 2) ** 2 / B**2)
+            return float(-A * (y + C / 2) / (B**2 * denominator)) if denominator > 0 else 0.0

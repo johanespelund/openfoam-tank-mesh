@@ -1,3 +1,4 @@
+# ruff: noqa
 import gmsh  # type: ignore[import-untyped]
 import numpy as np
 
@@ -32,6 +33,7 @@ def run(mesh: "KSiteMesh.KSiteMesh") -> None:
 
     origo = add_point(0, y_cylinder, z0, lc)
     major_point = add_point(a, y_cylinder, z0, lc)
+    major_point_bl = add_point(a - t_BL, y_cylinder, z0, lc)
     major_point_wall = add_point(a + tw, y_cylinder, z0, lc)
 
     p1 = add_point(0, y_interface, z0, lc)
@@ -40,21 +42,40 @@ def run(mesh: "KSiteMesh.KSiteMesh") -> None:
     p3 = add_point(r_outlet, y_outlet, z0, lc)
     pw3 = add_point(r_outlet, y_outlet + tw, z0, lc)
 
-    y4 = y_bl
-    x4 = tank.get_radius(y4)
-    p4 = add_point(x4, y4, z0, lc)
-    pw4 = add_point(x4 + tw, y4, z0, lc)
-
-    x5, y5 = a, y_cylinder
-    p5 = add_point(x5, y5, z0, lc)
-    pw5 = add_point(x5 + tw, y5, z0, lc)
-    p5B = add_point(x5 - t_BL, y5, z0, lc)
-
-    x6, y6 = x5, y_interface
+    x6, y6 = tank.get_radius(y_interface), y_interface
     p6 = add_point(x6, y6, z0, lc)
     pw6 = add_point(x6 + tw, y6, z0, lc)
 
-    x7, y7 = x5 - t_BL, y_interface
+    # normal = tank.get_normal(y4)
+    # n = normal/np.linalg.norm(normal)
+    # print(n)
+    # x10, y10 = np.array([x4, y4]) + n*t_BL
+
+    n = tank.get_normal(y_bl)
+    t = tank.get_tangent(y_bl)
+    d = n[0] + t[0]
+    # x10, y10 = tank.get_radius(y_bl) + t_BL*d, y_bl
+    x10, y10 = get_corner_coords(mesh)
+    p10 = add_point(x10, y10, z0, lc)
+
+    normal = tank.get_normal(y10)
+    for _ in range(10):
+        y4 = y10 - normal[1] * t_BL * 0.5
+        x4 = tank.get_radius(y4)
+        normal = tank.get_normal(y4)
+    # y4 = 1.1*y_bl
+    # x4 = tank.get_radius(y4)
+    # tangent = tank.get_tangent(y6)
+    # t = tangent/np.linalg.norm(tangent)
+    # print(t)
+    # x4, y4 = np.array([x6, y6]) + t*1.5*t_BL
+    # print(x4, y4)
+    # print(tank.get_radius(y4), y4)
+    p4 = add_point(x4, y4, z0, lc)
+    pw4 = add_point(x4 + tw, y4, z0, lc)
+
+    # x7, y7 = x6 - 1.5*t_BL, y_interface
+    x7, y7 = x10 + 0.5 * t_BL, y_interface
     p7 = add_point(x7, y7, z0, lc)
 
     x8, y8 = x3, y3 - t_BL
@@ -63,11 +84,10 @@ def run(mesh: "KSiteMesh.KSiteMesh") -> None:
     x9, y9 = 0, y_outlet - t_BL
     p9 = add_point(x9, y9, z0, lc)
 
-    x10, y10 = x7, y_bl
-    p10 = add_point(x10, y10, z0, lc)
-
     x11, y11 = 0, y_bl
     p11 = add_point(x11, y11, z0, lc)
+
+    # Compare lengths of line between
 
     # Add lines
 
@@ -75,18 +95,8 @@ def run(mesh: "KSiteMesh.KSiteMesh") -> None:
     l_9_2 = add_line(p9, p2)
     l_2_3 = add_line(p2, p3)
     l_8_9 = add_line(p8, p9)
+
     l_10_4 = add_line(p10, p4)
-
-    if y4 < y5:
-        l_5B_10 = add_line(p5B, p10)
-        l_4_5 = add_line(p4, p5)
-        l_4_5w = add_line(pw4, pw5)
-    else:
-        l_5B_10 = add_line(p5B, p10)
-        l_4_5 = add_line(p4, p5)
-        l_4_5 = add_ellipse(p4, origo, major_point, p5)
-        l_4_5w = add_line(pw4, pw5)
-
     l_6_7 = add_line(p6, p7)
     l_7_1 = add_line(p7, p1)
     l_1_11 = add_line(p1, p11)
@@ -94,103 +104,77 @@ def run(mesh: "KSiteMesh.KSiteMesh") -> None:
     l_3_3w = add_line(p3, pw3)
     l6_6w = add_line(p6, pw6)
 
-    if y4 < y5:
-        print_debug(mesh, "y4<y5 / y_BL < y_cylinder")
-        l_3_5 = add_ellipse(p3, origo, major_point, p5)
-        l_8_5B = add_ellipse(p8, origo, major_point, p5B)
-        l_4_6 = add_line(p4, p6)
-        l_7_10 = add_line(p7, p10)
-        l_3_5w = add_ellipse(pw3, origo, major_point_wall, pw5)
-        l_4_6w = add_line(pw4, pw6)
-        cl1 = add_curve_loop([l_2_3, l_3_5, -l_4_5, -l_10_4, -l_5B_10, -l_8_5B, l_8_9, l_9_2])
-        cl2 = add_curve_loop([l_10_4, l_4_6, l_6_7, l_7_10])
-        cl3 = add_curve_loop([-l_7_10, l_7_1, l_1_11, -l_10_11])
-        cl4 = add_curve_loop([-l_8_9, l_8_5B, l_5B_10, l_10_11, l_11_9])
-        cl_wall = add_curve_loop([l_3_3w, l_3_5w, -l_4_5w, l_4_6w, -l6_6w, -l_4_6, l_4_5, -l_3_5])
-    else:
-        l_3_4 = add_ellipse(p3, origo, major_point, p4)
-        l_3_4w = add_ellipse(pw3, origo, major_point_wall, pw4)
-        l_8_10 = add_ellipse(p8, origo, major_point, p10)
-        l_5_6 = add_line(p5, p6)
-        l_5_6w = add_line(pw5, pw6)
-        l_5B_7 = add_line(p5B, p7)
-        cl1 = add_curve_loop([l_2_3, l_3_4, -l_10_4, -l_8_10, l_8_9, l_9_2])
-        cl2 = add_curve_loop([l_10_4, l_4_5, l_5_6, l_6_7, -l_5B_7, l_5B_10])
-        cl3 = add_curve_loop([-l_5B_10, l_5B_7, l_7_1, l_1_11, -l_10_11])
-        cl4 = add_curve_loop([-l_8_9, l_8_10, l_10_11, l_11_9])
-        cl_wall = add_curve_loop([l_3_3w, l_3_4w, l_4_5w, l_5_6w, -l6_6w, -l_5_6, -l_4_5, -l_3_4])
+    l_3_4 = add_ellipse(p3, origo, major_point, p4)
+    l_4_6 = add_ellipse(p4, origo, major_point, p6)
+    # l_4_6 = add_line(p4, p6)
+    # l_10_7 = add_ellipse(p10, origo, major_point_bl, p7)
+    l_10_7 = add_line(p10, p7)
+    l_8_10 = add_ellipse(p8, origo, major_point_bl, p10)
+    l_3w_4w = add_ellipse(pw3, origo, major_point_wall, pw4)
+    l_4w_6w = add_ellipse(pw4, origo, major_point_wall, pw6)
+    # l_10_6 = add_line(p10, p6)
+
+    gmsh.model.geo.synchronize()
+
+    cl1 = add_curve_loop([l_2_3, l_3_4, l_4_6, l_6_7, -l_10_7, -l_8_10, l_8_9, l_9_2])
+    # cl1 = add_curve_loop([
+    #     l_2_3, l_3_4, -l_10_4, -l_8_10, l_8_9, l_9_2])
+    # cl2 = add_curve_loop([l_10_4, l_4_6, -l_10_6])
+    # cl3 = add_curve_loop([-l_10_6, l_10_7, -l_6_7])
+
+    cl2 = add_curve_loop([l_10_7, l_7_1, l_1_11, -l_10_11])
+    cl3 = add_curve_loop([l_11_9, -l_8_9, l_8_10, l_10_11])
+    cl_wall = add_curve_loop([l_3_3w, l_3w_4w, l_4w_6w, -l6_6w, -l_4_6, -l_3_4])
 
     s1 = add_surface(cl1)
     s2 = add_surface(cl2)
     s3 = add_surface(cl3)
-    s4 = add_surface(cl4)
+    # s4 = add_surface(cl4)
+    # s5 = add_surface(cl5)
     swall = add_surface(cl_wall)
 
     N_2_3 = get_N_outlet(mesh)
     N_1_7 = closest_odd(x7 / lc) + 2
 
+    y = np.linspace(y_outlet, y4)
+    x = np.array([tank.get_radius(yi) for yi in y])
+    L_3_4 = np.sum([np.sqrt((x[i + 1] - x[i]) ** 2 + (y[i + 1] - y[i]) ** 2) for i in range(len(y) - 1)])
+    N_3_4 = closest_odd(L_3_4 / lc) + 2
+
+    print(f"{N_2_3=}, {N_1_7=}, {N_3_4=}, {n_BL=}")
+
     gmsh.model.geo.mesh.setTransfiniteCurve(l_9_2, n_BL, "Progression", -r_BL)
     gmsh.model.geo.mesh.setTransfiniteCurve(l_2_3, N_2_3)
     gmsh.model.geo.mesh.setTransfiniteCurve(l_8_9, N_2_3)
     gmsh.model.geo.mesh.setTransfiniteCurve(l_6_7, n_BL, "Progression", r_BL)
-    gmsh.model.geo.mesh.setTransfiniteCurve(l_10_4, n_BL, "Progression", -r_BL)
     gmsh.model.geo.mesh.setTransfiniteCurve(l_1_11, n_BL, "Progression", r_BL)
     gmsh.model.geo.mesh.setTransfiniteCurve(l_7_1, N_1_7)
     gmsh.model.geo.mesh.setTransfiniteCurve(l_10_11, N_1_7)
+    gmsh.model.geo.mesh.setTransfiniteCurve(l_3_4, N_3_4)
+    gmsh.model.geo.mesh.setTransfiniteCurve(l_3w_4w, N_3_4)
+    gmsh.model.geo.mesh.setTransfiniteCurve(l_8_10, N_3_4)
 
     gmsh.model.geo.mesh.setTransfiniteCurve(l_3_3w, nw)
     gmsh.model.geo.mesh.setTransfiniteCurve(l6_6w, nw)
 
-    if y4 > y5:
-        y = np.linspace(y_outlet, y4)
-        x = np.array([tank.get_radius(yi) for yi in y])
-        L_3_4 = np.sum([np.sqrt((x[i + 1] - x[i]) ** 2 + (y[i + 1] - y[i]) ** 2) for i in range(len(y) - 1)])
-        N_3_4 = closest_odd(L_3_4 / lc) + 2
-        gmsh.model.geo.mesh.setTransfiniteCurve(l_3_4, N_3_4)
-        gmsh.model.geo.mesh.setTransfiniteCurve(l_3_4w, N_3_4)
-        gmsh.model.geo.mesh.setTransfiniteCurve(l_8_10, N_3_4)
-        gmsh.model.geo.mesh.setTransfiniteSurface(s1, "Left", [p2, p4, p10, p9])
-        N_6_5 = 2
-        t = wall_cell_size
-        i = 1
-        while t < y5 - y_interface and i < n_BL - 2:
-            t += wall_cell_size * r_BL**i
-            i += 1
-            N_6_5 += 1
-        N_6_5 -= 0
-        N_5_4 = n_BL - N_6_5 + 1
-        gmsh.model.geo.mesh.setTransfiniteCurve(l_5B_10, N_5_4, "Progression", r_BL)
-        gmsh.model.geo.mesh.setTransfiniteCurve(l_4_5, N_5_4, "Progression", -r_BL)
-        gmsh.model.geo.mesh.setTransfiniteCurve(l_4_5w, N_5_4, "Progression", -r_BL)
-        gmsh.model.geo.mesh.setTransfiniteCurve(l_5_6, N_6_5, "Progression", -r_BL)
-        gmsh.model.geo.mesh.setTransfiniteCurve(l_5_6w, N_6_5, "Progression", -r_BL)
-        gmsh.model.geo.mesh.setTransfiniteCurve(l_5B_7, N_6_5, "Progression", -r_BL)
-        gmsh.model.geo.mesh.setTransfiniteSurface(s2, "Left", [p6, p7, p10, p4])
-        gmsh.model.geo.mesh.setTransfiniteSurface(s3, "Left", [p11, p10, p7, p1])
-    else:
-        y = np.linspace(y_outlet, y5)
-        x = np.array([tank.get_radius(yi) for yi in y])
-        L_3_5 = np.sum([np.sqrt((x[i + 1] - x[i]) ** 2 + (y[i + 1] - y[i]) ** 2) for i in range(len(y) - 1)])
-        N_3_5 = closest_odd(max(1, int(np.floor(np.around(L_3_5 / lc))) + 1))
-        L_4_5 = y5 - y4
-        N_4_5 = closest_odd(max(1, int(np.floor(np.around(L_4_5 / lc))) + 1))
-        gmsh.model.geo.mesh.setTransfiniteCurve(l_3_5, N_3_5)
-        gmsh.model.geo.mesh.setTransfiniteCurve(l_3_5w, N_3_5)
-        gmsh.model.geo.mesh.setTransfiniteCurve(l_4_5, N_4_5)
-        gmsh.model.geo.mesh.setTransfiniteCurve(l_4_5w, N_4_5)
-        gmsh.model.geo.mesh.setTransfiniteCurve(l_8_5B, N_3_5)
-        gmsh.model.geo.mesh.setTransfiniteCurve(l_5B_10, N_4_5)
-        # gmsh.model.geo.mesh.setTransfiniteCurve(l_10_4, n_BL, "Progression", -r_BL)
-        # gmsh.model.geo.mesh.setTransfiniteCurve(l_6_7, n_BL, "Progression", r_BL)
-        gmsh.model.geo.mesh.setTransfiniteSurface(s1, "Left", [p2, p4, p10, p9])
-        gmsh.model.geo.mesh.setTransfiniteCurve(l_4_6, n_BL, "Progression", -r_BL)
-        gmsh.model.geo.mesh.setTransfiniteCurve(l_4_6w, n_BL, "Progression", -r_BL)
-        gmsh.model.geo.mesh.setTransfiniteCurve(l_7_10, n_BL, "Progression", r_BL)
-        gmsh.model.geo.mesh.setTransfiniteSurface(s2, "Left", [p6, p7, p10, p4])
-        gmsh.model.geo.mesh.setTransfiniteSurface(s3, "Left", [p11, p10, p7, p1])
+    # gmsh.model.geo.mesh.setTransfiniteCurve(l_6_7, n_BL, "Progression", r_BL)
+    gmsh.model.geo.mesh.setTransfiniteCurve(l_4_6, n_BL, "Progression", -r_BL)
+    gmsh.model.geo.mesh.setTransfiniteCurve(l_4w_6w, n_BL, "Progression", -r_BL)
+    gmsh.model.geo.mesh.setTransfiniteCurve(l_10_7, n_BL, "Progression", -r_BL)
+    # gmsh.model.geo.mesh.setTransfiniteCurve(l_10_6, n_BL, "Progression", -r_BL)
+    # gmsh.model.geo.mesh.setTransfiniteCurve(l_10_4, n_BL, "Progression", -r_BL)
 
+    gmsh.model.geo.mesh.setTransfiniteSurface(s1, "Left", [p2, p6, p7, p9])
+    gmsh.model.geo.mesh.setTransfiniteSurface(s2, "Left", [p1, p11, p10, p7])
+    # gmsh.model.geo.mesh.setTransfiniteSurface(s3, "Left", [p11, p9, p10])
+    # print(f"{s3=}")
+    # gmsh.model.geo.mesh.setTransfiniteSurface(s2, "Right", [p10, p4, p6])
+    # gmsh.model.geo.mesh.setTransfiniteSurface(s3, "Right", [p6, p7, p10])
+    # gmsh.model.geo.mesh.setTransfiniteSurface(s4, "Left", [p1, p11, p10, p7])
+    # gmsh.model.geo.mesh.setTransfiniteSurface(s5, "Left", [p11, p9, p10])
     gmsh.model.geo.mesh.setTransfiniteSurface(swall, "Left", [p3, pw3, pw6, p6])
     gmsh.model.geo.synchronize()
+
     # gmsh.model.mesh.generate(2)
 
     gmsh.model.geo.synchronize()
@@ -220,12 +204,12 @@ def run(mesh: "KSiteMesh.KSiteMesh") -> None:
 
     for s in [s1, s2, s3, swall]:
         gmsh.model.geo.mesh.setRecombine(2, s)
-    gmsh.model.geo.mesh.setRecombine(2, s4)
+    gmsh.model.geo.mesh.setRecombine(2, s3)
     gmsh.option.setNumber("Mesh.Algorithm", 8)  # 5 or 6
     gmsh.option.setNumber("Mesh.RecombinationAlgorithm", 2)  # 2 or 3
     gmsh.model.geo.synchronize()
 
-    # gmsh.model.mesh.generate(2)
+    gmsh.model.mesh.generate(2)
     gmsh.model.geo.synchronize()
     gmsh.model.geo.synchronize()
     gmsh.model.mesh.recombine()
@@ -233,7 +217,7 @@ def run(mesh: "KSiteMesh.KSiteMesh") -> None:
     angle = 2 * np.pi * revolve / 360 if revolve else wedge_angle * np.pi / 180
     n_angle = closest_odd(2 * np.pi * revolve / (360 * lc)) if revolve else 1
     _ = gmsh.model.geo.revolve(
-        [(2, s1), (2, s2), (2, s3), (2, s4), (2, swall)],
+        [(2, s1), (2, s2), (2, s3), (2, swall)],
         0,
         0,
         0,  # Point on the axis of revolution
@@ -269,30 +253,30 @@ def run(mesh: "KSiteMesh.KSiteMesh") -> None:
     # gmsh.model.mesh.recombine()
     gmsh.model.mesh.optimize()
 
-    # for i in range(len(s)):
-    #     # Format an int string with leading zeros
-    #     ind = i
-    #     int_string = f"s_{ind:02d}"
-    #     print(f"Adding physical surface {int_string}")
-    #     add_physical_surface([ind], int_string)
+    for i in range(len(surfaces)):
+        # Format an int string with leading zeros
+        ind = i
+        int_string = f"s_{ind:02d}"
+        print(f"Adding physical surface {int_string}")
+        add_physical_surface([ind], int_string)
 
-    if y_bl > y_cylinder:
-        add_physical_surface([0, 1, 2, 3, 4], "cyclic_pos_gmsh")
-        add_physical_surface([10, 16, 19, 20, 26], "cyclic_neg_gmsh")
-        add_physical_surface([22, 23, 24], "walls_gmsh")
-        add_physical_surface([5], "outlet")
-        add_physical_surface([21], "metal_outlet")
-        add_physical_surface([13, 17, 25], "bottom_gmsh")
-    else:
-        add_physical_surface([0, 1, 2, 3, 4], "cyclic_pos_gmsh")
-        add_physical_surface([12, 16, 19, 20, 26], "cyclic_neg_gmsh")
-        add_physical_surface([22, 23, 24], "walls_gmsh")
-        add_physical_surface([5], "outlet")
-        add_physical_surface([21], "metal_outlet")
-        add_physical_surface([14, 17, 25], "bottom_gmsh")
+    # # if y_bl > y_cylinder:
+    # #     add_physical_surface([0, 1, 2, 3, 4], "cyclic_pos_gmsh")
+    # #     add_physical_surface([10, 16, 19, 20, 26], "cyclic_neg_gmsh")
+    # #     add_physical_surface([22, 23, 24], "walls_gmsh")
+    # #     add_physical_surface([5], "outlet")
+    # #     add_physical_surface([21], "metal_outlet")
+    # #     add_physical_surface([13, 17, 25], "bottom_gmsh")
+    # # else:
+    # #     add_physical_surface([0, 1, 2, 3, 4], "cyclic_pos_gmsh")
+    # #     add_physical_surface([12, 16, 19, 20, 26], "cyclic_neg_gmsh")
+    # #     add_physical_surface([22, 23, 24], "walls_gmsh")
+    # #     add_physical_surface([5], "outlet")
+    # #     add_physical_surface([21], "metal_outlet")
+    # #     add_physical_surface([14, 17, 25], "bottom_gmsh")
 
-    gmsh.model.geo.synchronize()
-    gmsh.model.geo.synchronize()
+    # # gmsh.model.geo.synchronize()
+    # # gmsh.model.geo.synchronize()
 
     # # Set the MshFileVersion option to 2.2 (for MSH 2 format)
     gmsh.option.setNumber("Mesh.MshFileVersion", 2.2)
@@ -325,6 +309,7 @@ def gmsh_setup() -> None:
     gmsh.option.setNumber("Geometry.Tolerance", 1e-9)
     gmsh.option.setNumber("General.Terminal", 0)
     gmsh.option.setNumber("Mesh.MshFileVersion", 2.2)
+    gmsh.option.setNumber("Mesh.TransfiniteTri", 1)
 
 
 def add_point(x: float, y: float, z: float, lc: float) -> int:
@@ -345,6 +330,28 @@ def add_curve_loop(lines: list[int]) -> int:
 
 def add_surface(loop: int) -> int:
     return int(gmsh.model.geo.addPlaneSurface([loop]))
+
+
+def get_corner_coords(mesh: "KSiteMesh.KSiteMesh") -> tuple[float, float]:
+    """
+    Get the corner coords of the boundary layer.
+    """
+
+    A, B = mesh.tank.cylinder_radius, mesh.tank.cap_height
+    C = mesh.tank.cylinder_height
+    A -= mesh.t_BL
+    B -= mesh.t_BL
+
+    def r_ellipse(y: float) -> float:
+        if y > C / 2:
+            return float(A * np.sqrt(1 - (y - C / 2) ** 2 / B**2))
+        elif y > -C / 2:
+            return A
+        else:
+            return float(A * np.sqrt(1 - (y + C / 2) ** 2 / B**2))
+
+    y = mesh.tank.y_interface + mesh.t_BL
+    return r_ellipse(y), y
 
 
 def print_debug(mesh: "KSiteMesh.KSiteMesh", msg: str) -> None:

@@ -57,6 +57,26 @@ class Tank(ABC):
         """
         pass
 
+    def get_tangent(self, y: float) -> np.ndarray:
+        """
+        Return the normalized tangent to the curve r(y),
+        using the derivative of the curve.
+        """
+        self.validate_y_range(y)
+        dy_dx = self.get_radius_derivative(y)
+        norm = np.sqrt(dy_dx**2 + 1)
+        return np.array([dy_dx / norm, 1 / norm])
+
+    def get_normal(self, y: float) -> np.ndarray:
+        """
+        Return the normalized normal to the curve r(y),
+        using the derivative of the curve.
+        """
+        self.validate_y_range(y)
+        dy_dx = self.get_radius_derivative(y)
+        norm = np.sqrt(dy_dx**2 + 1)
+        return np.array([-1 / norm, dy_dx / norm])
+
     def get_partial_volume(self, y1: float, y2: float) -> float:
         """
         Get the volume between y1 and y2, where y1 < y2
@@ -106,9 +126,21 @@ class Tank(ABC):
 
         y = np.linspace(self.y1, self.y_outlet, 1000)
         r = np.array([self.get_radius(yi) for yi in y])
+        drdy = [self.get_radius_derivative(yi) for yi in y]
 
         ax.plot(r, y, label=self.name)
+        ax.plot(drdy, y, label="drdy", alpha=0.5, color="grey")
         ax.fill_betweenx(y, r, 0, where=y < self.y_interface, alpha=0.5)  # type: ignore[arg-type]
+
+        normal = self.get_normal(self.y_interface)
+        n = normal / np.linalg.norm(normal)
+        tangent = self.get_tangent(self.y_interface)
+        t = tangent / np.linalg.norm(tangent)
+
+        # Plot normal and tangent
+        ax.arrow(self.interface_radius, self.y_interface, n[0], n[1], color="r", head_width=0.05)
+        ax.arrow(self.interface_radius, self.y_interface, t[0], t[1], color="g", head_width=0.05)
+
         ax.set_aspect("equal")
 
     def validate_y_range(self, y: float) -> None:

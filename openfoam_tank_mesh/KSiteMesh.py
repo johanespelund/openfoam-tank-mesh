@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pathlib
 
-from openfoam_tank_mesh.gmsh_scripts import ksite49
+from openfoam_tank_mesh.gmsh_scripts import ksite49, ksite83
 from openfoam_tank_mesh.KSiteTank import KSiteTank
 from openfoam_tank_mesh.TankMesh import TankMesh
 
@@ -15,7 +15,7 @@ class KSiteMesh(TankMesh):
         )
         super().__init__(tank=self.tank, input_parameters=input_parameters)
 
-        if self.tank.fill_level != 0.49:
+        if self.tank.fill_level < 0.49:
             raise NotImplementedError("Only fill level of 0.49 is supported.")
 
         return None
@@ -25,7 +25,11 @@ class KSiteMesh(TankMesh):
         Generate the mesh.
         """
 
-        ksite49.run(self)
+        if self.tank.fill_level < 0.52:
+            ksite49.run(self)
+        else:
+            ksite83.run(self)
+        exit()
         self.run_command("gmshToFoam KSite49.msh")
         self.run_command(f"transformPoints -rotate-y -{self.wedge_angle / 2}")
         if self.revolve:
