@@ -2,33 +2,23 @@ from __future__ import annotations
 
 import pathlib
 
-from openfoam_tank_mesh.gmsh_scripts import ksite49, ksite83
-from openfoam_tank_mesh.KSiteTank import KSiteTank
+from openfoam_tank_mesh.gmsh_scripts import ksite49, ksite_wip, ksite83
+from openfoam_tank_mesh.NASA1m3Tank import NASA1m3Tank
 from openfoam_tank_mesh.TankMesh import TankMesh
 
 
-class KSiteMesh(TankMesh):
+class NASA1m3Mesh(TankMesh):
     def __init__(self, input_parameters: dict) -> None:
-        self.tank: KSiteTank = KSiteTank(
+        self.tank: NASA1m3Tank = NASA1m3Tank(
             fill_level=input_parameters["fill_level"],
             outlet_radius=input_parameters["outlet_radius"],
         )
         super().__init__(tank=self.tank, input_parameters=input_parameters)
 
-        if self.tank.fill_level < 0.49:
-            raise NotImplementedError("Only fill level of 0.49 is supported.")
-
         return None
 
     def gmsh(self) -> None:
-        """
-        Generate the mesh using Gmsh.
-        """
-
-        if self.tank.fill_level < 0.52:
-            ksite49.run(self)
-        else:
-            ksite83.run(self)
+        ksite83.run(self)
         self.run_command("gmshToFoam KSite49.msh")
         self.run_command(f"transformPoints -rotate-y -{self.wedge_angle / 2}")
         if self.revolve:
@@ -41,6 +31,8 @@ class KSiteMesh(TankMesh):
                 "createPatch -overwrite",
                 "createPatchDict.gmsh_wedge",
             )
+
+
 
     def generate(self) -> None:
         """

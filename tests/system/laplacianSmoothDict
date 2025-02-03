@@ -26,25 +26,46 @@ smoothFactor 1;
 constrainedPoints
   (
 
-    // {
-    //   type set;
-    //   set fixedPoints;
-    //   constraintType fixed;
-    // }
+    {
+      type set;
+      set fixedPoints;
+      constraintType fixed;
+    }
 
     {
       type set;
       set yconst;
-      constraintType constDir;
-      direction (0 1 0);
+      constraintType constY;
     }
 
     {
       type set;
       set rconst;
-      constraintType constRadius;
+      constraintType constRadiusXY;
     }
 
+    {
+      type patch;
+      patch wedge;
+      constraintType constZ;
+    }
+
+    {
+      type patch;
+      patch bottom;
+      constraintType constY;
+    }
+    {
+      type set;
+      set outletPointSet;
+      constraintType fixed;
+    }
+
+    {
+      type patch;
+      patch defaultFaces;
+      constraintType constX;
+    }
 
 
 

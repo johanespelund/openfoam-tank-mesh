@@ -5,6 +5,9 @@ docs/source
 *.msh
 log.*
 *.foam
+*.stl
+*.obj
+parameters.*
 
 tests/constant
 tests/0

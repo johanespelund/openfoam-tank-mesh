@@ -2,10 +2,10 @@
 import gmsh  # type: ignore[import-untyped]
 import numpy as np
 
-from openfoam_tank_mesh import KSiteMesh
+from openfoam_tank_mesh import TankMesh
 
 
-def run(mesh: "KSiteMesh.KSiteMesh") -> None:
+def run(mesh: "TankMesh.TankMesh") -> None:
     tank = mesh.tank
     r_outlet = tank.outlet_radius
     y_outlet = tank.y_outlet
@@ -75,7 +75,8 @@ def run(mesh: "KSiteMesh.KSiteMesh") -> None:
     pw4 = add_point(x4 + tw, y4, z0, lc)
 
     # x7, y7 = x6 - 1.5*t_BL, y_interface
-    x7, y7 = x10 + 0.5 * t_BL, y_interface
+    gap = x6 - x10 - t_BL
+    x7, y7 = x10 + 0.5 * gap, y_interface
     p7 = add_point(x7, y7, z0, lc)
 
     x8, y8 = x3, y3 - t_BL
@@ -253,12 +254,19 @@ def run(mesh: "KSiteMesh.KSiteMesh") -> None:
     # gmsh.model.mesh.recombine()
     gmsh.model.mesh.optimize()
 
-    for i in range(len(surfaces)):
-        # Format an int string with leading zeros
-        ind = i
-        int_string = f"s_{ind:02d}"
-        print(f"Adding physical surface {int_string}")
-        add_physical_surface([ind], int_string)
+    # for i in range(len(surfaces)):
+    #     # Format an int string with leading zeros
+    #     ind = i
+    #     int_string = f"s_{ind:02d}"
+    #     print(f"Adding physical surface {int_string}")
+    #     add_physical_surface([ind], int_string)
+
+    add_physical_surface([0, 1, 2, 3], "cyclic_pos_gmsh")
+    add_physical_surface([4], "outlet")
+    add_physical_surface([7, 12, 19], "bottom")
+    add_physical_surface([11, 14, 15, 20], "cyclic_neg_gmsh")
+    add_physical_surface([17, 18], "walls_gmsh")
+    add_physical_surface([16], "metal_outlet")
 
     # # if y_bl > y_cylinder:
     # #     add_physical_surface([0, 1, 2, 3, 4], "cyclic_pos_gmsh")
@@ -295,7 +303,7 @@ def closest_odd(n: float) -> int:
     return int(n) // 2 * 2 + 1
 
 
-def get_N_outlet(mesh: "KSiteMesh.KSiteMesh") -> int:
+def get_N_outlet(mesh: "TankMesh.TankMesh") -> int:
     if mesh.bulk_cell_size >= mesh.outlet_radius:
         return 2
     else:
@@ -332,7 +340,7 @@ def add_surface(loop: int) -> int:
     return int(gmsh.model.geo.addPlaneSurface([loop]))
 
 
-def get_corner_coords(mesh: "KSiteMesh.KSiteMesh") -> tuple[float, float]:
+def get_corner_coords(mesh: "TankMesh.TankMesh") -> tuple[float, float]:
     """
     Get the corner coords of the boundary layer.
     """
@@ -354,6 +362,6 @@ def get_corner_coords(mesh: "KSiteMesh.KSiteMesh") -> tuple[float, float]:
     return r_ellipse(y), y
 
 
-def print_debug(mesh: "KSiteMesh.KSiteMesh", msg: str) -> None:
+def print_debug(mesh: "TankMesh.TankMesh", msg: str) -> None:
     if mesh.debug:
         print(msg)

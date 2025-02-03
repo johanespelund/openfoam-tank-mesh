@@ -6,7 +6,11 @@ from rich import print as rprint
 from rich.console import Console
 from rich.table import Table
 
-from openfoam_tank_mesh.exceptions import CommandFailed, MissingParameter, OpenFoamNotLoaded
+from openfoam_tank_mesh.exceptions import (
+    CommandFailed,
+    MissingParameter,
+    OpenFoamNotLoaded,
+)
 from openfoam_tank_mesh.Tank import ABC, Tank, abstractmethod
 
 
@@ -51,6 +55,7 @@ class TankMesh(ABC):
         self.n_BL, self.t_BL, self.e_BL = self.calculate_boundary_layer()
         self.wedge_angle = self.revolve if self.revolve else self.wedge_angle
         super().__init__()
+        self.write_mesh_parameters()
 
     @property
     @abstractmethod
@@ -64,6 +69,13 @@ class TankMesh(ABC):
     def parameters_path(self) -> str:
         """
         The path to the mesh parameters.
+        """
+
+    @abstractmethod
+    def generate(self) -> None:
+        """
+        Use gmsh to create a mesh in .msh format,
+        and then use gmshToFoam to convert it to OpenFOAM.
         """
 
     def validate_parameters(self, input_parameters: dict) -> None:
@@ -84,7 +96,9 @@ class TankMesh(ABC):
         """
         with open(self.parameters_path, "w") as f:
             for key, value in self.__dict__.items():
-                f.write(f"{key} {value};\n")
+                if type(value) in [int, float, str]:
+                    f.write(f"{key} {value};\n")
+        self.run_command(f"cp {self.parameters_path} system/meshdata")
 
     def run_command(self, command: str, no_output: bool = False) -> None:
         """
@@ -103,7 +117,7 @@ class TankMesh(ABC):
         dt = time.time() - t
         if result.returncode != 0:
             rprint(result.stderr.decode())
-            CommandFailed(command)
+            raise CommandFailed(command)
 
         if not no_output:
             rprint(f" ({dt:.6f} s)")
@@ -169,3 +183,35 @@ class TankMesh(ABC):
                     cells = int(line.split()[1])
                     table.add_row("Cells", f"{cells:,}")
             console.print(table)
+
+    def remove_metal(self) -> None:
+        self.run_command("rm -r constant/polyMesh")
+        self.run_command("rm -r constant/metal/polyMesh")
+        self.run_command("mv constant/gas/polyMesh constant/polyMesh")
+        self.run_command("sed -i 's/gas_to_metal/walls/g' constant/polyMesh/boundary")
+        self.run_command("sed -i 's/mappedWall/wall/g' constant/polyMesh/boundary")
+
+    def cfMesh(self, nLayers: int = 0) -> None:
+        """
+        Use cfMesh to create a 3D mesh.
+        """
+
+        coarse_mesh = self.__class__(  # type: ignore[call-arg]
+            input_parameters={
+                "bulk_cell_size": self.outlet_radius / 2,
+                "wall_cell_size": self.outlet_radius / 4,
+                "outlet_radius": self.outlet_radius,
+                "fill_level": self.fill_level,
+                "revolve": self.revolve,
+                "debug": self.debug,
+            },
+        )
+
+        coarse_mesh.generate()
+        coarse_mesh.remove_metal()
+
+        self.run_command(f"transformPoints -rotate-y {self.wedge_angle / 2}")
+        self.run_command(f"surfaceMeshExtract {self.name}.stl")
+        self.run_command(f"cp {self.dict_path}/meshDict system/meshDict")
+        self.run_command(f"sed -i 's/nLayers.*/nLayers {nLayers};/g' system/meshDict")
+        self.run_command("cartesianMesh")

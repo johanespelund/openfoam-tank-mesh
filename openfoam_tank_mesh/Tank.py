@@ -40,6 +40,30 @@ class Tank(ABC):
         """
         pass
 
+    @property
+    @abstractmethod
+    def cylinder_radius(self) -> float:
+        """
+        The radius of the cylindrical part of the tank, if applicable.
+        """
+        pass
+
+    @property
+    @abstractmethod
+    def cylinder_height(self) -> float:
+        """
+        The height of the cylindrical part of the tank, if applicable.
+        """
+        pass
+
+    @property
+    @abstractmethod
+    def cap_height(self) -> float:
+        """
+        The height of the cap of the tank, if applicable.
+        """
+        pass
+
     def get_volume(self) -> float:
         return self.get_partial_volume(self.y1, self.y2)
 

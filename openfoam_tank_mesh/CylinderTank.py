@@ -17,15 +17,27 @@ class CylinderTank(Tank):
         cylinder_height: float,
         cap_height: float,
     ) -> None:
-        self.cylinder_radius = cylinder_radius
-        self.cylinder_height = cylinder_height
-        self.cap_height = cap_height
+        self._cylinder_radius = cylinder_radius
+        self._cylinder_height = cylinder_height
+        self._cap_height = cap_height
         super().__init__(name, fill_level, outlet_radius)
         return None
 
     @property
     def height(self) -> float:
         return self.cylinder_height + 2 * self.cap_height
+
+    @property
+    def cylinder_radius(self) -> float:
+        return self._cylinder_radius
+
+    @property
+    def cylinder_height(self) -> float:
+        return self._cylinder_height
+
+    @property
+    def cap_height(self) -> float:
+        return self._cap_height
 
     def get_radius(self, y: float) -> float:
         self.validate_y_range(y)

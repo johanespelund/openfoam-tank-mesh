@@ -1,4 +1,5 @@
 # ruff: noqa
+# type: ignore
 import gmsh  # type: ignore[import-untyped]
 import numpy as np
 
@@ -303,36 +304,82 @@ def run(mesh: "KSiteMesh.KSiteMesh") -> None:
                 xc, yc, zc = current_coords
                 gmsh.model.mesh.setNode(tags[i], (xc, y_correct[i], zc), (0, 0, 0))
 
-        # Now for s2, which is tricier. Instead of having a constant reference y=y6,
-        # we need to use the line from (x6,y6) to (x10,y10) as the base line.
+            # Now for s2, which is tricier. Instead of having a constant reference y=y6,
+            # we need to use the line from (x6,y6) to (x10,y10) as the base line.
 
-    #         a = (y6 - y10)/(x6 - x10)
-    #         b = y6 - a*x6
+            a = (y6 - y10) / (x6 - x10)
+            b = y6 - a * x6
 
-    #         x_coords = nc2[:, 0]
-    #         y_coords = nc2[:, 1]
-    #         x_coords = x_coords[np.argsort(y_coords)]
-    #         y_coords = y_coords[np.argsort(y_coords)]
+            x_coords = nc2[:, 0]
+            y_coords = nc2[:, 1]
+            # x_coords = x_coords[np.argsort(y_coords)]
+            # y_coords = y_coords[np.argsort(y_coords)]
 
-    #         lower_points = nc2[np.where(np.isclose(y_coords, a*x_coords + b))]
-    #         lower_tags = nt2[np.where(np.isclose(y_coords, a*x_coords + b))]
+            lower_points = nc2[np.where(np.isclose(y_coords, a * x_coords + b))]
+            lower_tags = nt2[np.where(np.isclose(y_coords, a * x_coords + b))]
 
-    #         # The upper coords are defined by the tank curve,
-    #         # so we can use tank.mesh.get_radius(y) to get the upper coords.
+            # The upper coords are defined by the tank curve,
+            # so we can use tank.mesh.get_radius(y) to get the upper coords.
 
-    #         radius = [tank.get_radius(y) for y in y_coords]
-    #         upper_points = nc2[np.where(np.isclose(x_coords, radius))]
-    #         upper_tags = nt2[np.where(np.isclose(x_coords, radius))]
+            radius = [tank.get_radius(y) for y in y_coords]
+            upper_points = nc2[np.where(np.isclose(x_coords, radius))]
+            upper_tags = nt2[np.where(np.isclose(y_coords, radius))]
 
-    #         edited_tags = []
-    #         tags = nt2.copy()
-    #         for i in range(1, len(upper_points) - 1):
-    #             # Lets go!
-    #             # First, mask away points with tags in edite_tags
-    #             # current_tags = nt2[np.where(~np.isin(nt2, edited_tags))]
-    #             # Now we want to find the correct points in between the lower and upper line!
-    #             # First, only consider points with x > lower[i, 0].
-    #             current_tags = tags[np.where(nc2[:, 0] > lower_points[i, 0])]
+            import matplotlib.pyplot as plt
+
+            plt.plot(nc2[:, 0], nc2[:, 1], "ko")
+            # plt.plot(upper_points[:, 0], upper_points[:, 1], "rx")
+            # plt.plot(upper_points[:, 0], upper_points[:, 1], "bx")
+            # plt.plot(lower_points[:, 0], lower_points[:, 1], "o")
+            # plt.show()
+
+            # Sort the points from high to low y-values
+            sort_indices = np.flip(np.argsort(upper_points[:, 1]))
+            print(sort_indices)
+            # upper_points = upper_points[sort_indices, :]
+            # lower_points = lower_points[sort_indices, :]
+            upper_points = upper_points[sort_indices]
+            lower_points = lower_points[sort_indices]
+
+            #         edited_tags = []
+            #         tags = nt2.copy()
+            for i in range(1, len(upper_points) - 1):
+                #             # Lets go!
+                #             # First, mask away points with tags in edite_tags
+                #             # current_tags = nt2[np.where(~np.isin(nt2, edited_tags))]
+                #             # Now we want to find the correct points in between the lower and upper line!
+                #             # First, only consider points with j > lower[i, 0].
+
+                #             current_tags = tags[np.where(nc2[:, 0] > lower_points[i, 0])]
+
+                # Define the line from upper to lower, i.e. from upper[i] to lower[i].
+                # Do not consider points with y-values lower than this line. Lets
+                # make this line in the form y = A*x + B.
+
+                # A = (upper_points[i, 1] - lower_points[i, 1])/(upper_points[i, 0] - lower_points[i, 0])
+                # B = upper_points[i, 1] - A*upper_points[i, 0]
+
+                # mask = nc2[:, 1] > A*nc2[:, 0] + B
+
+                # Use the is_above_line function instead
+                mask_above_current_line = np.array([
+                    is_above_line(upper_points[i], lower_points[i], point) for point in nc2
+                ])
+
+                mask_above_previous_line = np.array([
+                    is_above_line(upper_points[i - 1], lower_points[i - 1], point) for point in nc2
+                ])
+
+                mask_not_upper_or_lower = ~np.isin(nt2, list(lower_tags) + list(upper_tags))
+
+                # Mask should be above current and NOT above previous
+                mask = mask_above_current_line & ~mask_above_previous_line & mask_not_upper_or_lower
+
+                plt.plot([lower_points[i, 0], upper_points[i, 0]], [lower_points[i, 1], upper_points[i, 1]], "k-")
+                plt.plot(upper_points[:, 0], upper_points[:, 1], "rx")
+                plt.plot(lower_points[:, 0], lower_points[:, 1], "bx")
+                plt.plot(nc2[mask, 0], nc2[mask, 1], "gx")
+                plt.show()
 
     #             # We know that this line should have i+1 points:
     #             # Lets only keep the i+1 one poinst with lowest y-values.
@@ -480,6 +527,17 @@ def get_corner_coords(mesh: "KSiteMesh.KSiteMesh") -> tuple[float, float]:
 
     y = mesh.tank.y_interface + mesh.t_BL
     return r_ellipse(y), y
+
+
+def is_above_line(start: np.ndarray, end: np.ndarray, point: np.ndarray) -> bool:
+    """
+    Check if a point is above a line defined by start -> end.
+    """
+
+    A = (end[1] - start[1]) / (end[0] - start[0])
+    B = start[1] - A * start[0]
+
+    return point[1] > A * point[0] + B
 
 
 def print_debug(mesh: "KSiteMesh.KSiteMesh", msg: str) -> None:
