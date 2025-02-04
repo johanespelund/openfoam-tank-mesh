@@ -13,11 +13,11 @@ def test_mesh():
             "wall_cell_size": 4.0e-3,
             "bulk_cell_size": 10e-3,
             "outlet_radius": 0.02,
-            "debug": True,
-            "revolve": 0,
+            "debug": False,
+            "revolve": 90,
         }
     )
-    # mesh.generate()
+    mesh.cfMesh()
     assert mesh.tank.get_radius(0) == mesh.tank.cylinder_radius
     assert mesh.tank.get_radius(mesh.tank.y2) == 0
     assert mesh.tank.get_radius(mesh.tank.y1) == 0

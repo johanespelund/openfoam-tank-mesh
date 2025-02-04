@@ -45,11 +45,13 @@ localRefinement
   // }
   "(walls|bottom)"
   {
-    additionalRefinementLevels $N;
+    // additionalRefinementLevels $N;
+    cellSize $wall_cell_size;
   }
   outlet
   {
-    additionalRefinementLevels #eval {$N + 0};
+    // additionalRefinementLevels #eval {$N + 0};
+    cellSize $wall_cell_size;
     // refinementThickness $bulk_cell_size;
   }
 }
@@ -109,7 +111,7 @@ localRefinement
   axisLine
   {
     type line;
-    additionalRefinementLevels $N;
+    cellSize $wall_cell_size;
     p0 (0 -1e6 0);
     p1 (0 1e6 0);
     // refinementThickness 0.02;
