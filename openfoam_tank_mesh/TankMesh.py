@@ -99,6 +99,7 @@ class TankMesh(ABC):
             for key, value in self.__dict__.items():
                 if type(value) in [int, float, str]:
                     f.write(f"{key} {value};\n")
+                    print(f"{key} {value};")
         self.run_command(f"cp {self.parameters_path} system/meshdata")
 
     def run_command(self, command: str, no_output: bool = False) -> None:
@@ -211,6 +212,7 @@ class TankMesh(ABC):
 
         coarse_mesh.generate()
         coarse_mesh.remove_metal()
+        self.write_mesh_parameters()
 
         self.run_command(f"transformPoints -rotate-y {self.wedge_angle / 2}")
         self.run_command(f"surfaceMeshExtract {self.surface_file}")

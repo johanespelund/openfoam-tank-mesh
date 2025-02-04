@@ -9,15 +9,15 @@ from openfoam_tank_mesh.NASA1m3Mesh import NASA1m3Mesh
 def test_mesh():
     mesh = NASA1m3Mesh(
         input_parameters={
-            "fill_level": 0.81,
-            "wall_cell_size": 4.0e-3,
-            "bulk_cell_size": 10e-3,
+            "fill_level": 0.83,
+            "wall_cell_size": 3.0e-3,
+            "bulk_cell_size": 9e-3,
             "outlet_radius": 0.02,
             "debug": False,
             "revolve": 90,
         }
     )
-    mesh.cfMesh()
+    mesh.cfMesh(3)
     assert mesh.tank.get_radius(0) == mesh.tank.cylinder_radius
     assert mesh.tank.get_radius(mesh.tank.y2) == 0
     assert mesh.tank.get_radius(mesh.tank.y1) == 0
