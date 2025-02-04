@@ -43,10 +43,17 @@ localRefinement
   // {
   //   additionalRefinementLevels $N;
   // }
-  "(walls|bottom)"
+  bottom
   {
     // additionalRefinementLevels $N;
     cellSize $wall_cell_size;
+  }
+
+  walls
+  {
+    // additionalRefinementLevels $N;
+    cellSize $wall_cell_size;
+    // refinementThickness #eval {1.5*$bulk_cell_size};
   }
   outlet
   {
@@ -60,7 +67,8 @@ localRefinement
 {
   outlet
   {
-    additionalRefinementLevels 2;
+    // additionalRefinementLevels 2;
+    cellSize $wall_cell_size;
     type box;
     centre (0 $B  0);
     lengthX #eval {2*$outlet_radius};
@@ -70,7 +78,8 @@ localRefinement
   }
   corner1
   {
-    additionalRefinementLevels 1;
+    // additionalRefinementLevels 1;
+    cellSize #eval {2*$wall_cell_size};
     type hollowCone;
     p0 (0 -1e6 0);
     p1 (0 1e6 0);
@@ -81,7 +90,8 @@ localRefinement
   }
   corner2
   {
-    additionalRefinementLevels $N;
+    // additionalRefinementLevels $N;
+    cellSize $wall_cell_size;
     type hollowCone;
     p0 (0 -1e6 0);
     p1 (0 1e6 0);
@@ -92,7 +102,8 @@ localRefinement
   }
   cone1
   {
-    additionalRefinementLevels 1;
+    // additionalRefinementLevels 1;
+    cellSize #eval {2*$wall_cell_size};
     type cone;
     p0 (0 #eval {$B - 3*$bulk_cell_size} 0);
     p1 (0 1e6 0);
@@ -101,9 +112,10 @@ localRefinement
   }
   cone2
   {
-    additionalRefinementLevels $N;
+    // additionalRefinementLevels $N;
+    cellSize $wall_cell_size;
     type cone;
-    p0 (0 #eval {$B - 2*$bulk_cell_size} 0);
+    p0 (0 #eval {$B - 1.5*$bulk_cell_size} 0);
     p1 (0 1e6 0);
     radius0 1e6;
     radius1 1e6;
@@ -173,7 +185,7 @@ boundaryLayers
   {
     "(walls|bottom|outlet)"
     {
-      nLayers 0;
+      nLayers 3;
       thicknessRatio 1.0;
       maxFirstLayerThickness 0.0015;
       // allowDiscontinuity 0;
