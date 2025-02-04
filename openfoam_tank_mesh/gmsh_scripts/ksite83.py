@@ -75,8 +75,7 @@ def run(mesh: "TankMesh.TankMesh") -> None:
     pw4 = add_point(x4 + tw, y4, z0, lc)
 
     # x7, y7 = x6 - 1.5*t_BL, y_interface
-    gap = x6 - x10 - t_BL
-    x7, y7 = x10 + 0.5 * gap, y_interface
+    x7, y7 = x10 + 0.5 * t_BL, y_interface
     p7 = add_point(x7, y7, z0, lc)
 
     x8, y8 = x3, y3 - t_BL
@@ -254,19 +253,12 @@ def run(mesh: "TankMesh.TankMesh") -> None:
     # gmsh.model.mesh.recombine()
     gmsh.model.mesh.optimize()
 
-    # for i in range(len(surfaces)):
-    #     # Format an int string with leading zeros
-    #     ind = i
-    #     int_string = f"s_{ind:02d}"
-    #     print(f"Adding physical surface {int_string}")
-    #     add_physical_surface([ind], int_string)
-
-    add_physical_surface([0, 1, 2, 3], "cyclic_pos_gmsh")
-    add_physical_surface([4], "outlet")
-    add_physical_surface([7, 12, 19], "bottom")
-    add_physical_surface([11, 14, 15, 20], "cyclic_neg_gmsh")
-    add_physical_surface([17, 18], "walls_gmsh")
-    add_physical_surface([16], "metal_outlet")
+    for i in range(len(surfaces)):
+        # Format an int string with leading zeros
+        ind = i
+        int_string = f"s_{ind:02d}"
+        print(f"Adding physical surface {int_string}")
+        add_physical_surface([ind], int_string)
 
     # # if y_bl > y_cylinder:
     # #     add_physical_surface([0, 1, 2, 3, 4], "cyclic_pos_gmsh")

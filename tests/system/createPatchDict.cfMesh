@@ -20,35 +20,35 @@ pointSync   true;
 patches
 (
  // outlet patch
- {   
+ {
    name outlet;
    patchInfo
-     {   
-       type patch;  
+     {
+       type patch;
      }
    constructFrom patches;
     patches
-      (   
+      (
         outlet_temp
       );
  }
-// {   
+// {
 //    name bottom;
 //    patchInfo
-//      {   
-//        type wall;  
+//      {
+//        type wall;
 //      }
 //    constructFrom patches;
 //     patches
-//       (   
+//       (
 //         bottom
 //       );
-   
+
 //  }
-{   
+{
    name cyclic_pos;
    patchInfo
-     {   
+     {
        type cyclic;
         neighbourPatch cyclic_neg;
         transform rotational;
@@ -58,14 +58,14 @@ patches
      }
     constructFrom patches;
     patches
-      (   
+      (
         cyclic_pos_temp
       );
   }
- {   
+ {
    name cyclic_neg;
    patchInfo
-     {   
+     {
        type cyclic;
         neighbourPatch cyclic_pos;
         transform rotational;
@@ -75,7 +75,7 @@ patches
      }
     constructFrom patches;
     patches
-      (   
+      (
         cyclic_neg_temp
       );
  }

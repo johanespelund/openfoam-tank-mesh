@@ -21,7 +21,7 @@ FoamFile
 
 N 1;
 
-surfaceFile "K-Site.stl";
+surfaceFile $surface_file;
 
 maxCellSize $bulk_cell_size;
 
@@ -135,14 +135,34 @@ renameBoundary
 {
   // defaultName walls;
   // defaultType wall;
-  // newPatchNames
-  // {
-  //   patch0_1
-  //   {
-  //     newName bottom;
-  //     type wall;
-  //   }
-  // }
+  newPatchNames
+  {
+    cyclic_neg
+    {
+      newName cyclic_neg_temp;
+      type patch;
+    }
+    outlet
+    {
+      newName outlet;
+      type patch;
+    }
+    cyclic_pos
+    {
+      newName cyclic_pos_temp;
+      type patch;
+    }
+    bottom
+    {
+      newName bottom;
+      type wall;
+    }
+    walls
+    {
+      newName walls;
+      type wall;
+    }
+  }
 }
 
 boundaryLayers

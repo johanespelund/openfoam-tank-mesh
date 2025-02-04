@@ -48,6 +48,7 @@ class TankMesh(ABC):
         self.r_BL: float = 1.1  # Boundary layer growth rate
         self.revolve: float = 0  # Revolution angle (0 means 2D)
         self.wedge_angle: float = 1  # Revolution angle if 2D
+        self.surface_file = f"{self.name}.stl"
 
         self.check_openfoam_loaded(version="com")
         self.validate_parameters(input_parameters)
@@ -211,7 +212,13 @@ class TankMesh(ABC):
         coarse_mesh.remove_metal()
 
         self.run_command(f"transformPoints -rotate-y {self.wedge_angle / 2}")
-        self.run_command(f"surfaceMeshExtract {self.name}.stl")
+        self.run_command(f"surfaceMeshExtract {self.surface_file}")
         self.run_command(f"cp {self.dict_path}/meshDict system/meshDict")
         self.run_command(f"sed -i 's/nLayers.*/nLayers {nLayers};/g' system/meshDict")
         self.run_command("cartesianMesh")
+        input("Press Enter to continue...")
+        self.run_openfoam_utility(
+            "createPatch -overwrite",
+            "createPatchDict.cfMesh",
+        )
+        self.check_mesh()

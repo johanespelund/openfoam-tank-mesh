@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pathlib
 
-from openfoam_tank_mesh.gmsh_scripts import ksite49, ksite_wip, ksite83
+from openfoam_tank_mesh.gmsh_scripts import ksite83
 from openfoam_tank_mesh.NASA1m3Tank import NASA1m3Tank
 from openfoam_tank_mesh.TankMesh import TankMesh
 
@@ -32,8 +32,6 @@ class NASA1m3Mesh(TankMesh):
                 "createPatchDict.gmsh_wedge",
             )
 
-
-
     def generate(self) -> None:
         """
         Generate the mesh.
@@ -53,7 +51,7 @@ class NASA1m3Mesh(TankMesh):
         The path to the OpenFOAM dict folder.
         """
 
-        return f"{pathlib.Path(__file__).parent}/dicts/KSite/"
+        return f"{pathlib.Path(__file__).parent}/dicts/NASA1m3/"
 
     @property
     def parameters_path(self) -> str:
@@ -61,7 +59,7 @@ class NASA1m3Mesh(TankMesh):
         The path to the mesh parameters.
         """
 
-        return f"{pathlib.Path.cwd()}/parameters.KSiteMesh"
+        return f"{pathlib.Path.cwd()}/parameters.NASA1m3Mesh"
 
     def q_MLI(self) -> float:
         """

@@ -20,31 +20,31 @@ pointSync   true;
 patches
 (
  // outlet patch
- // {
- //   name outlet;
- //   patchInfo
- //     {
- //       type patch;
- //     }
- //   constructFrom patches;
- //    patches
- //      (
- //        outlet_temp
- //      );
- // }
-// {
-//    name bottom;
-//    patchInfo
-//      {
-//        type wall;
-//      }
-//    constructFrom patches;
-//     patches
-//       (
-//         bottom
-//       );
+ {
+   name walls;
+   patchInfo
+     {
+       type wall;
+     }
+   constructFrom patches;
+    patches
+      (
+        walls_gmsh
+      );
+ }
+{
+   name bottom;
+   patchInfo
+     {
+       type wall;
+     }
+   constructFrom patches;
+    patches
+      (
+        bottom_gmsh
+      );
 
-//  }
+ }
 {
    name cyclic_pos;
    patchInfo
@@ -54,12 +54,11 @@ patches
         transform rotational;
         rotationAxis (0 1 0);
         rotationCentre (0 0 0);
-        matchTolerance 0.1;
      }
     constructFrom patches;
     patches
       (
-        cyclic_pos_temp
+        cyclic_pos_gmsh
       );
   }
  {
@@ -71,12 +70,11 @@ patches
         transform rotational;
         rotationAxis (0 1 0);
         rotationCentre (0 0 0);
-        matchTolerance 0.1;
      }
     constructFrom patches;
     patches
       (
-        cyclic_neg_temp
+        cyclic_neg_gmsh
       );
  }
  // {

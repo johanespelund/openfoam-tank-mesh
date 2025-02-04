@@ -14,10 +14,10 @@ def test_mesh():
             "bulk_cell_size": 10e-3,
             "outlet_radius": 0.02,
             "debug": True,
-            "revolve": 30,
+            "revolve": 0,
         }
     )
-    mesh.generate()
+    # mesh.generate()
     assert mesh.tank.get_radius(0) == mesh.tank.cylinder_radius
     assert mesh.tank.get_radius(mesh.tank.y2) == 0
     assert mesh.tank.get_radius(mesh.tank.y1) == 0

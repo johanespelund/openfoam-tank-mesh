@@ -1,8 +1,3 @@
-import numpy as np
-
-from openfoam_tank_mesh import SphericalTank as st
-
-
 # def test_spherical_tank():
 #     tank = st.SphericalTank("test", 0.5, 0.01, 1)
 #     assert tank.get_radius(0) == 1
