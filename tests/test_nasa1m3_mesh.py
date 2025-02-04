@@ -17,6 +17,8 @@ def test_mesh():
             "revolve": 90,
         }
     )
+    # mesh.generate()
+    # mesh.remove_metal()
     mesh.cfMesh(3)
     assert mesh.tank.get_radius(0) == mesh.tank.cylinder_radius
     assert mesh.tank.get_radius(mesh.tank.y2) == 0

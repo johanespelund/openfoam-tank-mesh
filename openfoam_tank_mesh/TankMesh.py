@@ -49,6 +49,7 @@ class TankMesh(ABC):
         self.revolve: float = 0  # Revolution angle (0 means 2D)
         self.wedge_angle: float = 1  # Revolution angle if 2D
         self.surface_file = f"{self.name}.stl"
+        self.non_coupled_cyclic = False
 
         self.check_openfoam_loaded(version="com")
         self.validate_parameters(input_parameters)
@@ -219,8 +220,18 @@ class TankMesh(ABC):
         self.run_command(f"cp {self.dict_path}/meshDict system/meshDict")
         self.run_command(f"sed -i 's/nLayers.*/nLayers {nLayers};/g' system/meshDict")
         self.run_command("cartesianMesh")
-        self.run_openfoam_utility(
-            "createPatch -overwrite",
-            "createPatchDict.cfMesh",
-        )
+        try:
+            self.run_openfoam_utility(
+                "createPatch -overwrite",
+                "createPatchDict.cfMesh",
+            )
+        except:  # noqa: E722
+            self.run_openfoam_utility(
+                "createPatch -overwrite",
+                "createPatchDict.cfMeshNonConformal",
+            )
+            self.non_coupled_cyclic = True
+            self.write_mesh_parameters()
+            print("Non-coupled cyclic boundary conditions detected.")
+
         self.check_mesh()
