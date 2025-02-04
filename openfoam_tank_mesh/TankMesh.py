@@ -233,5 +233,6 @@ class TankMesh(ABC):
             self.non_coupled_cyclic = True
             self.write_mesh_parameters()
             print("Non-coupled cyclic boundary conditions detected.")
+        self.run_command(f"transformPoints -rotate-y -{self.wedge_angle / 2}")
 
         self.check_mesh()
