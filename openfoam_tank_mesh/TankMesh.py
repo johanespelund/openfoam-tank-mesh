@@ -192,7 +192,7 @@ class TankMesh(ABC):
         self.run_command("mv constant/gas/polyMesh constant/polyMesh")
         self.run_command("sed -i 's/gas_to_metal/walls/g' constant/polyMesh/boundary")
         self.run_command("sed -i 's/mappedWall/wall/g' constant/polyMesh/boundary")
-        self.run_command("rm 0/cellToRegion")
+        self.run_command("rm -f 0/cellToRegion")
 
     def cfMesh(self, nLayers: int = 0) -> None:
         """
