@@ -1,6 +1,6 @@
 [project]
 name = "openfoam-tank-mesh"
-version = "0.0.7"
+version = "0.0.8"
 description = "WIP! This is a python package for creating meshes to use in CFD simulations with OpenFOAM."
 authors = [{ name = "Johan Raftevold Espelund", email = "johan.espelund@hotmail.com" }]
 readme = "README.md"
