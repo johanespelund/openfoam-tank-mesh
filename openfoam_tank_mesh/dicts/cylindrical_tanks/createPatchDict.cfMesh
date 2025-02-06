@@ -20,40 +20,41 @@ pointSync   true;
 patches
 (
  // outlet patch
- {
-   name walls;
-   patchInfo
-     {
-       type wall;
-     }
-   constructFrom patches;
-    patches
-      (
-        walls_gmsh
-      );
- }
-{
-   name bottom;
-   patchInfo
-     {
-       type wall;
-     }
-   constructFrom patches;
-    patches
-      (
-        bottom_gmsh
-      );
+ // {
+ //   name outlet;
+ //   patchInfo
+ //     {
+ //       type patch;
+ //     }
+ //   constructFrom patches;
+ //    patches
+ //      (
+ //        outlet_temp
+ //      );
+ // }
+// {
+//    name bottom;
+//    patchInfo
+//      {
+//        type wall;
+//      }
+//    constructFrom patches;
+//     patches
+//       (
+//         bottom
+//       );
 
- }
+//  }
 {
-   name wedge_pos;
+   name cyclic_pos;
    patchInfo
      {
-       type wedge;
-        neighbourPatch wedge_neg;
+       type cyclic;
+        neighbourPatch cyclic_neg;
         transform rotational;
         rotationAxis (0 1 0);
         rotationCentre (0 0 0);
+        matchTolerance 0.1;
      }
     constructFrom patches;
     patches
@@ -62,14 +63,15 @@ patches
       );
   }
  {
-   name wedge_neg;
+   name cyclic_neg;
    patchInfo
      {
-       type wedge;
-        neighbourPatch wedge_pos;
+       type cyclic;
+        neighbourPatch cyclic_pos;
         transform rotational;
         rotationAxis (0 1 0);
         rotationCentre (0 0 0);
+        matchTolerance 0.1;
      }
     constructFrom patches;
     patches

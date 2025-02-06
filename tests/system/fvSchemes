@@ -47,6 +47,7 @@ gradLimiter 1;
 laplacianSchemes
 {
     default         Gauss linear limited $gradLimiter;
+    laplacian(diffusivity,cellDisplacement) Gauss linear corrected;
 }
 
 interpolationSchemes

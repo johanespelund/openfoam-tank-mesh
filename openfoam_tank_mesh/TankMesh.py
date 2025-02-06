@@ -1,16 +1,18 @@
+from __future__ import annotations
+
 import time
 from subprocess import run
-from typing import ClassVar, Optional
+from typing import ClassVar
 
 from rich import print as rprint
 from rich.console import Console
 from rich.table import Table
 
-from openfoam_tank_mesh.exceptions import (
-    CommandFailed,
-    MissingParameter,
-    OpenFoamNotLoaded,
-)
+from openfoam_tank_mesh.exceptions import CommandFailed, MissingParameter, OpenFoamNotLoaded
+
+# from openfoam_tank_mesh.gmsh_scripts.ksite83 import run as run_gmsh83
+# from openfoam_tank_mesh.gmsh_scripts.ksite49 import run as run_gmsh49
+# from openfoam_tank_mesh.gmsh_scripts.stl import generate_stl
 from openfoam_tank_mesh.Tank import ABC, Tank, abstractmethod
 
 
@@ -80,6 +82,12 @@ class TankMesh(ABC):
         and then use gmshToFoam to convert it to OpenFOAM.
         """
 
+    @abstractmethod
+    def generate_stl(self) -> None:
+        """
+        Generate an STL file of the tank geometry for use with cfMesh.
+        """
+
     def validate_parameters(self, input_parameters: dict) -> None:
         for param in self.REQUIRED_PARAMETERS:
             if param not in input_parameters:
@@ -100,10 +108,9 @@ class TankMesh(ABC):
             for key, value in self.__dict__.items():
                 if type(value) in [int, float, str]:
                     f.write(f"{key} {value};\n")
-                    print(f"{key} {value};")
         self.run_command(f"cp {self.parameters_path} system/meshdata")
 
-    def run_command(self, command: str, no_output: bool = False) -> None:
+    def run_command(self, command: str, no_output: bool = False, return_exception: bool = False) -> None | Exception:
         """
         Method to run shell commands. The result should always be captured,
         and an error should be raised if the command fails (even if no_output is True).
@@ -118,15 +125,20 @@ class TankMesh(ABC):
         capture_output = True
         result = run(command, shell=True, capture_output=capture_output)  # noqa: S602
         dt = time.time() - t
-        if result.returncode != 0:
-            rprint(result.stderr.decode())
-            raise CommandFailed(command)
-
         if not no_output:
-            rprint(f" ({dt:.6f} s)")
+            color = "green" if result.returncode == 0 else "red"
+            rprint(f"[{color}] ({dt:.6f} s)[/{color}]")
+        if result.returncode != 0:
+            exception = CommandFailed(command)
+            if return_exception:
+                return exception
+            rprint(exception)
+            raise CommandFailed(command)
 
         if self.debug:
             rprint(result.stdout.decode())
+
+        return None
 
     def check_openfoam_loaded(self, version: str = "com") -> None:
         """
@@ -138,12 +150,14 @@ class TankMesh(ABC):
         if f"openfoam.{version}" not in result.stdout.decode():
             raise OpenFoamNotLoaded
 
-    def run_openfoam_utility(self, utility: str, foam_dict: str = "") -> None:
+    def run_openfoam_utility(
+        self, utility: str, foam_dict: str = "", return_exception: bool = False
+    ) -> None | Exception:
         """
         Run an OpenFOAM utility with optional input dictionary.
         """
         command = f"{utility} -dict {self.dict_path}/{foam_dict}"
-        self.run_command(command)
+        return self.run_command(command, return_exception=return_exception)
 
     def calculate_boundary_layer(self) -> tuple[int, float, float]:
         """
@@ -166,7 +180,7 @@ class TankMesh(ABC):
 
         return n, t, x / self.wall_cell_size
 
-    def check_mesh(self, regions: Optional[list] = None) -> None:
+    def check_mesh(self, regions: None | list = None) -> None:
         console = Console()
         regions = [""] if not regions else [f"-region {region}" for region in regions]
         for region in regions:
@@ -187,52 +201,65 @@ class TankMesh(ABC):
                     table.add_row("Cells", f"{cells:,}")
             console.print(table)
 
-    def remove_metal(self) -> None:
+    def remove_wall(self) -> None:
         self.run_command("rm -r constant/polyMesh")
         self.run_command("rm -r constant/metal/polyMesh")
         self.run_command("mv constant/gas/polyMesh constant/polyMesh")
-        self.run_command("sed -i 's/gas_to_metal/walls/g' constant/polyMesh/boundary")
-        self.run_command("sed -i 's/mappedWall/wall/g' constant/polyMesh/boundary")
+        self.sed("gas_to_metal", "walls", "constant/polyMesh/boundary")
+        self.sed("mappedWall", "wall", "constant/polyMesh/boundary")
         self.run_command("rm -f 0/cellToRegion")
+
+    def add_wall(self, wall_thickness: float, n_layers: int) -> None:
+        """
+        Add a wall region to the mesh.
+        """
+        extrude_mesh_dict = "extrudeMeshDict.addWall"
+        topo_set_dict = "topoSetDict.addWall"
+        self.sed("thickness.*;", f"thickness {wall_thickness};", self.dict(extrude_mesh_dict))
+        self.sed("nLayers.*;", f"nLayers {n_layers};", self.dict(extrude_mesh_dict))
+        self.run_openfoam_utility("extrudeMesh", extrude_mesh_dict)
+        self.run_openfoam_utility("topoSet", topo_set_dict)
+        self.run_command("splitMeshRegions -cellZonesOnly -overwrite")
 
     def cfMesh(self, nLayers: int = 0) -> None:
         """
         Use cfMesh to create a 3D mesh.
         """
 
-        coarse_mesh = self.__class__(  # type: ignore[call-arg]
-            input_parameters={
-                "bulk_cell_size": self.outlet_radius / 2,
-                "wall_cell_size": self.outlet_radius / 4,
-                "outlet_radius": self.outlet_radius,
-                "fill_level": self.fill_level,
-                "revolve": self.revolve,
-                "debug": self.debug,
-            },
-        )
-
-        coarse_mesh.generate()
-        coarse_mesh.remove_metal()
-        self.write_mesh_parameters()
-
-        self.run_command(f"transformPoints -rotate-y {self.wedge_angle / 2}")
-        self.run_command(f"surfaceMeshExtract {self.surface_file}")
+        self.generate_stl()
         self.run_command(f"cp {self.dict_path}/meshDict system/meshDict")
-        self.run_command(f"sed -i 's/nLayers.*/nLayers {nLayers};/g' system/meshDict")
+        self.sed("nLayers.*;", f"nLayers {nLayers};", "system/meshDict")
         self.run_command("cartesianMesh")
-        try:
-            self.run_openfoam_utility(
-                "createPatch -overwrite",
-                "createPatchDict.cfMesh",
-            )
-        except:  # noqa: E722
+        result = self.run_openfoam_utility("createPatch -overwrite", "createPatchDict.cfMesh", return_exception=True)
+        if result:
             self.run_openfoam_utility(
                 "createPatch -overwrite",
                 "createPatchDict.cfMeshNonConformal",
             )
             self.non_coupled_cyclic = True
             self.write_mesh_parameters()
-            print("Non-coupled cyclic boundary conditions detected.")
+            self.run_command(f"cp {self.dict_path}/createNonConformalCouplesDict system/")
+            self.non_coupled_info()
+
         self.run_command(f"transformPoints -rotate-y -{self.wedge_angle / 2}")
 
         self.check_mesh()
+
+    def sed(self, orig: str, new: str, path: str) -> None | Exception:
+        """
+        Run sed, e.g
+        self.run_command("sed -i 's/gas_to_metal/walls/g' constant/polyMesh/boundary")
+        """
+        return self.run_command(f"sed -i 's/{orig}/{new}/g' {path}")
+
+    def dict(self, name: str) -> str:
+        """
+        Return the path to a dictionary file.
+        """
+        return f"{self.dict_path}/{name}"
+
+    def non_coupled_info(self) -> None:
+        rprint("\n[bold yellow]Non-coupled cyclic boundary conditions detected[/bold yellow]")
+        rprint("    [yellow]Adding createNonConformalCouplesDict to system/[/yellow]")
+        rprint("    [yellow]Load OpenFOAM 11 and run the following command:[/yellow]")
+        rprint("    [bold yellow]createNonConformalCouples -overwrite[/yellow bold]\n")

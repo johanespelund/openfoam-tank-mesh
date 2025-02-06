@@ -19,16 +19,16 @@ FoamFile
 //      mesh    : as above but with original case included
 //      surface : from externally read surface
 
-constructFrom mesh;
-// constructFrom patch;
+// constructFrom mesh;
+constructFrom patch;
 //constructFrom surface;
 
 // If construct from patch/mesh:
 sourceCase    "$FOAM_CASE";
-sourcePatches (walls);
+sourcePatches (wedge_pos);
 
 // If construct from patch: patch to use for back (can be same as sourcePatch)
-exposedPatchName outer_walls;
+exposedPatchName wedge_pos;
 
 // If construct from surface:
 // surface "movingWall.stl";
@@ -67,8 +67,8 @@ extrudeModel        linearNormal;
 //  surfaces (e.g. one is an offsetted version of the other)
 //extrudeModel        offsetSurface;
 
-nLayers 10.0;
-thickness 2e-3;
+nLayers 10;
+thickness 100e-3;
 
 expansionRatio 1;
 // expansionRatio 0.8333333333333334;

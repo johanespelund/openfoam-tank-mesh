@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import pathlib
 
-from openfoam_tank_mesh.gmsh_scripts import ksite83
+from openfoam_tank_mesh.gmsh_scripts.ksite83 import run as run_gmsh
+from openfoam_tank_mesh.gmsh_scripts.stl import generate_stl
 from openfoam_tank_mesh.NASA1m3Tank import NASA1m3Tank
 from openfoam_tank_mesh.TankMesh import TankMesh
 
@@ -18,7 +19,7 @@ class NASA1m3Mesh(TankMesh):
         return None
 
     def gmsh(self) -> None:
-        ksite83.run(self)
+        run_gmsh(self)
         self.run_command("gmshToFoam KSite49.msh")
         self.run_command(f"transformPoints -rotate-y -{self.wedge_angle / 2}")
         if self.revolve:
@@ -40,10 +41,19 @@ class NASA1m3Mesh(TankMesh):
 
         self.run_openfoam_utility("topoSet", "topoSetDict.createFinalFaceSets")
         self.run_command("splitMeshRegions -cellZonesOnly -overwrite")
+        # TODO: Just implement the base mesh without the wall again,
+        #       and use add_wall() to add the wall.
+        self.remove_wall()
 
-        self.check_mesh(regions=["gas", "metal"])
+        # self.check_mesh(regions=["gas", "metal"])
 
         return None
+
+    def generate_stl(self) -> None:
+        """
+        Generate a stl file with named surfaces for use in cfMesh.
+        """
+        generate_stl(self)
 
     @property
     def dict_path(self) -> str:
@@ -51,7 +61,7 @@ class NASA1m3Mesh(TankMesh):
         The path to the OpenFOAM dict folder.
         """
 
-        return f"{pathlib.Path(__file__).parent}/dicts/NASA1m3/"
+        return f"{pathlib.Path(__file__).parent}/dicts/cylindrical_tanks/"
 
     @property
     def parameters_path(self) -> str:

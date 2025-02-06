@@ -1,7 +1,7 @@
 /*--------------------------------*- C++ -*----------------------------------*\
 | =========                 |                                                 |
 | \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
-|  \\    /   O peration     | Version:  2.1.0                                 |
+|  \\    /   O peration     | Version:  2.1.x                                 |
 |   \\  /    A nd           | Web:      www.OpenFOAM.org                      |
 |    \\/     M anipulation  |                                                 |
 \*---------------------------------------------------------------------------*/
@@ -10,48 +10,18 @@ FoamFile
     version     2.0;
     format      ascii;
     class       dictionary;
-    object      topoSetDict;
+    object      mirrorMeshDict;
 }
-
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-#include "meshdata"
+planeType           pointAndNormal;
 
-actions
-(
- {
-   action new;
-   name pipeFaceSet;
-   patch walls;
-   type faceSet;
-   source  patchToFace;
- }
-
- {
-   action subset;
-   name pipeFaceSet;
-   source cylinderToFace;
-   sourceInfo
-     {
-       p1      (0 #eval{ 0.9*$R } 0);
-       p2      (0 1e6 0);
-       radius  1e6;
-     }
-   type faceSet;
- }
-
+pointAndNormalDict
 {
-  action subtract;
-  name pipeFaceSet;
-  source normalToFace;
-  type faceSet;
-  sourceInfo
-  {
-    normal (0 1 0);
-    cos 0.5;
-  }
+    point           (0 0 0);
+    normal          (1 0 0);
 }
 
-);
+planeTolerance      1e-3;
 
 // ************************************************************************* //

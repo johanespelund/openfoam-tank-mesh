@@ -18,7 +18,7 @@ FoamFile
 // Prevent moving points in the boundary normal direction, for points a distance from the boundaries.
 // Not working properly. Instead, refineWallLayer is used after smoothing.
 preserveBoundaryLayer -1;//#eval {2*$cell_size};
-iters 50;
+iters 10;
 smoothFactor 1;
 
 #include "meshdata"
@@ -28,44 +28,60 @@ constrainedPoints
 
     {
       type set;
-      set fixedPoints;
+      set const;
+      constraintType fixed;
+    }
+
+    // {
+    //   type set;
+    //   set yconst;
+    //   constraintType constY;
+    // }
+
+    // {
+    //   type set;
+    //   set rconst;
+    //   constraintType constRadiusXY;
+    // }
+    {
+      type patch;
+      patch outlet;
+      constraintType fixed;
+    }
+
+
+    {
+      type patch;
+      patch cyclic_neg_temp;
       constraintType fixed;
     }
 
     {
-      type set;
-      set yconst;
-      constraintType constY;
+      type patch;
+      patch cyclic_pos_temp;
+      constraintType fixed;
     }
-
-    {
-      type set;
-      set rconst;
-      constraintType constRadiusXY;
-    }
-
     {
       type patch;
-      patch wedge;
-      constraintType constZ;
+      patch walls;
+      constraintType constRadius;
     }
-
     {
       type patch;
       patch bottom;
       constraintType constY;
     }
-    {
-      type set;
-      set outletPointSet;
-      constraintType fixed;
-    }
+    // {
+    //   type set;
+    //   set outletPointSet;
+    //   constraintType fixed;
+    // }
 
-    {
-      type patch;
-      patch defaultFaces;
-      constraintType constX;
-    }
+    // {
+    //   type patch;
+    //   patch defaultFaces;
+    //   constraintType constX;
+    // }
 
 
 

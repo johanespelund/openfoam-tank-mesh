@@ -17,27 +17,27 @@ FoamFile
 
 #include "meshdata"
 
-y $y_interface;
-Rout #eval{ sqrt($R*$R - $y*$y) + 1.2*$wall_cell_size; };
-Rin #eval{ sqrt($R*$R - $y*$y) - 1.2*$wall_cell_size; };
+// y $y_interface;
+// Rout #eval{ sqrt($R*$R - $y*$y) + 1.2*$wall_cell_size; };
+// Rin #eval{ sqrt($R*$R - $y*$y) - 1.2*$wall_cell_size; };
 
 actions
 (
- {
- action new;
- name wallFaceSet;
- type faceSet;
- source patchToFace;
- patch walls;
- }
- {
- action new;
- name wallSmoothPoints;
- set wallFaceSet;
- option all;
- type pointSet;
- source  faceToPoint;
- }
+ // {
+ // action new;
+ // name wallFaceSet;
+ // type faceSet;
+ // source patchToFace;
+ // patch walls;
+ // }
+ // {
+ // action new;
+ // name wallSmoothPoints;
+ // set wallFaceSet;
+ // option all;
+ // type pointSet;
+ // source  faceToPoint;
+ // }
 // {
 // action new;
 // name fixedPoints;
@@ -56,15 +56,15 @@ actions
 // innerRadius $Rin;
 // }
 
-{
-  action new;
-  name yconst;
-  type pointSet;
-  source boxToPoint;
-  min (-1e6 #eval{ $y - 0.5*$l_bl } -1e6);
-  max (1e6 #eval{ $y + 0.5*$l_bl } 1e6);
+// {
+//   action new;
+//   name yconst;
+//   type pointSet;
+//   source boxToPoint;
+//   min (-1e6 #eval{ $y - 0.5*$l_bl } -1e6);
+//   max (1e6 #eval{ $y + 0.5*$l_bl } 1e6);
 
-}
+// }
 
 // For 2D (wedge) case
 
@@ -77,17 +77,47 @@ actions
 // max (1e-6 1e6 1e6);
 // }
 
+// {
+//   action new;
+//   name rconst;
+//   type pointSet;
+//   source sphereToPoint;
+//   centre (0 0 0);
+//   radius #eval { 2*$R };
+//   innerRadius #eval{ $R - 0.75*$l_bl };
+// }
+
 {
   action new;
-  name rconst;
+  name const;
   type pointSet;
-  source sphereToPoint;
-  centre (0 0 0);
-  radius #eval { 2*$R };
-  innerRadius #eval{ $R - 0.75*$l_bl };
+  source cylinderToPoint;
+  p1 (0 -1e6 0);
+  p2 (0 1e6 0);
+  radius #eval{ $interface_radius - 2*$wall_cell_size};
 }
 
+{
+  action add;
+  name const;
+  type pointSet;
+  source cylinderToPoint;
+  p1 (0 -1e6 0);
+  p2 (0 1e6 0);
+  innerRadius #eval{ $interface_radius - 0.02*$wall_cell_size};
+  radius #eval{ $interface_radius + 1*$wall_cell_size};
+}
 
+{
+  action new;
+  name constrainedCells;
+  type cellSet;
+  source cylinderToCell;
+  p1 (0 -1e6 0);
+  p2 (0 1e6 0);
+  innerRadius #eval{ $interface_radius - $wall_cell_size};
+  radius 1e6;
+}
 // {
 //   action add;
 //   name fixedPoints;

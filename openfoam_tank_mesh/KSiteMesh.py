@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import pathlib
 
-from openfoam_tank_mesh.gmsh_scripts import ksite49, ksite83
+from openfoam_tank_mesh.gmsh_scripts.ksite49 import run as run_gmsh49
+from openfoam_tank_mesh.gmsh_scripts.ksite83 import run as run_gmsh83
+from openfoam_tank_mesh.gmsh_scripts.stl import generate_stl
 from openfoam_tank_mesh.KSiteTank import KSiteTank
 from openfoam_tank_mesh.TankMesh import TankMesh
 
@@ -26,9 +28,9 @@ class KSiteMesh(TankMesh):
         """
 
         if self.tank.fill_level < 0.52:
-            ksite49.run(self)
+            run_gmsh49(self)
         else:
-            ksite83.run(self)
+            run_gmsh83(self)
         self.run_command("gmshToFoam KSite49.msh")
         self.run_command(f"transformPoints -rotate-y -{self.wedge_angle / 2}")
         if self.revolve:
@@ -50,10 +52,19 @@ class KSiteMesh(TankMesh):
 
         self.run_openfoam_utility("topoSet", "topoSetDict.createFinalFaceSets")
         self.run_command("splitMeshRegions -cellZonesOnly -overwrite")
+        # TODO: Just implement the base mesh without the wall again,
+        #       and use add_wall() to add the wall.
+        self.remove_wall()
 
-        self.check_mesh(regions=["gas", "metal"])
+        # self.check_mesh(regions=["gas", "metal"])
 
         return None
+
+    def generate_stl(self) -> None:
+        """
+        Generate a stl file with named surfaces for use in cfMesh.
+        """
+        generate_stl(self)
 
     @property
     def dict_path(self) -> str:
@@ -61,7 +72,7 @@ class KSiteMesh(TankMesh):
         The path to the OpenFOAM dict folder.
         """
 
-        return f"{pathlib.Path(__file__).parent}/dicts/KSite/"
+        return f"{pathlib.Path(__file__).parent}/dicts/cylindrical_tanks/"
 
     @property
     def parameters_path(self) -> str:

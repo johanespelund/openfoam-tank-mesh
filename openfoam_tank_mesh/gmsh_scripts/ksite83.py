@@ -141,8 +141,6 @@ def run(mesh: "TankMesh.TankMesh") -> None:
     L_3_4 = np.sum([np.sqrt((x[i + 1] - x[i]) ** 2 + (y[i + 1] - y[i]) ** 2) for i in range(len(y) - 1)])
     N_3_4 = closest_odd(L_3_4 / lc) + 2
 
-    print(f"{N_2_3=}, {N_1_7=}, {N_3_4=}, {n_BL=}")
-
     gmsh.model.geo.mesh.setTransfiniteCurve(l_9_2, n_BL, "Progression", -r_BL)
     gmsh.model.geo.mesh.setTransfiniteCurve(l_2_3, N_2_3)
     gmsh.model.geo.mesh.setTransfiniteCurve(l_8_9, N_2_3)

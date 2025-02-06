@@ -53,7 +53,7 @@ localRefinement
   {
     // additionalRefinementLevels $N;
     cellSize #eval {0.85* $wall_cell_size};
-    // refinementThickness #eval {1.5*$bulk_cell_size};
+    refinementThickness #eval {3*$wall_cell_size};
   }
   outlet
   {
@@ -68,12 +68,12 @@ localRefinement
   outlet
   {
     // additionalRefinementLevels 3;
-    cellSize #eval {min(0.85* $wall_cell_size, 0.2*$outlet_radius)};
+    cellSize #eval {min(0.85* $wall_cell_size, 0.15*$outlet_radius)};
     type box;
     centre (0 $B  0);
-    lengthX #eval {2*$outlet_radius};
+    lengthX #eval {3*$outlet_radius};
     lengthY #eval {$bulk_cell_size};
-    lengthZ #eval {2*$outlet_radius};
+    lengthZ #eval {3*$outlet_radius};
     // radius 0.04;
   }
   corner1
@@ -100,6 +100,18 @@ localRefinement
     radius0_Outer 1e6;
     radius1_Outer $radius0_Outer;
   }
+  // corner3
+  // {
+  //   // additionalRefinementLevels 1;
+  //   cellSize #eval {0.5*$wall_cell_size};
+  //   type hollowCone;
+  //   p0 (0 $y_interface 0);
+  //   p1 (0 #eval {$y_interface + $wall_cell_size} 0);
+  //   radius0_Inner #eval {$A - 1*$wall_cell_size};
+  //   radius1_Inner $radius0_Inner;
+  //   radius0_Outer 1e6;
+  //   radius1_Outer $radius0_Outer;
+  // }
   cone1
   {
     // additionalRefinementLevels 1;
@@ -145,47 +157,47 @@ localRefinement
 //   }
 // }
 
-renameBoundary
-{
-  // defaultName walls;
-  // defaultType wall;
-  newPatchNames
-  {
-    cyclic_neg
-    {
-      newName cyclic_neg_temp;
-      type patch;
-    }
-    outlet
-    {
-      newName outlet;
-      type patch;
-    }
-    cyclic_pos
-    {
-      newName cyclic_pos_temp;
-      type patch;
-    }
-    bottom
-    {
-      newName bottom;
-      type wall;
-    }
-    walls
-    {
-      newName walls;
-      type wall;
-    }
-  }
-}
+// renameBoundary
+// {
+//   // defaultName walls;
+//   // defaultType wall;
+//   newPatchNames
+//   {
+//     cyclic_neg
+//     {
+//       newName cyclic_neg_temp;
+//       type patch;
+//     }
+//     outlet
+//     {
+//       newName outlet;
+//       type patch;
+//     }
+//     cyclic_pos
+//     {
+//       newName cyclic_pos_temp;
+//       type patch;
+//     }
+//     bottom
+//     {
+//       newName bottom;
+//       type wall;
+//     }
+//     walls
+//     {
+//       newName walls;
+//       type wall;
+//     }
+//   }
+// }
 
 boundaryLayers
 {
   patchBoundaryLayers
   {
-    "(walls|bottom|outlet)"
+    "(walls|bottom)"
     {
-      nLayers 3;
+      nLayers 8;
       thicknessRatio 1.2;
       maxFirstLayerThickness 0.0015;
       // allowDiscontinuity 0;
