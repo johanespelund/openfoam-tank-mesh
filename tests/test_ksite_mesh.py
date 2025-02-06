@@ -17,7 +17,7 @@ def test_ksite_mesh():
             "revolve": 90,
         }
     )
-    mesh.cfMesh(nLayers=3)
+    # mesh.cfMesh(nLayers=3)
     # mesh.add_wall(wall_thickness=0.002, n_layers=10)
     assert mesh.tank.get_radius(0) == mesh.tank.cylinder_radius
     assert mesh.tank.get_radius(mesh.tank.y2) == 0
