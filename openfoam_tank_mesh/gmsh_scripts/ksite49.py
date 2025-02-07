@@ -245,14 +245,14 @@ def run(mesh: KSiteMesh.KSiteMesh) -> None:
         add_physical_surface([22, 23, 24], "walls_gmsh", surfaces)
         add_physical_surface([5], "outlet", surfaces)
         add_physical_surface([21], "metal_outlet", surfaces)
-        add_physical_surface([13, 17, 25], "bottom_gmsh", surfaces)
+        add_physical_surface([13, 17, 25], "bottom", surfaces)
     else:
         add_physical_surface([0, 1, 2, 3, 4], "cyclic_pos_gmsh", surfaces)
         add_physical_surface([12, 16, 19, 20, 26], "cyclic_neg_gmsh", surfaces)
         add_physical_surface([22, 23, 24], "walls_gmsh", surfaces)
         add_physical_surface([5], "outlet", surfaces)
         add_physical_surface([21], "metal_outlet", surfaces)
-        add_physical_surface([14, 17, 25], "bottom_gmsh", surfaces)
+        add_physical_surface([14, 17, 25], "bottom", surfaces)
 
     gmsh.model.geo.synchronize()
     gmsh.model.geo.synchronize()
@@ -363,8 +363,8 @@ def generate_points_and_lines(mesh: KSiteMesh.KSiteMesh) -> tuple[dict[str, int]
         lines["8_5B"] = add_ellipse(p["8"], origo, major_point, p["5B"])
         lines["4_6"] = add_line(p["4"], p["6"])
         lines["7_10"] = add_line(p["7"], p["10"])
-        lines["3_5w"] = add_ellipse(p["pw3"], origo, major_point_wall, p["pw5"])
-        lines["4_6w"] = add_line(p["pw4"], p["pw6"])
+        lines["3_5w"] = add_ellipse(p["w3"], origo, major_point_wall, p["w5"])
+        lines["4_6w"] = add_line(p["w4"], p["w6"])
     else:
         lines["3_4"] = add_ellipse(p["3"], origo, major_point, p["4"])
         lines["3_4w"] = add_ellipse(p["w3"], origo, major_point_wall, p["w4"])

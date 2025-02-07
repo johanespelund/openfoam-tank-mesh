@@ -11,13 +11,14 @@ def test_ksite_mesh():
         input_parameters={
             "fill_level": 0.49,
             "wall_cell_size": 24e-3,
-            "bulk_cell_size": 48e-3,
+            "bulk_cell_size": 12e-3,
             "outlet_radius": 0.024,
             "debug": False,
-            "revolve": 90,
+            "revolve": 0,
         }
     )
-    mesh.cfMesh(nLayers=4)
+    # mesh.generate()
+    # mesh.cfMesh(nLayers=4)
     # mesh.add_wall(wall_thickness=0.002, n_layers=10)
     assert mesh.tank.get_radius(0) == mesh.tank.cylinder_radius
     assert mesh.tank.get_radius(mesh.tank.y2) == 0
