@@ -52,6 +52,8 @@ class TankMesh(ABC):
         self.wedge_angle: float = 1  # Revolution angle if 2D
         self.surface_file = f"{self.name}.stl"
         self.non_coupled_cyclic = False
+        self.patch_name_pos = "wedge_pos"
+        self.patch_name_neg = "wedge_neg"
 
         self.check_openfoam_loaded(version="com")
         self.validate_parameters(input_parameters)
@@ -133,6 +135,8 @@ class TankMesh(ABC):
             if return_exception:
                 return exception
             rprint(exception)
+            if self.debug:
+                rprint(result.stdout.decode())
             raise CommandFailed(command)
 
         if self.debug:
@@ -157,6 +161,7 @@ class TankMesh(ABC):
         Run an OpenFOAM utility with optional input dictionary.
         """
         command = f"{utility} -dict {self.dict_path}/{foam_dict}"
+        self.sed("include .*", f'include "{self.parameters_path}"', f"{self.dict_path}/{foam_dict}")
         return self.run_command(command, return_exception=return_exception)
 
     def calculate_boundary_layer(self) -> tuple[int, float, float]:
@@ -237,9 +242,15 @@ class TankMesh(ABC):
                 "createPatchDict.cfMeshNonConformal",
             )
             self.non_coupled_cyclic = True
-            self.write_mesh_parameters()
+            self.patch_name_pos = "cyclic_pos_gmsh"
+            self.patch_name_neg = "cyclic_neg_gmsh"
             self.run_command(f"cp {self.dict_path}/createNonConformalCouplesDict system/")
             self.non_coupled_info()
+        else:
+            self.patch_name_pos = "cyclic_pos"
+            self.patch_name_neg = "cyclic_neg"
+
+        self.write_mesh_parameters()
 
         self.run_command(f"transformPoints -rotate-y -{self.wedge_angle / 2}")
 
@@ -250,7 +261,7 @@ class TankMesh(ABC):
         Run sed, e.g
         self.run_command("sed -i 's/gas_to_metal/walls/g' constant/polyMesh/boundary")
         """
-        return self.run_command(f"sed -i 's/{orig}/{new}/g' {path}")
+        return self.run_command(f"sed -i 's|{orig}|{new}|g' {path}")
 
     def dict(self, name: str) -> str:
         """

@@ -29,11 +29,16 @@ class NASA1m3Mesh(TankMesh):
                 "createPatch -overwrite",
                 "createPatchDict.gmshRevolve",
             )
+            self.patch_name_pos = "cyclic_pos"
+            self.patch_name_neg = "cyclic_neg"
         else:
             self.run_openfoam_utility(
                 "createPatch -overwrite",
                 "createPatchDict.gmsh_wedge",
             )
+            self.patch_name_pos = "wedge_pos"
+            self.patch_name_neg = "wedge_neg"
+        self.write_mesh_parameters()
 
     def generate(self) -> None:
         """

@@ -67,7 +67,7 @@ extrudeModel        linearDirection;
 //  surfaces (e.g. one is an offsetted version of the other)
 //extrudeModel        offsetSurface;
 
-nLayers 100;
+nLayers 25;
 
 expansionRatio 1;
 // expansionRatio 0.8333333333333334;
@@ -75,7 +75,7 @@ expansionRatio 1;
 
 linearDirectionCoeffs
 {
-thickness 0.1;
+thickness 0.05;
     direction (0 1 0);
 }
 

@@ -33,24 +33,24 @@ actions
    source cylinderToFace;
    sourceInfo
      {
-       p1      (0 #eval{ 0.9*$R } 0);
+       p1      (0 #eval{ 1.001*$y_outlet } 0);
        p2      (0 1e6 0);
        radius  1e6;
      }
    type faceSet;
  }
 
-{
-  action subtract;
-  name pipeFaceSet;
-  source normalToFace;
-  type faceSet;
-  sourceInfo
-  {
-    normal (0 1 0);
-    cos 0.5;
-  }
-}
+// {
+//   action subtract;
+//   name pipeFaceSet;
+//   source normalToFace;
+//   type faceSet;
+//   sourceInfo
+//   {
+//     normal (0 1 0);
+//     cos 0.5;
+//   }
+// }
 
 );
 

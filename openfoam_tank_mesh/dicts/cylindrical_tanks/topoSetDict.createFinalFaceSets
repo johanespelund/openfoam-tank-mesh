@@ -15,32 +15,19 @@ FoamFile
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-#include "meshdata"
+#include "/home/johan/Documents/PhD/openfoam-tank-mesh/tests/parameters.NASA1m3Mesh"
 
 actions
 (
  {
    action new;
    name outletFaceSet;
-   type faceSet;
-   source  sphereToFace;
-   sourceInfo
-  {
-    centre (0 0 0);
-    radius #eval{1.0001*$R};
-    innerRadius #eval{0.9999*$R};
-  }
- }
-
- {
-   action subset;
-   name outletFaceSet;
    source cylinderToFace;
    sourceInfo
      {
-       p1      (0 #eval{ 2*$R } 0);
-       p2      (0 #eval{1.01*$y_interface} 0);
-       radius  $r;
+       p1      (0 #eval{ 0.9999*$y_interface } 0);
+       p2      (0 #eval{1.001*$y_interface} 0);
+       radius  $outlet_radius;
      }
    type faceSet;
  }
