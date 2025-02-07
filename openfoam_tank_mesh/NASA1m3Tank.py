@@ -12,7 +12,9 @@ class NASA1m3Tank(CylinderTank):
     A class to represent the
     """
 
-    def __init__(self, fill_level: float, outlet_radius: float) -> None:
+    def __init__(self, fill_level: float, outlet_radius: float, insulation_type: str, cargo: str) -> None:
+        self.insulation_type = insulation_type
+        self.cargo = cargo
         super().__init__(
             name="NASA1m3",
             fill_level=fill_level,

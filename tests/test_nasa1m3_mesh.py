@@ -15,11 +15,13 @@ def test_mesh():
             "outlet_radius": 0.024,
             "debug": False,
             "revolve": 90,
+            "insulation_type": "bubbles",
+            "cargo": "LH2",
         }
     )
     # mesh.generate()
     # mesh.remove_wall()
-    # mesh.cfMesh(5)
+    mesh.cfMesh(5)
     assert mesh.tank.get_radius(0) == mesh.tank.cylinder_radius
     assert mesh.tank.get_radius(mesh.tank.y2) == 0
     assert mesh.tank.get_radius(mesh.tank.y1) == 0

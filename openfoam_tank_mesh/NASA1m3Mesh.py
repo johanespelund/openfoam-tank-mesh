@@ -13,6 +13,8 @@ class NASA1m3Mesh(TankMesh):
         self.tank: NASA1m3Tank = NASA1m3Tank(
             fill_level=input_parameters["fill_level"],
             outlet_radius=input_parameters["outlet_radius"],
+            insulation_type=input_parameters["insulation_type"],
+            cargo=input_parameters["cargo"],
         )
         super().__init__(tank=self.tank, input_parameters=input_parameters)
 
@@ -71,33 +73,56 @@ class NASA1m3Mesh(TankMesh):
 
         return f"{pathlib.Path.cwd()}/parameters.NASA1m3Mesh"
 
-    def q_MLI(self) -> float:
+    def q_insulation(self) -> float:
         """
-        Return the heat flux for the MLI/insulation for T_amb = 350 K.
-        From Table 2 in:
-        Stochl, R. J.; Knoll, R. H. Thermal Performance of a Liquid
-        Hydrogen Tank Multilayer Insulation System at Warm Boundary
-        Temperatures of 630, 530, and 152 R; 1991.
+        NASA 1m3 demo tank cases from [1]
+        [1] doi:10.1063/1.2908497
         """
-        return 2.97
+        return get_NASA1m3_heat_flux(self.tank.insulation_type, self.tank.cargo)
 
     def Q_parasitic(self) -> float:
         """
         Return parasitic heat loss for the tank,
         mainly support and plumbing.
+        For NASA1m3, we only use average heat flux, so it is set to 0.
         """
-        return 6.89
+        return 0
 
     def Q_liquid(self) -> float:
         """
         Liquid surface heat transfer, sum of insulation and parasitic,
         i.e. assume all parasitic heat is transferred to the liquid.
         """
-        return float(self.tank.area_liquid * self.q_MLI() + self.Q_parasitic())
+        return float(self.tank.area_liquid * self.q_insulation() + self.Q_parasitic())
 
     def Q_gas(self) -> float:
         """
         Gas surface heat transfer, sum of insulation and parasitic,
         i.e. assume all parasitic heat is transferred to the gas.
         """
-        return float(self.tank.area_gas * self.q_MLI())
+        return float(self.tank.area_gas * self.q_insulation())
+
+
+def get_NASA1m3_heat_flux(insulation_type: str = "bubbles", cargo: str = "LH2") -> float:
+    """
+    Returns the heat flux (W/m²) for the NASA 1m³ tank cases based on insulation type and cargo.
+
+    Heat flux values are derived from [1], estimated using the script
+    'cases/nasa_1m3_demo_tank.py' at commit #cce665501e3f303ebc0aa968282955f00962714f.
+
+    Parameters:
+        insulation_type (str): Type of insulation, either "bubbles" or "perlite".
+        cargo (str): Type of cargo, either "LH2" or "LN2".
+
+    Returns:
+        float: Heat flux in W/m².
+    """
+
+    heat_flux_values = {
+        ("bubbles", "LH2"): 2.34,
+        ("bubbles", "LN2"): 2.24,
+        ("perlite", "LH2"): 3.39,
+        ("perlite", "LN2"): 3.2,
+    }
+
+    return heat_flux_values[(insulation_type, cargo)]
