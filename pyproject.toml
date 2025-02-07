@@ -112,7 +112,7 @@ select = [
 ]
 ignore = [
     # LineTooLong
-    "E501",
+    # "E501",
     # DoNotAssignLambda
     "E731",
 ]

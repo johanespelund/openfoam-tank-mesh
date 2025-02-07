@@ -24,13 +24,3 @@ class CommandFailed(Exception):
 
     def __rich__(self) -> str:
         return f"[bold red]Command {self.command} failed.[/bold red]"
-
-
-class InvalidInputParameter(Exception):
-    def __init__(self, inputs: dict[str, str], valid_inputs: dict[str, list[str]]) -> None:
-        self.inputs = inputs
-        self.valid_inputs = valid_inputs
-        super().__init__()
-
-    def __rich__(self) -> str:
-        return f"Your inputs: [bold red]{self.inputs}[/bold red]\nValid inputs: [bold green]{self.valid_inputs}[/bold green]"
