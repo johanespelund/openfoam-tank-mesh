@@ -20,7 +20,7 @@ pointSync   true;
 patches
 (
 {
-   name cyclic_couple1;
+   name couple1;
    patchInfo
      {
        type patch;
@@ -32,7 +32,7 @@ patches
       );
   }
  {
-   name cyclic_couple2;
+   name couple2;
    patchInfo
      {
        type patch;
