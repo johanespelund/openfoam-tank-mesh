@@ -47,7 +47,7 @@ nonConformalCouples
     // transformation
     cyclic_couple
     {
-        patches         (cyclic_couple1 cyclic_couple2);
+        patches         (couple1 couple2);
         transform       rotational;
         rotationAxis    (0 -1 0);
         rotationCentre  (0 0 0);

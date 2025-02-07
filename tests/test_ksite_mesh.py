@@ -10,11 +10,11 @@ def test_ksite_mesh():
     mesh = KSiteMesh(
         input_parameters={
             "fill_level": 0.49,
-            "wall_cell_size": 24e-3,
-            "bulk_cell_size": 12e-3,
+            "wall_cell_size": 12e-3,
+            "bulk_cell_size": 24e-3,
             "outlet_radius": 0.024,
             "debug": False,
-            "revolve": 0,
+            "revolve": 90,
         }
     )
     # mesh.generate()
