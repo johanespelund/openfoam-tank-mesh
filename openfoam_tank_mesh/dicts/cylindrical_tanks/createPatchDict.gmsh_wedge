@@ -32,19 +32,19 @@ patches
  //        walls_gmsh
  //      );
  // }
-// {
-//    name bottom;
-//    patchInfo
-//      {
-//        type wall;
-//      }
-//    constructFrom patches;
-//     patches
-//       (
-//         bottom_gmsh
-//       );
+{
+   name bottom;
+   patchInfo
+     {
+       type wall;
+     }
+   constructFrom patches;
+    patches
+      (
+        bottom_gmsh
+      );
 
-//  }
+ }
 {
    name wedge_pos;
    patchInfo

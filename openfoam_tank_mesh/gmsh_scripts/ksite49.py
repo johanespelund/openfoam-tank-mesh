@@ -237,7 +237,6 @@ def run(mesh: KSiteMesh.KSiteMesh) -> None:
     #     add_physical_surface([ind], int_string)
 
     surfaces: list[tuple[int, int]] = gmsh.model.getEntities(dim=2)
-    print(surfaces)
 
     if y_bl > y_cylinder:
         add_physical_surface([0, 1, 2, 3, 4], "cyclic_pos_gmsh", surfaces)
@@ -245,14 +244,14 @@ def run(mesh: KSiteMesh.KSiteMesh) -> None:
         add_physical_surface([22, 23, 24], "walls_gmsh", surfaces)
         add_physical_surface([5], "outlet", surfaces)
         add_physical_surface([21], "metal_outlet", surfaces)
-        add_physical_surface([13, 17, 25], "bottom", surfaces)
+        add_physical_surface([13, 17, 25], "bottom_gmsh", surfaces)
     else:
         add_physical_surface([0, 1, 2, 3, 4], "cyclic_pos_gmsh", surfaces)
         add_physical_surface([12, 16, 19, 20, 26], "cyclic_neg_gmsh", surfaces)
         add_physical_surface([22, 23, 24], "walls_gmsh", surfaces)
         add_physical_surface([5], "outlet", surfaces)
         add_physical_surface([21], "metal_outlet", surfaces)
-        add_physical_surface([14, 17, 25], "bottom", surfaces)
+        add_physical_surface([14, 17, 25], "bottom_gmsh", surfaces)
 
     gmsh.model.geo.synchronize()
     gmsh.model.geo.synchronize()

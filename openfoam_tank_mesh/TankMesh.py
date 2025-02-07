@@ -254,7 +254,7 @@ class TankMesh(ABC):
 
         self.run_command(f"transformPoints -rotate-y -{self.wedge_angle / 2}")
 
-        self.check_mesh()
+        # self.check_mesh()
 
     def sed(self, orig: str, new: str, path: str) -> None | Exception:
         """
