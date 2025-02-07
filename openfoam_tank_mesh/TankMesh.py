@@ -242,8 +242,8 @@ class TankMesh(ABC):
                 "createPatchDict.cfMeshNonConformal",
             )
             self.non_coupled_cyclic = True
-            self.patch_name_pos = "cyclic_pos_gmsh"
-            self.patch_name_neg = "cyclic_neg_gmsh"
+            self.patch_name_pos = "cyclic_couple1"
+            self.patch_name_neg = "cyclic_couple2"
             self.run_command(f"cp {self.dict_path}/createNonConformalCouplesDict system/")
             self.non_coupled_info()
         else:
