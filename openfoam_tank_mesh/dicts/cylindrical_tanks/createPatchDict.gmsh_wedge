@@ -19,19 +19,18 @@ pointSync   true;
 
 patches
 (
- // outlet patch
- // {
- //   name walls;
- //   patchInfo
- //     {
- //       type wall;
- //     }
- //   constructFrom patches;
- //    patches
- //      (
- //        walls_gmsh
- //      );
- // }
+ {
+   name walls;
+   patchInfo
+     {
+       type wall;
+     }
+   constructFrom patches;
+    patches
+      (
+        walls_gmsh
+      );
+ }
 {
    name bottom;
    patchInfo
