@@ -81,9 +81,8 @@ def run(mesh: "TankMesh.TankMesh") -> None:
     pw4 = add_point(x4 + tw, y4, z0, lc)
 
     # x7, y7 = x6 - 1.5*t_BL, y_interface
-    correction_factor = abs(-1 + 2 * mesh.tank.fill_level)
-    d = x6 - t_BL - x10
-    x7, y7 = x10 + correction_factor * d, y_interface
+    print(f"{x10=}, {y10=}, {t_BL=}, {r_BL=}")
+    x7, y7 = x10 + 0.5 * t_BL, y_interface
     p7 = add_point(x7, y7, z0, lc)
 
     x8, y8 = x3, y3 - t_BL
