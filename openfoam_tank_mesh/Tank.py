@@ -1,3 +1,4 @@
+import pathlib
 from abc import ABC, abstractmethod
 
 import numpy as np
@@ -95,6 +96,7 @@ class Tank(ABC):
         """
         Return the normalized normal to the curve r(y),
         using the derivative of the curve.
+        Points towards the center of the tank.
         """
         self.validate_y_range(y)
         dy_dx = self.get_radius_derivative(y)
@@ -170,3 +172,33 @@ class Tank(ABC):
     def validate_y_range(self, y: float) -> None:
         if y < self.y1 or y > self.y2:
             raise OutOfRange(y)
+
+    def write_sample_lines(self, angles: list[float], length: float) -> None:
+        """
+        Write sample lines that are normal to the wall of the tank.
+        angle = 0 is top of the tank (y-axis)
+        """
+
+        output_file = pathlib.Path("system/lineDefinitions/normal_lines")
+        output_file.parent.mkdir(parents=True, exist_ok=True)
+
+        with open(output_file, "w") as f:
+            for angle in angles:
+                theta = np.deg2rad(angle)
+                y = self.y2 * np.cos(theta)
+                x = self.get_radius(y)
+                n = self.get_normal(y)
+                dx, dy = n * length
+                x_end, y_end = x + dx, y + dy
+                # Move the start point slightly outside the tank (1% of length)
+                x -= 0.01 * dx
+                y -= 0.01 * dy
+
+                f.write(f"normal_{angle}_deg\n{{\n")
+                f.write("\ttype lineCellFace;\n")
+                f.write("\taxis distance;\n")
+                start = f"\t( {x:.6f} {y:.6f} 0 )"
+                end = f"\t( {x_end:.6f} {y_end:.6f} 0 )"
+                f.write(f"\tstart{start};\n")
+                f.write(f"\tend{end};\n")
+                f.write("}\n\n")

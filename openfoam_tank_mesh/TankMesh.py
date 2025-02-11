@@ -176,13 +176,13 @@ class TankMesh(ABC):
             t_bl: float = thickness of boundary layer
             e_bl: float = boundary layer expansion
         """
-        if self.r_BL == 1 or self.wall_cell_size == self.bulk_cell_size:
+        if self.r_BL == 1 or self.wall_cell_size == self.wall_tan_cell_size:
             self.r_BL = 1.0
             return 4, self.wall_cell_size * 4, 1
         n = 1
         x = self.wall_cell_size
         t = self.wall_cell_size
-        outer_cell_size = self.wall_tan_cell_size * (1 - 0.2 * (self.tri_bulk))
+        outer_cell_size = self.wall_tan_cell_size * (1 - 0.25 * (self.tri_bulk))
         while x <= outer_cell_size / self.r_BL:
             n += 1
             x *= self.r_BL

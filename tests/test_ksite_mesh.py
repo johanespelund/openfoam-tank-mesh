@@ -10,8 +10,9 @@ def test_ksite_mesh():
     mesh = KSiteMesh(
         input_parameters={
             "fill_level": 0.49,
-            "wall_cell_size": 0.2e-3,
+            "wall_cell_size": 1.0e-3,
             "bulk_cell_size": 12e-3,
+            "r_BL": 1.05,
             "wall_tan_cell_size": 4.0e-3,
             "tri_bulk": True,
             "outlet_radius": 0.018,
@@ -20,6 +21,7 @@ def test_ksite_mesh():
         }
     )
     mesh.generate()
+    mesh.tank.write_sample_lines([15, 30, 45, 60, 75], 50e-3)
     # mesh.cfMesh(nLayers=4)
     # mesh.add_wall(wall_thickness=0.002, n_layers=10)
     assert mesh.tank.get_radius(0) == mesh.tank.cylinder_radius

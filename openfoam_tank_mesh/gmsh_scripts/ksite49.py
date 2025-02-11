@@ -156,7 +156,10 @@ def run(mesh: KSiteMesh.KSiteMesh) -> None:
     gmsh.model.geo.synchronize()
     # gmsh.model.mesh.generate(2)
 
-    curves_list = [lines[c] for c in ["8_9", "8_5B", "5B_10", "10_11", "11_9"]]
+    if y4 < y5:
+        curves_list = [lines[c] for c in ["8_9", "8_5B", "5B_10", "10_11", "11_9"]]
+    else:
+        curves_list = [lines[c] for c in ["8_9", "8_10", "10_11", "11_9"]]
 
     gmsh.model.mesh.field.add("Distance", 1)
     gmsh.model.mesh.field.setNumbers(1, "PointsList", [])
@@ -322,7 +325,7 @@ def generate_points_and_lines(mesh: KSiteMesh.KSiteMesh) -> tuple[dict[str, int]
     p["w3"] = add_point(r_outlet, y_outlet + tw, z0, lc)
 
     if abs(y_cylinder - y_bl) < mesh.wall_tan_cell_size * 2:
-        y_cylinder += mesh.wall_tan_cell_size * 2
+        y_cylinder = y_bl + mesh.wall_tan_cell_size * 2
 
     y4 = y_bl
     x4 = tank.get_radius(y4)
