@@ -11,10 +11,10 @@ def closest_odd(n: float) -> int:
 
 
 def get_N_outlet(mesh: "TankMesh.TankMesh") -> int:
-    if mesh.bulk_cell_size >= mesh.outlet_radius:
+    if mesh.wall_tan_cell_size >= mesh.outlet_radius:
         return 2
     else:
-        return closest_odd(np.ceil(mesh.outlet_radius / mesh.bulk_cell_size))
+        return closest_odd(np.ceil(mesh.outlet_radius / mesh.wall_tan_cell_size))
 
 
 def gmsh_setup() -> None:

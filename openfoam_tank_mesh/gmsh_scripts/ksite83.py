@@ -14,10 +14,16 @@ def run(mesh: "TankMesh.TankMesh") -> None:
     revolve = mesh.revolve
     bulk_cell_size = mesh.bulk_cell_size
     wall_cell_size = mesh.wall_cell_size
-    lc = bulk_cell_size
+    lc = mesh.wall_tan_cell_size
     t_BL = mesh.t_BL
     n_BL = mesh.n_BL + 1
     r_BL = mesh.r_BL
+
+    # mesh.bulk_cell_size = bulk_cell_size/4
+    # lc = mesh.bulk_cell_size
+    # mesh.t_BL = mesh.t_BL/4
+    # t_BL = mesh.t_BL
+    # n_BL = n_BL
 
     debug = mesh.debug
 
@@ -75,6 +81,7 @@ def run(mesh: "TankMesh.TankMesh") -> None:
     pw4 = add_point(x4 + tw, y4, z0, lc)
 
     # x7, y7 = x6 - 1.5*t_BL, y_interface
+    print(f"{x10=}, {y10=}, {t_BL=}, {r_BL=}")
     x7, y7 = x10 + 0.5 * t_BL, y_interface
     p7 = add_point(x7, y7, z0, lc)
 
@@ -134,6 +141,7 @@ def run(mesh: "TankMesh.TankMesh") -> None:
     swall = add_surface(cl_wall)
 
     N_2_3 = get_N_outlet(mesh)
+    print(f"{x7=}, {lc=}, {N_2_3=}")
     N_1_7 = closest_odd(x7 / lc) + 2
 
     y = np.linspace(y_outlet, y4)
@@ -173,37 +181,33 @@ def run(mesh: "TankMesh.TankMesh") -> None:
     gmsh.model.geo.mesh.setTransfiniteSurface(swall, "Left", [p3, pw3, pw6, p6])
     gmsh.model.geo.synchronize()
 
-    # gmsh.model.mesh.generate(2)
+    gmsh.model.mesh.field.add("Distance", 1)
+    gmsh.model.mesh.field.setNumbers(1, "PointsList", [])
+    gmsh.model.mesh.field.setNumbers(1, "CurvesList", [l_8_9, l_8_10, l_10_11, l_11_9])
+    gmsh.model.mesh.field.setNumbers(1, "SurfacesList", [])
+    gmsh.model.mesh.field.setNumber(1, "Sampling", 100)
+    gmsh.model.mesh.field.add("Threshold", 2)
+    gmsh.model.mesh.field.setNumber(2, "InField", 1)
+    gmsh.model.mesh.field.setNumber(2, "SizeMin", mesh.wall_tan_cell_size)
+    gmsh.model.mesh.field.setNumber(2, "SizeMax", mesh.bulk_cell_size)
+    gmsh.model.mesh.field.setNumber(2, "DistMin", mesh.wall_tan_cell_size)
+    gmsh.model.mesh.field.setNumber(2, "DistMax", 3 * mesh.bulk_cell_size)
+    gmsh.model.mesh.field.setAsBackgroundMesh(2)
+
+    gmsh.option.setNumber("Mesh.MeshSizeExtendFromBoundary", 0)
+    gmsh.option.setNumber("Mesh.MeshSizeFromPoints", 0)
+    gmsh.option.setNumber("Mesh.MeshSizeFromCurvature", 0)
 
     gmsh.model.geo.synchronize()
 
-    # # points = gmsh.model.getEntities(dim=0)
-    # # lines = gmsh.model.getEntities(dim=1)
-    # # surfaces = gmsh.model.getEntities(dim=2)
-    # # volumes = gmsh.model.getEntities(dim=3)
-    # # gmsh.model.geo.translate(points, 0, y_offset, 0)
-    # # gmsh.model.geo.translate(lines, 0, y_offset, 0)
-    # # gmsh.model.geo.translate(surfaces, 0, y_offset, 0)
-    # # gmsh.model.geo.translate(volumes, 0, y_offset, 0)
-
-    # # Set meshing algorithm to Frontal-Delaunay for quads
-    # # # gmsh.option.setNumber("Mesh.SubdivisionAlgorithm", 1) # 2 or 3
-
-    # # # Synchronize to finalize geometry operations
-
-    # # # Generate the 2D mesh
-    # # # gmsh.model.mesh.optimize('Laplace2D')
-    # # # gmsh.model.mesh.optimize('Laplace2D')
-
-    # # gmsh.model.geo.mesh.setRecombine(2, s1)
-    # # gmsh.model.geo.mesh.setRecombine(2, s2)
-    # # gmsh.model.geo.mesh.setRecombine(2, s3)
-    # # gmsh.model.geo.mesh.setRecombine(2, s4)
-
-    for s in [s1, s2, s3, swall]:
+    for s in [s1, s2, swall]:
         gmsh.model.geo.mesh.setRecombine(2, s)
-    gmsh.model.geo.mesh.setRecombine(2, s3)
-    gmsh.option.setNumber("Mesh.Algorithm", 8)  # 5 or 6
+    if not mesh.tri_bulk:
+        gmsh.model.geo.mesh.setRecombine(2, s3)
+        gmsh.option.setNumber("Mesh.Algorithm", 8)  # 5 or 6
+    else:
+        gmsh.option.setNumber("Mesh.Algorithm", 6)  # 5 or 6
+
     gmsh.option.setNumber("Mesh.RecombinationAlgorithm", 2)  # 2 or 3
     gmsh.model.geo.synchronize()
 
@@ -301,10 +305,10 @@ def closest_odd(n: float) -> int:
 
 
 def get_N_outlet(mesh: "TankMesh.TankMesh") -> int:
-    if mesh.bulk_cell_size >= mesh.outlet_radius:
+    if mesh.wall_tan_cell_size >= mesh.outlet_radius:
         return 2
     else:
-        return closest_odd(np.ceil(mesh.outlet_radius / mesh.bulk_cell_size))
+        return closest_odd(np.ceil(mesh.outlet_radius / mesh.wall_tan_cell_size))
 
 
 def gmsh_setup() -> None:
@@ -347,15 +351,24 @@ def get_corner_coords(mesh: "TankMesh.TankMesh") -> tuple[float, float]:
     A -= mesh.t_BL
     B -= mesh.t_BL
 
+    print(f"{A=}, {B=}, {C=}")
+
     def r_ellipse(y: float) -> float:
         if y > C / 2:
+            print(f"1 {y=}, {C=}")
+            print(f"{1 - (y - C / 2) ** 2 / B**2=}")
             return float(A * np.sqrt(1 - (y - C / 2) ** 2 / B**2))
         elif y > -C / 2:
+            print(f"2 {y=}, {C=}")
             return A
         else:
+            print(f"3 {y=}, {C=}")
             return float(A * np.sqrt(1 - (y + C / 2) ** 2 / B**2))
 
+    print(f"{mesh.tank.y_interface=}")
     y = mesh.tank.y_interface + mesh.t_BL
+    print(f"{y=}")
+    print(f"{r_ellipse(y)=}")
     return r_ellipse(y), y
 
 

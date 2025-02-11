@@ -24,25 +24,21 @@ def run(mesh: KSiteMesh.KSiteMesh) -> None:
     y_interface = tank.y_interface
     wedge_angle = mesh.wedge_angle
     revolve = mesh.revolve
-    bulk_cell_size = mesh.bulk_cell_size
     wall_cell_size = mesh.wall_cell_size
-    lc = bulk_cell_size
-    t_BL = mesh.t_BL
+    lc = mesh.wall_tan_cell_size
     n_BL = mesh.n_BL + 1
     r_BL = mesh.r_BL
 
     debug = mesh.debug
-
-    c = tank.cylinder_height
-    y_cylinder = c / 2
-    y_bl = y_interface + t_BL
 
     nw = 10
 
     gmsh_setup()
 
     p, lines = generate_points_and_lines(mesh)
-    y4, y5 = tank.y_interface + mesh.t_BL, tank.cylinder_height / 2
+    gmsh.model.geo.synchronize()
+    _, y4, _ = gmsh.model.getValue(0, p["4"], [])
+    _, y5, _ = gmsh.model.getValue(0, p["5"], [])
     x7 = tank.get_radius(y4)
 
     if y4 < y5:
@@ -160,6 +156,25 @@ def run(mesh: KSiteMesh.KSiteMesh) -> None:
     gmsh.model.geo.synchronize()
     # gmsh.model.mesh.generate(2)
 
+    curves_list = [lines[c] for c in ["8_9", "8_5B", "5B_10", "10_11", "11_9"]]
+
+    gmsh.model.mesh.field.add("Distance", 1)
+    gmsh.model.mesh.field.setNumbers(1, "PointsList", [])
+    gmsh.model.mesh.field.setNumbers(1, "CurvesList", curves_list)
+    gmsh.model.mesh.field.setNumbers(1, "SurfacesList", [])
+    gmsh.model.mesh.field.setNumber(1, "Sampling", 100)
+    gmsh.model.mesh.field.add("Threshold", 2)
+    gmsh.model.mesh.field.setNumber(2, "InField", 1)
+    gmsh.model.mesh.field.setNumber(2, "SizeMin", mesh.wall_tan_cell_size)
+    gmsh.model.mesh.field.setNumber(2, "SizeMax", mesh.bulk_cell_size)
+    gmsh.model.mesh.field.setNumber(2, "DistMin", mesh.wall_tan_cell_size)
+    gmsh.model.mesh.field.setNumber(2, "DistMax", 3 * mesh.bulk_cell_size)
+    gmsh.model.mesh.field.setAsBackgroundMesh(2)
+
+    gmsh.option.setNumber("Mesh.MeshSizeExtendFromBoundary", 0)
+    gmsh.option.setNumber("Mesh.MeshSizeFromPoints", 0)
+    gmsh.option.setNumber("Mesh.MeshSizeFromCurvature", 0)
+
     gmsh.model.geo.synchronize()
 
     # # points = gmsh.model.getEntities(dim=0)
@@ -187,8 +202,11 @@ def run(mesh: KSiteMesh.KSiteMesh) -> None:
 
     for s in [s1, s2, s3, swall]:
         gmsh.model.geo.mesh.setRecombine(2, s)
-    gmsh.model.geo.mesh.setRecombine(2, s4)
-    gmsh.option.setNumber("Mesh.Algorithm", 8)  # 5 or 6
+    if not mesh.tri_bulk:
+        gmsh.model.geo.mesh.setRecombine(2, s4)
+        gmsh.option.setNumber("Mesh.Algorithm", 8)  # 5 or 6
+    else:
+        gmsh.option.setNumber("Mesh.Algorithm", 6)  # 5 or 6
     gmsh.option.setNumber("Mesh.RecombinationAlgorithm", 2)  # 2 or 3
     gmsh.model.geo.synchronize()
 
@@ -238,7 +256,7 @@ def run(mesh: KSiteMesh.KSiteMesh) -> None:
 
     surfaces: list[tuple[int, int]] = gmsh.model.getEntities(dim=2)
 
-    if y_bl > y_cylinder:
+    if y4 > y5:
         add_physical_surface([0, 1, 2, 3, 4], "cyclic_pos_gmsh", surfaces)
         add_physical_surface([10, 16, 19, 20, 26], "cyclic_neg_gmsh", surfaces)
         add_physical_surface([22, 23, 24], "walls_gmsh", surfaces)
@@ -302,6 +320,9 @@ def generate_points_and_lines(mesh: KSiteMesh.KSiteMesh) -> tuple[dict[str, int]
     x3, y3 = r_outlet, y_outlet
     p["3"] = add_point(r_outlet, y_outlet, z0, lc)
     p["w3"] = add_point(r_outlet, y_outlet + tw, z0, lc)
+
+    if abs(y_cylinder - y_bl) < mesh.wall_tan_cell_size * 2:
+        y_cylinder += mesh.wall_tan_cell_size * 2
 
     y4 = y_bl
     x4 = tank.get_radius(y4)

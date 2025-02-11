@@ -10,16 +10,18 @@ def test_mesh():
     mesh = NASA1m3Mesh(
         input_parameters={
             "fill_level": 0.83,
-            "wall_cell_size": 6.0e-3,
-            "bulk_cell_size": 24e-3,
-            "outlet_radius": 0.024,
-            "debug": True,
-            "revolve": 90,
+            "wall_cell_size": 0.2e-3,
+            "wall_tan_cell_size": 2.0e-3,
+            "bulk_cell_size": 6e-3,
+            "tri_bulk": False,
+            "outlet_radius": 0.012,
+            "debug": False,
+            "revolve": 0,
             "insulation_type": "bubbles",
             "cargo": "LH2",
         }
     )
-    # mesh.generate()
+    mesh.generate()
     # mesh.remove_wall()
     # mesh.cfMesh(5)
     assert mesh.tank.get_radius(0) == mesh.tank.cylinder_radius

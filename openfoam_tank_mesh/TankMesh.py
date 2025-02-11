@@ -42,9 +42,11 @@ class TankMesh(ABC):
         self.area_gas = tank.area_gas
 
         # Will be defined in set_parameters()
-        self.bulk_cell_size: float = 0
-        self.wall_cell_size: float = 0
+        self.bulk_cell_size: float = 0  # Bulk cell size
+        self.wall_cell_size: float = 0  # Wall cell size
+        self.wall_tan_cell_size: float = 0  # Wall tangential cell size
         self.debug: bool = False
+        self.tri_bulk: bool = False  # Use triangle cells for bulk mesh
 
         # Default parameters (can be overwritten by input_parameters)
         self.r_BL: float = 1.1  # Boundary layer growth rate
@@ -101,6 +103,8 @@ class TankMesh(ABC):
         """
         for key, value in input_parameters.items():
             setattr(self, key, value)
+        if "wall_tan_cell_size" not in input_parameters:
+            self.wall_tan_cell_size = self.bulk_cell_size
 
     def write_mesh_parameters(self) -> None:
         """
@@ -174,11 +178,12 @@ class TankMesh(ABC):
         """
         if self.r_BL == 1 or self.wall_cell_size == self.bulk_cell_size:
             self.r_BL = 1.0
-            return 2, self.wall_cell_size * 2, 1
+            return 4, self.wall_cell_size * 4, 1
         n = 1
         x = self.wall_cell_size
         t = self.wall_cell_size
-        while x <= self.bulk_cell_size / self.r_BL:
+        outer_cell_size = self.wall_tan_cell_size * (1 - 0.2 * (self.tri_bulk))
+        while x <= outer_cell_size / self.r_BL:
             n += 1
             x *= self.r_BL
             t += x

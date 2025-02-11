@@ -3,7 +3,7 @@ from __future__ import annotations
 import pathlib
 
 from openfoam_tank_mesh.gmsh_scripts.ksite83 import run as run_gmsh
-from openfoam_tank_mesh.gmsh_scripts.stl import generate_stl
+from openfoam_tank_mesh.gmsh_scripts.stl import generate_2D_stl, generate_3D_stl
 from openfoam_tank_mesh.NASA1m3Tank import NASA1m3Tank
 from openfoam_tank_mesh.TankMesh import TankMesh
 
@@ -60,7 +60,10 @@ class NASA1m3Mesh(TankMesh):
         """
         Generate a stl file with named surfaces for use in cfMesh.
         """
-        generate_stl(self)
+        if self.revolve:
+            generate_3D_stl(self)
+        else:
+            generate_2D_stl(self)
 
     @property
     def dict_path(self) -> str:

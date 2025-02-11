@@ -25,10 +25,10 @@ constructFrom patch;
 
 // If construct from patch/mesh:
 sourceCase    "$FOAM_CASE";
-sourcePatches (wedge_pos);
+sourcePatches (topEmptyFaces);
 
 // If construct from patch: patch to use for back (can be same as sourcePatch)
-exposedPatchName wedge_pos;
+exposedPatchName topEmptyFaces;
 
 // If construct from surface:
 // surface "movingWall.stl";
@@ -67,8 +67,8 @@ extrudeModel        linearNormal;
 //  surfaces (e.g. one is an offsetted version of the other)
 //extrudeModel        offsetSurface;
 
-nLayers 10;
-thickness 100e-3;
+nLayers 2;
+thickness 1e-3;
 
 expansionRatio 1;
 // expansionRatio 0.8333333333333334;
