@@ -47,18 +47,20 @@ localRefinement
   {
     // additionalRefinementLevels $N;
     cellSize #eval {$wall_cell_size};
+    refinementThickness #eval {4*$wall_cell_size};
   }
 
-  walls
+    "(walls|pipe)"
   {
     // additionalRefinementLevels $N;
     cellSize #eval {$wall_cell_size};
-    // refinementThickness #eval {3*$wall_cell_size};
+    refinementThickness #eval {4*$wall_cell_size};
   }
   outlet
   {
     // additionalRefinementLevels #eval {$N + 0};
     cellSize $wall_cell_size;
+    refinementThickness #eval {4*$wall_cell_size};
     // refinementThickness $bulk_cell_size;
   }
 }
@@ -157,50 +159,65 @@ localRefinement
 //   }
 // }
 
-// renameBoundary
-// {
-//   // defaultName walls;
-//   // defaultType wall;
-//   newPatchNames
-//   {
-//     cyclic_neg
-//     {
-//       newName cyclic_neg_temp;
-//       type patch;
-//     }
-//     outlet
-//     {
-//       newName outlet;
-//       type patch;
-//     }
-//     cyclic_pos
-//     {
-//       newName cyclic_pos_temp;
-//       type patch;
-//     }
-//     bottom
-//     {
-//       newName bottom;
-//       type wall;
-//     }
-//     walls
-//     {
-//       newName walls;
-//       type wall;
-//     }
-//   }
-// }
+renameBoundary
+{
+  // defaultName walls;
+  // defaultType wall;
+  newPatchNames
+  {
+    cyclic_neg
+    {
+      newName cyclic_neg_temp;
+      type patch;
+    }
+    outlet
+    {
+      newName outlet;
+      type patch;
+    }
+    cyclic_pos
+    {
+      newName cyclic_pos_temp;
+      type patch;
+    }
+    bottom
+    {
+      newName bottom;
+      type wall;
+    }
+    walls
+    {
+      newName walls;
+      type wall;
+    }
+    pipe
+    {
+      newName pipe;
+      type wall;
+    }
+    axis
+    {
+      newName axis;
+      type patch;
+    }
+    ".*Empty.*"
+    {
+      newName empty;
+      type empty;
+    }
+  }
+}
 
 boundaryLayers
 {
   patchBoundaryLayers
   {
-    "(walls|bottom)"
+    "(walls|bottom|pipe)"
     {
-      nLayers 5;
-      thicknessRatio 1.2;
-      maxFirstLayerThickness 0.0015;
-      // allowDiscontinuity 0;
+      nLayers 6;
+      thicknessRatio 0.75;
+      maxFirstLayerThickness 0.15;
+      allowDiscontinuity 0;
     }
   }
 }

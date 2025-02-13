@@ -20,7 +20,7 @@ def test_ksite_mesh():
             "revolve": 0,
         }
     )
-    mesh.generate()
+    # mesh.generate()
     mesh.tank.write_sample_lines([15, 30, 45, 60, 75], 50e-3)
     # mesh.cfMesh(nLayers=4)
     # mesh.add_wall(wall_thickness=0.002, n_layers=10)

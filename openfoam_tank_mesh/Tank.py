@@ -152,10 +152,8 @@ class Tank(ABC):
 
         y = np.linspace(self.y1, self.y_outlet, 1000)
         r = np.array([self.get_radius(yi) for yi in y])
-        drdy = [self.get_radius_derivative(yi) for yi in y]
 
         ax.plot(r, y, label=self.name)
-        ax.plot(drdy, y, label="drdy", alpha=0.5, color="grey")
         ax.fill_betweenx(y, r, 0, where=y < self.y_interface, alpha=0.5)  # type: ignore[arg-type]
 
         normal = self.get_normal(self.y_interface)
