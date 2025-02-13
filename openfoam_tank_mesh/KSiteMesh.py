@@ -54,7 +54,7 @@ class KSiteMesh(TankMesh):
         self.run_command("splitMeshRegions -cellZonesOnly -overwrite")
         # TODO: Just implement the base mesh without the wall again,
         #       and use add_wall() to add the wall.
-        # self.remove_wall()
+        self.remove_wall()
 
         # self.check_mesh(regions=["gas", "metal"])
 
