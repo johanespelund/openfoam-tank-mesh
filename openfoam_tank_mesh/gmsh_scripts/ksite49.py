@@ -170,8 +170,8 @@ def run(mesh: KSiteMesh.KSiteMesh) -> None:
     gmsh.model.mesh.field.setNumber(2, "InField", 1)
     gmsh.model.mesh.field.setNumber(2, "SizeMin", mesh.wall_tan_cell_size)
     gmsh.model.mesh.field.setNumber(2, "SizeMax", mesh.bulk_cell_size)
-    gmsh.model.mesh.field.setNumber(2, "DistMin", 2 * mesh.wall_tan_cell_size)
-    gmsh.model.mesh.field.setNumber(2, "DistMax", 3 * mesh.bulk_cell_size)
+    gmsh.model.mesh.field.setNumber(2, "DistMin", 2 * mesh.bulk_cell_size)
+    gmsh.model.mesh.field.setNumber(2, "DistMax", 4 * mesh.bulk_cell_size)
     gmsh.model.mesh.field.setAsBackgroundMesh(2)
 
     gmsh.option.setNumber("Mesh.MeshSizeExtendFromBoundary", 0)

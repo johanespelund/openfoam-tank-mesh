@@ -15,7 +15,7 @@ FoamFile
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-#include "/home/johan/Documents/PhD/openfoam-tank-mesh/tests/parameters.NASA1m3Mesh"
+#include "/home/johan/Documents/PhD/openfoam-tank-mesh/tests/parameters.KSiteMesh"
 
 actions
 (
