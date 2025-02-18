@@ -95,9 +95,18 @@ def run(mesh: "TankMesh.TankMesh") -> None:
     x11, y11 = 0, y_bl
     p11 = add_point(x11, y11, z0, lc)
 
-    # Compare lengths of line between
+    x12, y12 = 0, y_outlet - max(t_BL + 2 * mesh.wall_tan_cell_size, 2 * r_outlet)
+    p12 = add_point(x12, y12, z0, lc)
+
+    x13, y13 = r_outlet, y_outlet - max(t_BL + 2 * mesh.wall_tan_cell_size, 2 * r_outlet)
+    p13 = add_point(x13, y13, z0, lc)
 
     # Add lines
+
+    l_11_12 = add_line(p11, p12)
+    l_12_9 = add_line(p12, p9)
+    l_8_13 = add_line(p8, p13)
+    l_12_13 = add_line(p12, p13)
 
     l_11_9 = add_line(p11, p9)
     l_9_2 = add_line(p9, p2)
@@ -131,13 +140,14 @@ def run(mesh: "TankMesh.TankMesh") -> None:
     # cl3 = add_curve_loop([-l_10_6, l_10_7, -l_6_7])
 
     cl2 = add_curve_loop([l_10_7, l_7_1, l_1_11, -l_10_11])
-    cl3 = add_curve_loop([l_11_9, -l_8_9, l_8_10, l_10_11])
+    cl3 = add_curve_loop([l_11_12, l_12_13, -l_8_13, l_8_10, l_10_11])
+    cl4 = add_curve_loop([l_12_9, -l_8_9, l_8_13, -l_12_13])
     cl_wall = add_curve_loop([l_3_3w, l_3w_4w, l_4w_6w, -l6_6w, -l_4_6, -l_3_4])
 
     s1 = add_surface(cl1)
     s2 = add_surface(cl2)
     s3 = add_surface(cl3)
-    # s4 = add_surface(cl4)
+    s4 = add_surface(cl4)
     # s5 = add_surface(cl5)
     swall = add_surface(cl_wall)
 
@@ -171,8 +181,15 @@ def run(mesh: "TankMesh.TankMesh") -> None:
     # gmsh.model.geo.mesh.setTransfiniteCurve(l_10_6, n_BL, "Progression", -r_BL)
     # gmsh.model.geo.mesh.setTransfiniteCurve(l_10_4, n_BL, "Progression", -r_BL)
 
+    L_9_12 = max(mesh.t_BL + 2 * mesh.wall_tan_cell_size, 2 * mesh.tank.outlet_radius) - mesh.t_BL
+    N_9_12 = closest_odd(L_9_12 / lc)
+    gmsh.model.geo.mesh.setTransfiniteCurve(l_12_9, N_9_12)
+    gmsh.model.geo.mesh.setTransfiniteCurve(l_8_13, N_9_12)
+    gmsh.model.geo.mesh.setTransfiniteCurve(l_12_13, N_2_3)
+
     gmsh.model.geo.mesh.setTransfiniteSurface(s1, "Left", [p2, p6, p7, p9])
     gmsh.model.geo.mesh.setTransfiniteSurface(s2, "Left", [p1, p11, p10, p7])
+    gmsh.model.geo.mesh.setTransfiniteSurface(s4, "Left", [p9, p8, p13, p12])
     # gmsh.model.geo.mesh.setTransfiniteSurface(s3, "Left", [p11, p9, p10])
     # print(f"{s3=}")
     # gmsh.model.geo.mesh.setTransfiniteSurface(s2, "Right", [p10, p4, p6])
@@ -184,7 +201,7 @@ def run(mesh: "TankMesh.TankMesh") -> None:
 
     gmsh.model.mesh.field.add("Distance", 1)
     gmsh.model.mesh.field.setNumbers(1, "PointsList", [])
-    gmsh.model.mesh.field.setNumbers(1, "CurvesList", [l_8_9, l_8_10, l_10_11, l_11_9])
+    gmsh.model.mesh.field.setNumbers(1, "CurvesList", [l_8_9, l_8_10, l_10_11, l_11_12, l_12_9, l_8_13, l_12_13])
     gmsh.model.mesh.field.setNumbers(1, "SurfacesList", [])
     gmsh.model.mesh.field.setNumber(1, "Sampling", 100)
     gmsh.model.mesh.field.add("Threshold", 2)
@@ -201,7 +218,7 @@ def run(mesh: "TankMesh.TankMesh") -> None:
 
     gmsh.model.geo.synchronize()
 
-    for s in [s1, s2, swall]:
+    for s in [s1, s2, s4, swall]:
         gmsh.model.geo.mesh.setRecombine(2, s)
     if not mesh.tri_bulk:
         gmsh.model.geo.mesh.setRecombine(2, s3)
@@ -220,7 +237,7 @@ def run(mesh: "TankMesh.TankMesh") -> None:
     angle = 2 * np.pi * revolve / 360 if revolve else wedge_angle * np.pi / 180
     n_angle = closest_odd(2 * np.pi * revolve / (360 * lc)) if revolve else 1
     _ = gmsh.model.geo.revolve(
-        [(2, s1), (2, s2), (2, s3), (2, swall)],
+        [(2, s1), (2, s2), (2, s3), (2, s4), (2, swall)],
         0,
         0,
         0,  # Point on the axis of revolution
@@ -264,11 +281,11 @@ def run(mesh: "TankMesh.TankMesh") -> None:
     #     add_physical_surface([ind], int_string)
 
     add_physical_surface([0, 1, 2, 3, 4], "cyclic_pos_gmsh")
-    add_physical_surface([11, 14, 15, 20], "cyclic_neg_gmsh")
-    add_physical_surface([7, 12, 19], "bottom_gmsh")
-    add_physical_surface([17, 18], "walls")
-    add_physical_surface([4], "outlet")
-    add_physical_surface([16], "metal_outlet")
+    add_physical_surface([12, 15, 18, 19, 24], "cyclic_neg_gmsh")
+    add_physical_surface([8, 13, 19], "bottom_gmsh")
+    add_physical_surface([21, 22], "walls")
+    add_physical_surface([5], "outlet")
+    add_physical_surface([20], "metal_outlet")
 
     # # if y_bl > y_cylinder:
     # #     add_physical_surface([0, 1, 2, 3, 4], "cyclic_pos_gmsh")

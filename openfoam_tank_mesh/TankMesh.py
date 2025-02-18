@@ -231,6 +231,12 @@ class TankMesh(ABC):
         self.run_openfoam_utility("topoSet", topo_set_dict)
         self.run_command("splitMeshRegions -cellZonesOnly -overwrite")
 
+    def create_internal_outlet(self) -> None:
+        self.run_openfoam_utility("topoSet", "topoSetDict.subsetMesh")
+        self.run_command("subsetMesh cellsToKeep -overwrite -patch pipe")
+        self.run_openfoam_utility("topoSet", "topoSetDict.pipe2outlet")
+        self.run_openfoam_utility("createPatch -overwrite", "createPatchDict.pipe2outlet")
+
     def cfMesh(self, nLayers: int = 0) -> None:
         """
         Use cfMesh to create a 3D mesh.

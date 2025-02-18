@@ -55,7 +55,15 @@ def run(mesh: KSiteMesh.KSiteMesh) -> None:
         ])
         cl2 = add_curve_loop([lines["10_4"], lines["4_6"], lines["6_7"], lines["7_10"]])
         cl3 = add_curve_loop([-lines["7_10"], lines["7_1"], lines["1_11"], -lines["10_11"]])
-        cl4 = add_curve_loop([-lines["8_9"], lines["8_5B"], lines["5B_10"], lines["10_11"], lines["11_9"]])
+        cl4 = add_curve_loop([
+            lines["8_5B"],
+            lines["5B_10"],
+            lines["10_11"],
+            lines["11_12"],
+            lines["12_13"],
+            -lines["8_13"],
+        ])
+        cl5 = add_curve_loop([-lines["8_13"], lines["8_9"], -lines["12_9"], lines["12_13"]])
         cl_wall = add_curve_loop([
             lines["3_3w"],
             lines["3_5w"],
@@ -70,7 +78,9 @@ def run(mesh: KSiteMesh.KSiteMesh) -> None:
         cl1 = add_curve_loop([lines["2_3"], lines["3_4"], -lines["10_4"], -lines["8_10"], lines["8_9"], lines["9_2"]])
         cl2 = add_curve_loop([lines["10_4"], lines["4_5"], lines["5_6"], lines["6_7"], -lines["5B_7"], lines["5B_10"]])
         cl3 = add_curve_loop([-lines["5B_10"], lines["5B_7"], lines["7_1"], lines["1_11"], -lines["10_11"]])
-        cl4 = add_curve_loop([-lines["8_9"], lines["8_10"], lines["10_11"], lines["11_9"]])
+        # cl4 = add_curve_loop([-lines["8_9"], lines["8_10"], lines["10_11"], lines["11_9"]])
+        cl4 = add_curve_loop([lines["8_10"], lines["10_11"], lines["11_12"], lines["12_13"], -lines["8_13"]])
+        cl5 = add_curve_loop([-lines["8_13"], lines["8_9"], -lines["12_9"], lines["12_13"]])
         cl_wall = add_curve_loop([
             lines["3_3w"],
             lines["3_4w"],
@@ -86,14 +96,19 @@ def run(mesh: KSiteMesh.KSiteMesh) -> None:
     s2 = add_surface(cl2)
     s3 = add_surface(cl3)
     s4 = add_surface(cl4)
+    s5 = add_surface(cl5)
     swall = add_surface(cl_wall)
 
     N_2_3 = get_N_outlet(mesh)
     N_1_7 = closest_odd(x7 / lc) + 2
 
+    L_9_12 = max(mesh.t_BL + 2 * mesh.wall_tan_cell_size, 2 * mesh.tank.outlet_radius) - mesh.t_BL
+    N_9_12 = closest_odd(L_9_12 / lc)
+
     gmsh.model.geo.mesh.setTransfiniteCurve(lines["9_2"], n_BL, "Progression", -r_BL)
     gmsh.model.geo.mesh.setTransfiniteCurve(lines["2_3"], N_2_3)
     gmsh.model.geo.mesh.setTransfiniteCurve(lines["8_9"], N_2_3)
+    gmsh.model.geo.mesh.setTransfiniteCurve(lines["12_13"], N_2_3)
     gmsh.model.geo.mesh.setTransfiniteCurve(lines["6_7"], n_BL, "Progression", r_BL)
     gmsh.model.geo.mesh.setTransfiniteCurve(lines["10_4"], n_BL, "Progression", -r_BL)
     gmsh.model.geo.mesh.setTransfiniteCurve(lines["1_11"], n_BL, "Progression", r_BL)
@@ -152,14 +167,18 @@ def run(mesh: KSiteMesh.KSiteMesh) -> None:
         gmsh.model.geo.mesh.setTransfiniteSurface(s2, "Left", [p["6"], p["7"], p["10"], p["4"]])
         gmsh.model.geo.mesh.setTransfiniteSurface(s3, "Left", [p["11"], p["10"], p["7"], p["1"]])
 
+    gmsh.model.geo.mesh.setTransfiniteCurve(lines["12_9"], N_9_12)
+    gmsh.model.geo.mesh.setTransfiniteCurve(lines["8_13"], N_9_12)
+    gmsh.model.geo.mesh.setTransfiniteSurface(s5, "Left")
     gmsh.model.geo.mesh.setTransfiniteSurface(swall, "Left", [p["3"], p["w3"], p["w6"], p["6"]])
     gmsh.model.geo.synchronize()
     # gmsh.model.mesh.generate(2)
 
     if y4 < y5:
-        curves_list = [lines[c] for c in ["8_9", "8_5B", "5B_10", "10_11", "11_9"]]
+        curves_list = [lines[c] for c in ["8_9", "8_5B", "5B_10", "10_11", "11_12", "12_13", "8_13"]]
     else:
-        curves_list = [lines[c] for c in ["8_9", "8_10", "10_11", "11_9"]]
+        # curves_list = [lines[c] for c in ["8_9", "8_10", "10_11", "11_9"]]
+        curves_list = [lines[c] for c in ["8_10", "10_11", "11_12", "12_13", "8_13"]]
 
     gmsh.model.mesh.field.add("Distance", 1)
     gmsh.model.mesh.field.setNumbers(1, "PointsList", [])
@@ -203,7 +222,7 @@ def run(mesh: KSiteMesh.KSiteMesh) -> None:
     # # gmsh.model.geo.mesh.setRecombine(2, s3)
     # # gmsh.model.geo.mesh.setRecombine(2, s4)
 
-    for s in [s1, s2, s3, swall]:
+    for s in [s1, s2, s3, s5, swall]:
         gmsh.model.geo.mesh.setRecombine(2, s)
     if not mesh.tri_bulk:
         gmsh.model.geo.mesh.setRecombine(2, s4)
@@ -221,7 +240,7 @@ def run(mesh: KSiteMesh.KSiteMesh) -> None:
     angle = 2 * np.pi * revolve / 360 if revolve else wedge_angle * np.pi / 180
     n_angle = closest_odd(2 * np.pi * revolve / (360 * lc)) if revolve else 1
     _ = gmsh.model.geo.revolve(
-        [(2, s1), (2, s2), (2, s3), (2, s4), (2, swall)],
+        [(2, s1), (2, s2), (2, s3), (2, s4), (2, s5), (2, swall)],
         0,
         0,
         0,  # Point on the axis of revolution
@@ -250,29 +269,29 @@ def run(mesh: KSiteMesh.KSiteMesh) -> None:
     # gmsh.model.mesh.recombine()
     gmsh.model.mesh.optimize()
 
-    # for i in range(len(s)):
+    surfaces: list[tuple[int, int]] = gmsh.model.getEntities(dim=2)
+
+    # for i in range(len(surfaces)):
     #     # Format an int string with leading zeros
     #     ind = i
     #     int_string = f"s_{ind:02d}"
     #     print(f"Adding physical surface {int_string}")
-    #     add_physical_surface([ind], int_string)
-
-    surfaces: list[tuple[int, int]] = gmsh.model.getEntities(dim=2)
+    #     add_physical_surface([ind], int_string, surfaces)
 
     if y4 > y5:
-        add_physical_surface([0, 1, 2, 3, 4], "cyclic_pos_gmsh", surfaces)
-        add_physical_surface([10, 16, 19, 20, 26], "cyclic_neg_gmsh", surfaces)
-        add_physical_surface([22, 23, 24], "walls_gmsh", surfaces)
-        add_physical_surface([5], "outlet", surfaces)
-        add_physical_surface([21], "metal_outlet", surfaces)
-        add_physical_surface([13, 17, 25], "bottom_gmsh", surfaces)
+        add_physical_surface([0, 1, 2, 3, 4, 5], "cyclic_pos_gmsh", surfaces)
+        add_physical_surface([11, 17, 20, 23, 24, 30], "cyclic_neg_gmsh", surfaces)
+        add_physical_surface([26, 27, 28], "walls_gmsh", surfaces)
+        add_physical_surface([6], "outlet", surfaces)
+        add_physical_surface([25], "metal_outlet", surfaces)
+        add_physical_surface([14, 18, 29], "bottom_gmsh", surfaces)
     else:
-        add_physical_surface([0, 1, 2, 3, 4], "cyclic_pos_gmsh", surfaces)
-        add_physical_surface([12, 16, 19, 20, 26], "cyclic_neg_gmsh", surfaces)
-        add_physical_surface([22, 23, 24], "walls_gmsh", surfaces)
-        add_physical_surface([5], "outlet", surfaces)
-        add_physical_surface([21], "metal_outlet", surfaces)
-        add_physical_surface([14, 17, 25], "bottom_gmsh", surfaces)
+        add_physical_surface([0, 1, 2, 3, 4, 5], "cyclic_pos_gmsh", surfaces)
+        add_physical_surface([13, 17, 20, 23, 24, 30], "cyclic_neg_gmsh", surfaces)
+        add_physical_surface([26, 27, 28], "walls_gmsh", surfaces)
+        add_physical_surface([6], "outlet", surfaces)
+        add_physical_surface([25], "metal_outlet", surfaces)
+        add_physical_surface([15, 18, 29], "bottom_gmsh", surfaces)
 
     gmsh.model.geo.synchronize()
     gmsh.model.geo.synchronize()
@@ -356,9 +375,17 @@ def generate_points_and_lines(mesh: KSiteMesh.KSiteMesh) -> tuple[dict[str, int]
     x11, y11 = 0, y_bl
     p["11"] = add_point(x11, y11, z0, lc)
 
-    # Add lines
+    x12, y12 = 0, y_outlet - max(t_BL + 2 * mesh.wall_tan_cell_size, 2 * r_outlet)
+    p["12"] = add_point(x12, y12, z0, lc)
 
-    lines["11_9"] = add_line(p["11"], p["9"])
+    x13, y13 = r_outlet, y_outlet - max(t_BL + 2 * mesh.wall_tan_cell_size, 2 * r_outlet)
+    p["13"] = add_point(x13, y13, z0, lc)
+
+    # Add lines
+    lines["11_12"] = add_line(p["11"], p["12"])
+    lines["12_9"] = add_line(p["12"], p["9"])
+    lines["8_13"] = add_line(p["8"], p["13"])
+    lines["12_13"] = add_line(p["12"], p["13"])
     lines["9_2"] = add_line(p["9"], p["2"])
     lines["2_3"] = add_line(p["2"], p["3"])
     lines["8_9"] = add_line(p["8"], p["9"])
