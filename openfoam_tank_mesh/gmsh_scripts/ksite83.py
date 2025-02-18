@@ -282,7 +282,7 @@ def run(mesh: "TankMesh.TankMesh") -> None:
 
     add_physical_surface([0, 1, 2, 3, 4], "cyclic_pos_gmsh")
     add_physical_surface([12, 15, 18, 19, 24], "cyclic_neg_gmsh")
-    add_physical_surface([8, 13, 19], "bottom_gmsh")
+    add_physical_surface([8, 13, 23], "bottom_gmsh")
     add_physical_surface([21, 22], "walls")
     add_physical_surface([5], "outlet")
     add_physical_surface([20], "metal_outlet")

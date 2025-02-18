@@ -234,7 +234,9 @@ class TankMesh(ABC):
 
     def create_internal_outlet(self) -> None:
         self.run_openfoam_utility("topoSet", "topoSetDict.subsetMesh")
+        self.run_command("cp -r 0 0.temp")
         self.run_command("subsetMesh cellsToKeep -overwrite -patch pipe_temp")
+        self.run_command("rm -r 0; mv 0.temp 0")
         self.run_openfoam_utility("topoSet", "topoSetDict.pipe2outlet")
         self.run_openfoam_utility("createPatch -overwrite", "createPatchDict.pipe2outlet")
 
