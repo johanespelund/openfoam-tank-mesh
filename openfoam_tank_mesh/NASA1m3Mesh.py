@@ -48,9 +48,10 @@ class NASA1m3Mesh(TankMesh):
 
         self.run_openfoam_utility("topoSet", "topoSetDict.createFinalFaceSets")
         self.run_command("splitMeshRegions -cellZonesOnly -overwrite")
-        # TODO: Just implement the base mesh without the wall again,
-        #       and use add_wall() to add the wall.
+
         self.remove_wall()
+        if self.internal_outlet:
+            self.create_internal_outlet()
 
         # self.check_mesh(regions=["gas", "metal"])
 

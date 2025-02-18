@@ -45,6 +45,7 @@ class TankMesh(ABC):
         self.bulk_cell_size: float = 0  # Bulk cell size
         self.wall_cell_size: float = 0  # Wall cell size
         self.wall_tan_cell_size: float = 0  # Wall tangential cell size
+        self.internal_outlet: bool = False  # Create internal outlet
         self.debug: bool = False
         self.tri_bulk: bool = False  # Use triangle cells for bulk mesh
 
@@ -233,7 +234,7 @@ class TankMesh(ABC):
 
     def create_internal_outlet(self) -> None:
         self.run_openfoam_utility("topoSet", "topoSetDict.subsetMesh")
-        self.run_command("subsetMesh cellsToKeep -overwrite -patch pipe")
+        self.run_command("subsetMesh cellsToKeep -overwrite -patch pipe_temp")
         self.run_openfoam_utility("topoSet", "topoSetDict.pipe2outlet")
         self.run_openfoam_utility("createPatch -overwrite", "createPatchDict.pipe2outlet")
 

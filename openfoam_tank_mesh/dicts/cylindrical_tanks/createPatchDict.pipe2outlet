@@ -21,6 +21,18 @@ patches
 (
  // outlet patch
  {
+   name pipe;
+   patchInfo
+     {
+       type wall;
+     }
+   constructFrom patches;
+    patches
+      (
+        pipe_temp
+      );
+ }
+ {
    name outlet;
    patchInfo
      {
