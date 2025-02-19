@@ -10,12 +10,13 @@ def test_mesh():
     mesh = NASA1m3Mesh(
         input_parameters={
             "fill_level": 0.82,
-            "wall_cell_size": 0.25e-3,
+            "wall_cell_size": 0.20e-3,
             "wall_tan_cell_size": 3.0e-3,
-            "bulk_cell_size": 4e-3,
+            "bulk_cell_size": 3e-3,
             "r_BL": 1.1,
             "tri_bulk": False,
-            "outlet_radius": 0.024,
+            "outlet_radius": 0.012,
+            "internal_outlet": True,
             "debug": True,
             "revolve": 0,
             "insulation_type": "bubbles",

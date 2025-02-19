@@ -2,38 +2,38 @@ normal_15_deg
 {
 	type lineCellFace;
 	axis distance;
-	start	( 0.160688 0.599696 0 );
-	end	( 0.147618 0.550916 0 );
+	start	( 0.290943 0.914398 0 );
+	end	( 0.279825 0.865138 0 );
 }
 
 normal_30_deg
 {
 	type lineCellFace;
 	axis distance;
-	start	( 0.310425 0.537672 0 );
-	end	( 0.285175 0.493938 0 );
+	start	( 0.561750 0.819839 0 );
+	end	( 0.539631 0.774441 0 );
 }
 
 normal_45_deg
 {
 	type lineCellFace;
 	axis distance;
-	start	( 0.439008 0.439008 0 );
-	end	( 0.403299 0.403299 0 );
+	start	( 0.793633 0.669411 0 );
+	end	( 0.760981 0.630887 0 );
 }
 
 normal_60_deg
 {
 	type lineCellFace;
 	axis distance;
-	start	( 0.537672 0.310425 0 );
-	end	( 0.493938 0.285175 0 );
+	start	( 0.970395 0.473354 0 );
+	end	( 0.928519 0.445129 0 );
 }
 
 normal_75_deg
 {
 	type lineCellFace;
 	axis distance;
-	start	( 0.599696 0.160688 0 );
-	end	( 0.550916 0.147618 0 );
+	start	( 1.079488 0.245026 0 );
+	end	( 1.031136 0.230453 0 );
 }

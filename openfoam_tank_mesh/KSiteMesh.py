@@ -54,6 +54,7 @@ class KSiteMesh(TankMesh):
             self.create_internal_outlet()
         self.run_openfoam_utility("topoSet", "topoSetDict.createFinalFaceSets")
         self.run_command("splitMeshRegions -cellZonesOnly -overwrite")
+        self.run_command("rm -r constant/polyMesh")
         self.sed("metal_outlet", "outlet", "constant/metal/polyMesh/boundary")
         self.check_mesh(regions=["gas", "metal"])
 

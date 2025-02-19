@@ -197,7 +197,7 @@ boundaryLayers
   {
     "(walls|bottom)"
     {
-      nLayers 5;
+      nLayers 4;
       thicknessRatio 1.2;
       maxFirstLayerThickness 0.0015;
       // allowDiscontinuity 0;
