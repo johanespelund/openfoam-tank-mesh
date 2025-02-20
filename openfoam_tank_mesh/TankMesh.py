@@ -227,6 +227,7 @@ class TankMesh(ABC):
         self.run_openfoam_utility("extrudeMesh", extrude_mesh_dict)
         self.run_openfoam_utility("topoSet", topo_set_dict)
         self.run_command("splitMeshRegions -cellZonesOnly -overwrite")
+        self.sed("pipe", "outlet", "constant/metal/polyMesh/boundary")
 
     def create_internal_outlet(self) -> None:
         self.run_openfoam_utility("topoSet", "topoSetDict.subsetMesh")
