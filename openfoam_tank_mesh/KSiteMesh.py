@@ -4,7 +4,7 @@ import pathlib
 
 from openfoam_tank_mesh.gmsh_scripts.ksite49 import run as run_gmsh49
 from openfoam_tank_mesh.gmsh_scripts.ksite83 import run as run_gmsh83
-from openfoam_tank_mesh.gmsh_scripts.stl import generate_3D_stl
+from openfoam_tank_mesh.gmsh_scripts.stl import generate_3D_internal_outlet_stl, generate_3D_stl
 from openfoam_tank_mesh.KSiteTank import KSiteTank
 from openfoam_tank_mesh.TankMesh import TankMesh
 
@@ -64,7 +64,10 @@ class KSiteMesh(TankMesh):
         """
         Generate a stl file with named surfaces for use in cfMesh.
         """
-        generate_3D_stl(self)
+        if self.internal_outlet:
+            generate_3D_internal_outlet_stl(self)
+        else:
+            generate_3D_stl(self)
 
     @property
     def dict_path(self) -> str:

@@ -9,10 +9,6 @@ from rich.console import Console
 from rich.table import Table
 
 from openfoam_tank_mesh.exceptions import CommandFailed, MissingParameter, OpenFoamNotLoaded
-
-# from openfoam_tank_mesh.gmsh_scripts.ksite83 import run as run_gmsh83
-# from openfoam_tank_mesh.gmsh_scripts.ksite49 import run as run_gmsh49
-# from openfoam_tank_mesh.gmsh_scripts.stl import generate_stl
 from openfoam_tank_mesh.Tank import ABC, Tank, abstractmethod
 
 

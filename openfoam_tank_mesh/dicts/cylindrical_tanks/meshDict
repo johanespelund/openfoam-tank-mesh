@@ -46,19 +46,25 @@ localRefinement
   bottom
   {
     // additionalRefinementLevels $N;
-    cellSize #eval {$wall_cell_size};
+    cellSize #eval {$wall_tan_cell_size};
   }
 
   walls
   {
     // additionalRefinementLevels $N;
-    cellSize #eval {$wall_cell_size};
-    // refinementThickness #eval {3*$wall_cell_size};
+    cellSize #eval {$wall_tan_cell_size};
+    // refinementThickness #eval {3*$wall_tan_cell_size};
+  }
+  pipe
+  {
+    // additionalRefinementLevels $N;
+    cellSize #eval {$wall_tan_cell_size};
+    // refinementThickness #eval {3*$wall_tan_cell_size};
   }
   outlet
   {
     // additionalRefinementLevels #eval {$N + 0};
-    cellSize $wall_cell_size;
+    cellSize $wall_tan_cell_size;
     // refinementThickness $bulk_cell_size;
   }
 }
@@ -68,18 +74,18 @@ localRefinement
   outlet
   {
     // additionalRefinementLevels 3;
-    cellSize #eval {min(0.85* $wall_cell_size, 0.15*$outlet_radius)};
+    cellSize #eval {min($wall_tan_cell_size, 0.5*$outlet_radius)};
     type box;
     centre (0 $B  0);
     lengthX #eval {3*$outlet_radius};
-    lengthY #eval {$bulk_cell_size};
+    lengthY #eval {6*$outlet_radius};
     lengthZ #eval {3*$outlet_radius};
     // radius 0.04;
   }
   corner1
   {
     // additionalRefinementLevels 1;
-    cellSize #eval {2*$wall_cell_size};
+    cellSize #eval {2*$wall_tan_cell_size};
     type hollowCone;
     p0 (0 -1e6 0);
     p1 (0 1e6 0);
@@ -91,11 +97,11 @@ localRefinement
   // corner2
   // {
   //   // additionalRefinementLevels $N;
-  //   cellSize #eval {$wall_cell_size};
+  //   cellSize #eval {$wall_tan_cell_size};
   //   type hollowCone;
   //   p0 (0 -1e6 0);
   //   p1 (0 1e6 0);
-  //   radius0_Inner #eval {$A - 2*$wall_cell_size};
+  //   radius0_Inner #eval {$A - 3*$outlet_radius};
   //   radius1_Inner $radius0_Inner;
   //   radius0_Outer 1e6;
   //   radius1_Outer $radius0_Outer;
@@ -103,31 +109,31 @@ localRefinement
   // corner3
   // {
   //   // additionalRefinementLevels 1;
-  //   cellSize #eval {0.5*$wall_cell_size};
+  //   cellSize #eval {0.5*$wall_tan_cell_size};
   //   type hollowCone;
   //   p0 (0 $y_interface 0);
-  //   p1 (0 #eval {$y_interface + $wall_cell_size} 0);
-  //   radius0_Inner #eval {$A - 1*$wall_cell_size};
+  //   p1 (0 #eval {$y_interface + $wall_tan_cell_size} 0);
+  //   radius0_Inner #eval {$A - 1*$wall_tan_cell_size};
   //   radius1_Inner $radius0_Inner;
   //   radius0_Outer 1e6;
   //   radius1_Outer $radius0_Outer;
   // }
-  cone1
-  {
-    // additionalRefinementLevels 1;
-    cellSize #eval {2*$wall_cell_size};
-    type cone;
-    p0 (0 #eval {$B - 2*$bulk_cell_size} 0);
-    p1 (0 1e6 0);
-    radius0 1e6;
-    radius1 1e6;
-  }
+  // cone1
+  // {
+  //   // additionalRefinementLevels 1;
+  //   cellSize #eval {$wall_tan_cell_size};
+  //   type cone;
+  //   p0 (0 #eval {$B - 3*$outlet_radius} 0);
+  //   p1 (0 1e6 0);
+  //   radius0 1e6;
+  //   radius1 1e6;
+  // }
   // cone2
   // {
   //   // additionalRefinementLevels $N;
-  //   cellSize #eval {$wall_cell_size};
+  //   cellSize #eval {$wall_tan_cell_size};
   //   type cone;
-  //   p0 (0 #eval {$B - 2*$wall_cell_size} 0);
+  //   p0 (0 #eval {$B - 2*$wall_tan_cell_size} 0);
   //   p1 (0 1e6 0);
   //   radius0 1e6;
   //   radius1 1e6;
@@ -135,7 +141,7 @@ localRefinement
   // axisLine
   // {
   //   type line;
-  //   cellSize $wall_cell_size;
+  //   cellSize $wall_tan_cell_size;
   //   p0 (0 -1e6 0);
   //   p1 (0 1e6 0);
   //   // refinementThickness 0.02;
