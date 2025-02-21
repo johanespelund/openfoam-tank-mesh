@@ -193,7 +193,7 @@ class Tank(ABC):
                 y -= 0.01 * dy
 
                 f.write(f"normal_{angle}_deg\n{{\n")
-                f.write("\ttype uniform;\n")
+                f.write("\ttype lineUniform;\n")
                 f.write("\tnPoints 200;\n")
                 f.write("\taxis distance;\n")
                 start = f"\t( {x:.6f} {y:.6f} 0 )"
