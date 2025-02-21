@@ -74,7 +74,7 @@ localRefinement
   outlet
   {
     // additionalRefinementLevels 3;
-    cellSize #eval {min($wall_tan_cell_size, 0.5*$outlet_radius)};
+    cellSize $wall_tan_cell_size;
     type box;
     centre (0 $B  0);
     lengthX #eval {3*$outlet_radius};
