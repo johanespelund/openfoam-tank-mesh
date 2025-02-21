@@ -152,7 +152,6 @@ def run(mesh: "TankMesh.TankMesh") -> None:
     swall = add_surface(cl_wall)
 
     N_2_3 = get_N_outlet(mesh)
-    print(f"{x7=}, {lc=}, {N_2_3=}")
     N_1_7 = closest_odd(x7 / lc) + 2
 
     y = np.linspace(y_outlet, y4)
@@ -319,12 +318,14 @@ def run(mesh: "TankMesh.TankMesh") -> None:
 
 
 def closest_odd(n: float) -> int:
+    if n < 2:
+        return 3
     return int(n) // 2 * 2 + 1
 
 
 def get_N_outlet(mesh: "TankMesh.TankMesh") -> int:
     if mesh.wall_tan_cell_size >= mesh.outlet_radius:
-        return 2
+        return 3
     else:
         return closest_odd(np.ceil(mesh.outlet_radius / mesh.wall_tan_cell_size))
 
@@ -369,24 +370,15 @@ def get_corner_coords(mesh: "TankMesh.TankMesh") -> tuple[float, float]:
     A -= mesh.t_BL
     B -= mesh.t_BL
 
-    print(f"{A=}, {B=}, {C=}")
-
     def r_ellipse(y: float) -> float:
         if y > C / 2:
-            print(f"1 {y=}, {C=}")
-            print(f"{1 - (y - C / 2) ** 2 / B**2=}")
             return float(A * np.sqrt(1 - (y - C / 2) ** 2 / B**2))
         elif y > -C / 2:
-            print(f"2 {y=}, {C=}")
             return A
         else:
-            print(f"3 {y=}, {C=}")
             return float(A * np.sqrt(1 - (y + C / 2) ** 2 / B**2))
 
-    print(f"{mesh.tank.y_interface=}")
     y = mesh.tank.y_interface + mesh.t_BL
-    print(f"{y=}")
-    print(f"{r_ellipse(y)=}")
     return r_ellipse(y), y
 
 
