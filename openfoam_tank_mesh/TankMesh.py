@@ -236,6 +236,8 @@ class TankMesh(ABC):
         self.run_command("rm -r 0; mv 0.temp 0")
         self.run_openfoam_utility("topoSet", "topoSetDict.pipe2outlet")
         self.run_openfoam_utility("createPatch -overwrite", "createPatchDict.pipe2outlet")
+        self.y_outlet = self.tank.y2 - 2 * self.outlet_radius
+        self.write_mesh_parameters()
 
     def extrude_outlet(self, length: float) -> None:
         n_layers = length / self.wall_tan_cell_size
@@ -243,6 +245,8 @@ class TankMesh(ABC):
         self.sed("nLayers.*;", f"nLayers {n_layers};", dict_path)
         self.sed("thickness.*;", f"thickness {length};", dict_path)
         self.run_openfoam_utility("extrudeMesh", "extrudeMeshDict.outlet")
+        self.y_outlet += length
+        self.write_mesh_parameters()
 
     def cfMesh(self, nLayers: int = 0) -> None:
         """
