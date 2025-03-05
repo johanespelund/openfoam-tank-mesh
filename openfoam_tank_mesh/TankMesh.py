@@ -136,6 +136,7 @@ class TankMesh(ABC):
             if return_exception:
                 return exception
             rprint(exception)
+            rprint(result.stderr.decode())
             if self.debug:
                 rprint(result.stdout.decode())
             raise CommandFailed(command)
