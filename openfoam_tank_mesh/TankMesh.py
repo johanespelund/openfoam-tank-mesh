@@ -237,6 +237,13 @@ class TankMesh(ABC):
         self.run_openfoam_utility("topoSet", "topoSetDict.pipe2outlet")
         self.run_openfoam_utility("createPatch -overwrite", "createPatchDict.pipe2outlet")
 
+    def extrude_outlet(self, length: float) -> None:
+        n_layers = length / self.wall_tan_cell_size
+        dict_path = self.dict("extrudeMeshDict.outlet")
+        self.sed("nLayers.*;", f"nLayers {n_layers};", dict_path)
+        self.sed("thickness.*;", f"thickness {length};", dict_path)
+        self.run_openfoam_utility("extrudeMesh", "extrudeMeshDict.outlet")
+
     def cfMesh(self, nLayers: int = 0) -> None:
         """
         Use cfMesh to create a 3D mesh.
