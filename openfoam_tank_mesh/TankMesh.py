@@ -241,7 +241,7 @@ class TankMesh(ABC):
         self.write_mesh_parameters()
 
     def extrude_outlet(self, length: float) -> None:
-        n_layers = length / self.wall_tan_cell_size
+        n_layers = int(length / self.wall_tan_cell_size)
         dict_path = self.dict("extrudeMeshDict.outlet")
         self.sed("nLayers.*;", f"nLayers {n_layers};", dict_path)
         self.sed("thickness.*;", f"thickness {length};", dict_path)
