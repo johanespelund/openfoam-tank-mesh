@@ -97,6 +97,13 @@ class NASA1m3Mesh(TankMesh):
         """
         return 0
 
+    def Q_outlet_pipe(self) -> float:
+        """
+        Return heat loss from the outlet pipe.
+        For NASA1m3, we only use average heat flux, so it is set to 0.
+        """
+        return 0
+
     def Q_liquid(self) -> float:
         """
         Liquid surface heat transfer, sum of insulation and parasitic,
