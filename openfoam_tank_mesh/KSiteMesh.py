@@ -16,6 +16,7 @@ class KSiteMesh(TankMesh):
             outlet_radius=input_parameters["outlet_radius"],
         )
         super().__init__(tank=self.tank, input_parameters=input_parameters)
+        self.multi_region = True
 
         if self.tank.fill_level < 0.49:
             raise NotImplementedError("Only fill level of 0.49 is supported.")

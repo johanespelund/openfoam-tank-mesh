@@ -189,8 +189,8 @@ class Tank(ABC):
                 dx, dy = n * length
                 x_end, y_end = x + dx, y + dy
                 # Move the start point slightly outside the tank (1% of length)
-                x -= 0.01 * dx
-                y -= 0.01 * dy
+                x += 1e-3 * dx
+                y += 1e-3 * dy
 
                 f.write(f"normal_{angle}_deg\n{{\n")
                 f.write("\ttype lineCellFace;\n")

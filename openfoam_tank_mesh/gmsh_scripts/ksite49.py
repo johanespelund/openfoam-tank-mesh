@@ -102,7 +102,7 @@ def run(mesh: KSiteMesh.KSiteMesh) -> None:
     N_2_3 = get_N_outlet(mesh)
     N_1_7 = closest_odd(x7 / lc) + 2
 
-    L_9_12 = max(mesh.t_BL + 2 * mesh.wall_tan_cell_size, 2 * mesh.tank.outlet_radius) - mesh.t_BL
+    L_9_12 = max(mesh.t_BL + 2 * mesh.wall_tan_cell_size, mesh.internal_outlet) - mesh.t_BL
     N_9_12 = closest_odd(L_9_12 / lc)
 
     gmsh.model.geo.mesh.setTransfiniteCurve(lines["9_2"], n_BL, "Progression", -r_BL)
@@ -375,10 +375,10 @@ def generate_points_and_lines(mesh: KSiteMesh.KSiteMesh) -> tuple[dict[str, int]
     x11, y11 = 0, y_bl
     p["11"] = add_point(x11, y11, z0, lc)
 
-    x12, y12 = 0, y_outlet - max(t_BL + 2 * mesh.wall_tan_cell_size, 2 * r_outlet)
+    x12, y12 = 0, y_outlet - max(t_BL + 2 * mesh.wall_tan_cell_size, mesh.internal_outlet)
     p["12"] = add_point(x12, y12, z0, lc)
 
-    x13, y13 = r_outlet, y_outlet - max(t_BL + 2 * mesh.wall_tan_cell_size, 2 * r_outlet)
+    x13, y13 = r_outlet, y_outlet - max(t_BL + 2 * mesh.wall_tan_cell_size, mesh.internal_outlet)
     p["13"] = add_point(x13, y13, z0, lc)
 
     # Add lines

@@ -41,9 +41,10 @@ class TankMesh(ABC):
         self.bulk_cell_size: float = 0  # Bulk cell size
         self.wall_cell_size: float = 0  # Wall cell size
         self.wall_tan_cell_size: float = 0  # Wall tangential cell size
-        self.internal_outlet: bool = False  # Create internal outlet
+        self.internal_outlet: float = 0  # Create internal outlet
         self.debug: bool = False
         self.tri_bulk: bool = False  # Use triangle cells for bulk mesh
+        self.multi_region: bool = False  # Use multiple regions
 
         # Default parameters (can be overwritten by input_parameters)
         self.r_BL: float = 1.1  # Boundary layer growth rate
@@ -110,6 +111,9 @@ class TankMesh(ABC):
         with open(self.parameters_path, "w") as f:
             for key, value in self.__dict__.items():
                 if type(value) in [int, float, str]:
+                    f.write(f"{key} {value};\n")
+            for key, value in self.tank.__dict__.items():
+                if key not in self.__dict__ and type(value) in [int, float, str]:
                     f.write(f"{key} {value};\n")
         self.run_command(f"cp {self.parameters_path} system/meshdata")
 
@@ -216,6 +220,7 @@ class TankMesh(ABC):
         self.sed("gas_to_metal", "walls", "constant/polyMesh/boundary")
         self.sed("mappedWall", "wall", "constant/polyMesh/boundary")
         self.run_command("rm -f 0/cellToRegion")
+        self.multi_region = False
 
     def add_wall(self, wall_thickness: float, n_layers: int) -> None:
         """
@@ -229,6 +234,7 @@ class TankMesh(ABC):
         self.run_openfoam_utility("topoSet", topo_set_dict)
         self.run_command("splitMeshRegions -cellZonesOnly -overwrite")
         self.sed("pipe", "outlet", "constant/metal/polyMesh/boundary")
+        self.multi_region = True
 
     def create_internal_outlet(self) -> None:
         self.run_openfoam_utility("topoSet", "topoSetDict.subsetMesh")
@@ -237,7 +243,7 @@ class TankMesh(ABC):
         self.run_command("rm -r 0; mv 0.temp 0")
         self.run_openfoam_utility("topoSet", "topoSetDict.pipe2outlet")
         self.run_openfoam_utility("createPatch -overwrite", "createPatchDict.pipe2outlet")
-        self.y_outlet = self.tank.y2 - 2 * self.outlet_radius
+        self.y_outlet = self.tank.y2 - self.internal_outlet
         self.write_mesh_parameters()
 
     def extrude_outlet(self, length: float) -> None:
@@ -245,7 +251,8 @@ class TankMesh(ABC):
         dict_path = self.dict("extrudeMeshDict.outlet")
         self.sed("nLayers.*;", f"nLayers {n_layers};", dict_path)
         self.sed("thickness.*;", f"thickness {length};", dict_path)
-        self.run_openfoam_utility("extrudeMesh", "extrudeMeshDict.outlet")
+        region = "gas" if self.multi_region else "region0"
+        self.run_openfoam_utility(f"extrudeMesh -region {region}", "extrudeMeshDict.outlet")
         self.y_outlet += length
         self.write_mesh_parameters()
 

@@ -95,10 +95,10 @@ def run(mesh: "TankMesh.TankMesh") -> None:
     x11, y11 = 0, y_bl
     p11 = add_point(x11, y11, z0, lc)
 
-    x12, y12 = 0, y_outlet - max(t_BL + 2 * mesh.wall_tan_cell_size, 2 * r_outlet)
+    x12, y12 = 0, y_outlet - max(t_BL + 2 * mesh.wall_tan_cell_size, mesh.internal_outlet)
     p12 = add_point(x12, y12, z0, lc)
 
-    x13, y13 = r_outlet, y_outlet - max(t_BL + 2 * mesh.wall_tan_cell_size, 2 * r_outlet)
+    x13, y13 = r_outlet, y_outlet - max(t_BL + 2 * mesh.wall_tan_cell_size, mesh.internal_outlet)
     p13 = add_point(x13, y13, z0, lc)
 
     # Add lines
@@ -180,7 +180,7 @@ def run(mesh: "TankMesh.TankMesh") -> None:
     # gmsh.model.geo.mesh.setTransfiniteCurve(l_10_6, n_BL, "Progression", -r_BL)
     # gmsh.model.geo.mesh.setTransfiniteCurve(l_10_4, n_BL, "Progression", -r_BL)
 
-    L_9_12 = max(mesh.t_BL + 2 * mesh.wall_tan_cell_size, 2 * mesh.tank.outlet_radius) - mesh.t_BL
+    L_9_12 = max(mesh.t_BL + 2 * mesh.wall_tan_cell_size, mesh.internal_outlet) - mesh.t_BL
     N_9_12 = closest_odd(L_9_12 / lc)
     gmsh.model.geo.mesh.setTransfiniteCurve(l_12_9, N_9_12)
     gmsh.model.geo.mesh.setTransfiniteCurve(l_8_13, N_9_12)
