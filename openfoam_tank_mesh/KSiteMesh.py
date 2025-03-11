@@ -101,15 +101,15 @@ class KSiteMesh(TankMesh):
         Return parasitic heat loss for the tank,
         mainly support and plumbing. Exclude the heat loss from the outlet pipe.
         """
-        return 6.89 - 3.31
+        return 6.89 - 3.194 / 2
 
     def Q_outlet_pipe(self) -> float:
         """
         Return the heat loss from the outlet pipe.
-        Total heat loss from plumbing and ducts are 6.62 W,
+        Total heat loss from plumbing and ducts are 3.194 W,
         assume here that 50% of the heat loss is from the outlet pipe.
         """
-        return 3.31
+        return 3.194 / 2
 
     def Q_liquid(self) -> float:
         """
