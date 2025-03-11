@@ -112,6 +112,15 @@ class Tank(ABC):
         integrand = lambda y: np.pi * r(y) ** 2
         return float(spi.quad(integrand, y1, y2)[0])
 
+    def get_volume_center(self, y1: float, y2: float) -> float:
+        """
+        Get the volume between y1 and y2, where y1 < y2
+        """
+        r = lambda y: self.get_radius(y)
+        V = self.get_partial_volume(y1, y2)
+        integrand = lambda y: np.pi * r(y) ** 2 * y
+        return float(spi.quad(integrand, y1, y2)[0]) / V
+
     def get_partial_area(self, y1: float, y2: float) -> float:
         """
         Get the area between y1 and y2, where y1 < y2
