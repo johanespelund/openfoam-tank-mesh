@@ -197,8 +197,8 @@ def generate_2D_internal_outlet_stl(mesh: "TankMesh.TankMesh") -> None:
     x_mid = mesh.tank.get_radius(y_mid)
 
     points = [
-        add_point(0, mesh.tank.y_outlet - mesh.outlet_radius, 0, lc),
-        add_point(mesh.outlet_radius, mesh.tank.y_outlet - mesh.outlet_radius, 0, lc),
+        add_point(0, mesh.tank.y_outlet - mesh.internal_outlet, 0, lc),
+        add_point(mesh.outlet_radius, mesh.tank.y_outlet - mesh.internal_outlet, 0, lc),
         add_point(mesh.outlet_radius, mesh.tank.y_outlet, 0, lc),
         add_point(x_mid, y_mid, 0, lc),
         add_point(mesh.tank.interface_radius, mesh.tank.y_interface, 0, lc),
@@ -288,8 +288,8 @@ def generate_3D_internal_outlet_stl(mesh: "TankMesh.TankMesh") -> None:
     x_mid = mesh.tank.get_radius(y_mid)
 
     points = [
-        add_point(0, mesh.tank.y_outlet - 2 * mesh.outlet_radius, 0, lc),
-        add_point(mesh.outlet_radius, mesh.tank.y_outlet - 2 * mesh.outlet_radius, 0, lc),
+        add_point(0, mesh.tank.y_outlet - mesh.internal_outlet, 0, lc),
+        add_point(mesh.outlet_radius, mesh.tank.y_outlet - mesh.internal_outlet, 0, lc),
         add_point(mesh.outlet_radius, mesh.tank.y_outlet, 0, lc),
         add_point(x_mid, y_mid, 0, lc),
         add_point(mesh.tank.interface_radius, mesh.tank.y_interface, 0, lc),

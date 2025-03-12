@@ -57,9 +57,17 @@ class KSiteMesh(TankMesh):
         self.run_command("splitMeshRegions -cellZonesOnly -overwrite")
         self.run_command("rm -r constant/polyMesh")
         self.sed("metal_outlet", "outlet", "constant/metal/polyMesh/boundary")
+        self.generate_flange_boundary()
         self.check_mesh(regions=["gas", "metal"])
 
         return None
+
+    def generate_flange_boundary(self) -> None:
+        """
+        On the metal region, create a boundary for the flange.
+        """
+        self.run_openfoam_utility("topoSet -region metal", "topoSetDict.createFlange")
+        self.run_openfoam_utility("createPatch -overwrite -region metal", "createPatchDict.createFlange")
 
     def generate_stl(self) -> None:
         """
@@ -96,13 +104,6 @@ class KSiteMesh(TankMesh):
         """
         return 2.97
 
-    def Q_parasitic(self) -> float:
-        """
-        Return parasitic heat loss for the tank,
-        mainly support and plumbing. Exclude the heat loss from the outlet pipe.
-        """
-        return 6.89 - 3.194 / 2
-
     def Q_outlet_pipe(self) -> float:
         """
         Return the heat loss from the outlet pipe.
@@ -110,6 +111,13 @@ class KSiteMesh(TankMesh):
         assume here that 50% of the heat loss is from the outlet pipe.
         """
         return 3.194 / 2
+
+    def Q_parasitic(self) -> float:
+        """
+        Return parasitic heat loss for the tank,
+        mainly support and plumbing. Exclude the heat loss from the outlet pipe.
+        """
+        return 6.89 - self.Q_outlet_pipe()
 
     def Q_liquid(self) -> float:
         """
