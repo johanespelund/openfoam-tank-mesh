@@ -7,7 +7,7 @@ from openfoam_tank_mesh import TankMesh
 
 
 def closest_odd(n: float) -> int:
-    return int(n) // 2 * 2 + 1
+    return max(3, int(n) // 2 * 2 + 1)
 
 
 def get_N_outlet(mesh: "TankMesh.TankMesh") -> int:

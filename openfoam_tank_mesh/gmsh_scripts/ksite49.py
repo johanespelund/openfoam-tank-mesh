@@ -100,10 +100,13 @@ def run(mesh: KSiteMesh.KSiteMesh) -> None:
     swall = add_surface(cl_wall)
 
     N_2_3 = get_N_outlet(mesh)
+    print_debug(mesh, f"N_2_3 = {N_2_3}")
     N_1_7 = closest_odd(x7 / lc) + 2
+    print_debug(mesh, f"N_1_7 = {N_1_7}")
 
     L_9_12 = max(mesh.t_BL + 2 * mesh.wall_tan_cell_size, mesh.internal_outlet) - mesh.t_BL
     N_9_12 = closest_odd(L_9_12 / lc)
+    print_debug(mesh, f"N_9_12 = {N_9_12}")
 
     gmsh.model.geo.mesh.setTransfiniteCurve(lines["9_2"], n_BL, "Progression", -r_BL)
     gmsh.model.geo.mesh.setTransfiniteCurve(lines["2_3"], N_2_3)
@@ -123,6 +126,7 @@ def run(mesh: KSiteMesh.KSiteMesh) -> None:
         x = np.array([tank.get_radius(yi) for yi in y])
         L_3_4 = np.sum([np.sqrt((x[i + 1] - x[i]) ** 2 + (y[i + 1] - y[i]) ** 2) for i in range(len(y) - 1)])
         N_3_4 = closest_odd(L_3_4 / lc) + 2
+        print_debug(mesh, f"L_3_4 = {L_3_4}")
         gmsh.model.geo.mesh.setTransfiniteCurve(lines["3_4"], N_3_4)
         gmsh.model.geo.mesh.setTransfiniteCurve(lines["3_4w"], N_3_4)
         gmsh.model.geo.mesh.setTransfiniteCurve(lines["8_10"], N_3_4)
@@ -136,6 +140,7 @@ def run(mesh: KSiteMesh.KSiteMesh) -> None:
             N_6_5 += 1
         N_6_5 -= 0
         N_5_4 = n_BL - N_6_5 + 1
+        print_debug(mesh, f"N_6_5 = {N_6_5}")
         gmsh.model.geo.mesh.setTransfiniteCurve(lines["5B_10"], N_5_4, "Progression", r_BL)
         gmsh.model.geo.mesh.setTransfiniteCurve(lines["4_5"], N_5_4, "Progression", -r_BL)
         gmsh.model.geo.mesh.setTransfiniteCurve(lines["4_5w"], N_5_4, "Progression", -r_BL)
