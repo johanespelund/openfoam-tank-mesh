@@ -19,31 +19,26 @@ FoamFile
 
 actions
 (
+ {
+   action new;
+   name flangeFaceSet;
+   patch walls;
+   type faceSet;
+   source  patchToFace;
+ }
 
-{
-  action new;
-  name outletFaceSet;
-  type faceSet;
-  source patchToFace;
-  sourceInfo
-  {
-    patch pipe_temp;
-  }
-}
-
-{
-  action subset;
-  name outletFaceSet;
-  type faceSet;
-  source normalToFace;
-  sourceInfo
-  {
-    normal (0 1 0);
-    cos 0.1;
-  }
-}
-
-
+ {
+   action subset;
+   name flangeFaceSet;
+   source cylinderToFace;
+   sourceInfo
+     {
+       p1      (0 -1e6 0);
+       p2      (0 1e6 0);
+       radius  0.355;
+     }
+   type faceSet;
+ }
 );
 
 // ************************************************************************* //

@@ -262,6 +262,7 @@ class TankMesh(ABC):
         """
 
         self.generate_stl()
+        self.run_command("rm -rf constant/polyMesh constant/metal/polyMesh constant/gas/polyMesh")
         self.run_command(f"cp {self.dict_path}/meshDict system/meshDict")
         self.sed("nLayers.*;", f"nLayers {nLayers};", "system/meshDict")
         self.run_command("cartesianMesh")
@@ -284,7 +285,7 @@ class TankMesh(ABC):
 
         self.run_command(f"transformPoints -rotate-y -{self.wedge_angle / 2}")
 
-        # self.check_mesh()
+        self.check_mesh()
 
     def sed(self, orig: str, new: str, path: str) -> None | Exception:
         """

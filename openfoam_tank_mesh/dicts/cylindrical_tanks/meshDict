@@ -58,30 +58,31 @@ localRefinement
   pipe
   {
     // additionalRefinementLevels $N;
-    cellSize #eval {$wall_tan_cell_size};
+    cellSize #eval {min($wall_tan_cell_size, $outlet_radius/8)};
     // refinementThickness #eval {3*$wall_tan_cell_size};
   }
   outlet
   {
     // additionalRefinementLevels #eval {$N + 0};
-    cellSize $wall_tan_cell_size;
+    // cellSize $wall_tan_cell_size;
+    cellSize #eval {min($wall_tan_cell_size, $outlet_radius/8)};
     // refinementThickness $bulk_cell_size;
   }
 }
 //
   objectRefinements
 {
-  outlet
-  {
-    // additionalRefinementLevels 3;
-    cellSize $wall_tan_cell_size;
-    type box;
-    centre (0 $B  0);
-    lengthX #eval {3*$outlet_radius};
-    lengthY #eval {6*$outlet_radius};
-    lengthZ #eval {3*$outlet_radius};
-    // radius 0.04;
-  }
+  // outlet
+  // {
+  //   // additionalRefinementLevels 3;
+  //   cellSize $wall_tan_cell_size;
+  //   type box;
+  //   centre (0 $B  0);
+  //   lengthX #eval {3*$outlet_radius};
+  //   lengthY #eval {6*$outlet_radius};
+  //   lengthZ #eval {3*$outlet_radius};
+  //   // radius 0.04;
+  // }
   corner1
   {
     // additionalRefinementLevels 1;
