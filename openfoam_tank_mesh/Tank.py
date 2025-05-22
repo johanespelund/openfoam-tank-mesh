@@ -866,8 +866,6 @@ class TankProfile(Profile):
             if point[1] == self.y_interface:
                 i_bl = i
 
-
-
         profile_normals = self.get_profile_normals()
         # Make sure the normals at start and outlet are vertical
         profile_normals.append(np.array([0, -1]))
