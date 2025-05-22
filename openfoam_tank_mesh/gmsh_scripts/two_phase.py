@@ -4,7 +4,7 @@ import gmsh  # type: ignore[import-untyped]
 import numpy as np
 import matplotlib.pyplot as plt
 
-from openfoam_tank_mesh.Tank import EllipseArc, LineSegment, TankProfile, Profile
+from openfoam_tank_mesh.Profile import EllipseArc, LineSegment, TankProfile, Profile
 
 from openfoam_tank_mesh import KSiteMesh
 from openfoam_tank_mesh.gmsh_scripts.utilities import (
@@ -194,7 +194,7 @@ def generate_points_and_lines(
     }
 
     # Liquid phase points:
-    tank_profile = create_tank_profile(mesh)
+    tank_profile = mesh.tank #create_tank_profile(mesh)
     n_segments = len(tank_profile.segments)
 
     profile_points = tank_profile.get_mesh_points()

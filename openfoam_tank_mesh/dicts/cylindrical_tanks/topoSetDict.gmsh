@@ -15,73 +15,54 @@ FoamFile
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-#include "meshdata"
+#include "/home/johan/Documents/PhD/openfoam-tank-mesh/tests/parameters.KSiteMesh"
 
 actions
 (
   {
     action new;
-    name boundaries;
-    type faceSet;
-    source boundaryToFace;
-  }
-  {
-    action new;
-    name bottom;
+    name outlet;
     type faceSet;
     source boundaryToFace;
   }
   {
     action subset;
-    name bottom;
+    name outlet;
     type faceSet;
-    source normalToFace;
-    normal (0 -1 0);
-    cos 0.01;
+    source cylinderToFace;
+    sourceInfo
+    {
+      axis (0 1 0);
+      point1 (0 #calc "$y_outlet - 1e-6" 0);
+      point2 (0 #calc "$y_outlet + 1e-3" 0);
+      radius #calc "$outlet_radius + 1e-3";
+    }
   }
+  // {
+  //   action subset;
+  //   name interface;
+  //   type faceSet;
+  //   source normalToFace;
+  //   normal (0 -1 0);
+  //   cos 0.01;
+  // }
 
   {
     action new;
-    name wedge;
+    name wedgePos;
     type faceSet;
-    source boxToFace;
-    min (1e-6 -1e6 #eval {-0.001 -1e-6} );
-    max (1e6 1e6 #eval {-0.001 + 1e-6});
+    source normalToFace;
+    normal $wedge_pos_normal;
+    cos 0.01;
   }
-{
-    action add;
-    name wedge;
+  {
+    action new;
+    name wedgeNeg;
     type faceSet;
-    source boxToFace;
-    min (1e-6 -1e6 #eval {0.001 -1e-6} );
-    max (1e6 1e6 #eval {0.001 + 1e-6});
+    source normalToFace;
+    normal $wedge_neg_normal;
+    cos 0.01;
   }
-{
-  action new;
-  name axis;
-  type faceSet;
-  source boundaryToFace;
-}
-{
-  action subset;
-  name axis;
-  type faceSet;
-  source boxToFace;
-  min (-1e6 -1e6 -1e6);
-  max (1e-6 1e6 1e6);
-}
-
-
-  // {
-  //   action subset;
-  //   name wedge;
-  //   type faceSet;
-  //   source normalToFace;
-  //   normal (0 0 -1);
-  //   cos 0.1;
-  // }
-
-
   {
     action new;
     name walls;
@@ -93,7 +74,7 @@ actions
     name walls;
     type faceSet;
     source faceToFace;
-    sets (bottom wedge axis);
+    sets (outlet wedgePos wedgeNeg);
   }
 
 );

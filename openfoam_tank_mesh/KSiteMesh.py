@@ -2,24 +2,26 @@ from __future__ import annotations
 
 import pathlib
 
-from openfoam_tank_mesh.gmsh_scripts.ksite49 import run as run_gmsh49
-from openfoam_tank_mesh.gmsh_scripts.ksite83 import run as run_gmsh83
+from openfoam_tank_mesh.gmsh_scripts.two_phase import run as run_gmsh
 from openfoam_tank_mesh.gmsh_scripts.stl import generate_3D_internal_outlet_stl, generate_3D_stl
 from openfoam_tank_mesh.KSiteTank import KSiteTank
 from openfoam_tank_mesh.TankMesh import TankMesh
+from openfoam_tank_mesh.Profile import KSiteProfile
 
 
 class KSiteMesh(TankMesh):
     def __init__(self, input_parameters: dict) -> None:
-        self.tank: KSiteTank = KSiteTank(
+        self.tank = KSiteProfile(
             fill_level=input_parameters["fill_level"],
             outlet_radius=input_parameters["outlet_radius"],
+            bulk_cell_size=input_parameters["bulk_cell_size"],
+            wall_tan_cell_size=input_parameters["wall_tan_cell_size"],
+            wall_cell_size=input_parameters["wall_cell_size"],
+            r_BL=input_parameters["r_BL"],
+            internal_outlet=input_parameters["internal_outlet"],
         )
         super().__init__(tank=self.tank, input_parameters=input_parameters)
         self.multi_region = True
-
-        if self.tank.fill_level < 0.49:
-            raise NotImplementedError("Only fill level of 0.49 is supported.")
 
         return None
 
@@ -28,22 +30,23 @@ class KSiteMesh(TankMesh):
         Generate the mesh using Gmsh.
         """
 
-        if self.tank.fill_level < 0.52:
-            run_gmsh49(self)
-        else:
-            run_gmsh83(self)
-        self.run_command("gmshToFoam KSite49.msh")
+        run_gmsh(self)
+        self.run_command("gmshToFoam mesh.msh")
         self.run_command(f"transformPoints -rotate-y -{self.wedge_angle / 2}")
-        if self.revolve:
-            self.run_openfoam_utility(
-                "createPatch -overwrite",
-                "createPatchDict.gmshRevolve",
-            )
-        else:
-            self.run_openfoam_utility(
-                "createPatch -overwrite",
-                "createPatchDict.gmsh_wedge",
-            )
+        # if self.revolve:
+        #     self.run_openfoam_utility(
+        #         "createPatch -overwrite",
+        #         "createPatchDict.gmshRevolve",
+        #     )
+        self.run_openfoam_utility(
+            "topoSet",
+            "topoSetDict.gmsh",
+        )
+        self.run_openfoam_utility(
+            "createPatch -overwrite",
+            "createPatchDict.gmsh"
+        )
+        input("Press Enter to continue...")  # noqa: T201
 
     def generate(self) -> None:
         """
@@ -54,11 +57,12 @@ class KSiteMesh(TankMesh):
         if self.internal_outlet:
             self.create_internal_outlet()
         self.run_openfoam_utility("topoSet", "topoSetDict.createFinalFaceSets")
+        self.run_command("rm -rf 0/cellToRegion")
         self.run_command("splitMeshRegions -cellZonesOnly -overwrite")
-        self.run_command("rm -r constant/polyMesh")
-        self.sed("metal_outlet", "outlet", "constant/metal/polyMesh/boundary")
+        self.run_command("rm -rf constant/polyMesh")
+        # self.sed("metal_outlet", "outlet", "constant/metal/polyMesh/boundary")
         # self.generate_flange_boundary()
-        self.check_mesh(regions=["gas", "metal"])
+        self.check_mesh(regions=["gas", "liquid"])
 
         return None
 
@@ -132,3 +136,47 @@ class KSiteMesh(TankMesh):
         i.e. assume all parasitic heat is transferred to the gas.
         """
         return float(self.tank.area_gas * self.q_insulation())
+
+    def create_tank_profile(self) -> TP.TankProfile:
+        A = self.cap_height
+        B = self.cylinder_radius
+        C = self.cylinder_height
+
+        ellipse1 = EllipseArc(
+            name="ellipse1",
+            y_start=0,
+            y_end=A,
+            axis_major=B,
+            axis_minor=A,
+            length_scale=mesh.wall_tan_cell_size,
+        )
+
+        line1 = LineSegment(
+            name="line1",
+            y_start=A,
+            y_end=A + C,
+            r_start=B,
+            r_end=B,
+            length_scale=mesh.wall_tan_cell_size,
+        )
+
+        ellipse2 = EllipseArc(
+            name="ellipse2",
+            y_start=A,
+            y_end=2 * A,
+            axis_major=B,
+            axis_minor=A,
+            y_offset=C,
+            length_scale=mesh.wall_tan_cell_size,
+        )
+
+        tank_profile = TankProfile(
+            segments=[ellipse1, line1, ellipse2],
+            fill_level=0.49,  # mesh.tank.fill_level,
+            outlet_radius=mesh.tank.outlet_radius,
+            internal_outlet=mesh.internal_outlet,
+        )
+
+        tank_profile.insert_interface(tol=0.02, x_wall=mesh.wall_cell_size)
+
+        return tank_profile

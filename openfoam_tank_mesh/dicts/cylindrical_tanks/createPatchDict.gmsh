@@ -30,23 +30,32 @@ patches
    set walls;
  }
 {
-   name bottom;
+   name wedgePos;
    patchInfo
      {
-       type wall;
+       type wedge;
      }
    constructFrom set;
-   set bottom;
+   set wedgePos;
  }
 {
-   name wedge;
+   name wedgeNeg;
    patchInfo
      {
-       type symmetry;
+       type wedge;
      }
    constructFrom set;
-   set wedge;
+   set wedgeNeg;
  }
+{
+  name outlet;
+  patchInfo
+    {
+      type patch;
+    }
+  constructFrom set;
+  set outlet;
+}
  // {
  //    name defaultFaces;
  //    patchInfo
