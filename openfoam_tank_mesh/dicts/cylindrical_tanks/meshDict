@@ -58,14 +58,14 @@ localRefinement
   pipe
   {
     // additionalRefinementLevels $N;
-    cellSize #eval {min($wall_tan_cell_size, $outlet_radius/8)};
+    cellSize #eval {min($wall_tan_cell_size, $outlet_radius/4)};
     // refinementThickness #eval {3*$wall_tan_cell_size};
   }
   outlet
   {
     // additionalRefinementLevels #eval {$N + 0};
     // cellSize $wall_tan_cell_size;
-    cellSize #eval {min($wall_tan_cell_size, $outlet_radius/8)};
+    cellSize #eval {min($wall_tan_cell_size, $outlet_radius/4)};
     // refinementThickness $bulk_cell_size;
   }
 }

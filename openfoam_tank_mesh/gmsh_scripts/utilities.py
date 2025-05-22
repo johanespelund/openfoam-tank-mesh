@@ -12,9 +12,22 @@ def closest_odd(n: float) -> int:
 
 def get_N_outlet(mesh: "TankMesh.TankMesh") -> int:
     if mesh.wall_tan_cell_size >= mesh.outlet_radius:
-        return 2
+        return 3
     else:
-        return closest_odd(np.ceil(mesh.outlet_radius / mesh.wall_tan_cell_size))
+        temp = closest_odd(np.ceil(mesh.outlet_radius / mesh.wall_tan_cell_size) + 1)
+        return temp
+        # residual = abs(mesh.wall_tan_cell_size - mesh.outlet_radius / temp)
+        # print(f"{residual=}")
+        
+        # # increase N by 2:
+        # temp += 2
+        # residual2 = abs(mesh.wall_tan_cell_size - mesh.outlet_radius / temp)
+        # print(f"{residual2=}")
+
+        # return temp - 2
+
+
+
 
 
 def gmsh_setup() -> None:
@@ -108,7 +121,7 @@ def generate_stl2(mesh: "TankMesh.TankMesh") -> None:
     gmsh.model.geo.rotate(gmsh.model.getEntities(dim=2), 0, 0, 0, 0, 1, 0, -angle / 2)
     gmsh.model.geo.synchronize()
 
-    gmsh.model.mesh.generate(2)
+    # gmsh.model.mesh.generate(2)
 
     s = gmsh.model.getEntities(dim=2)
     add_physical_surface([0], "outlet", s)
