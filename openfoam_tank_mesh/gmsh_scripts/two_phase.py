@@ -603,6 +603,10 @@ def generate_points_and_lines(
     gmsh.model.geo.synchronize()
     gmsh.model.mesh.generate(2)
 
+    # We now want to extrude the wall mesh outwards to generate a new
+    # 2D mesh, which we call wall:
+    # TODO: Probably easier to just mesh it manually!
+
     surfaces: list[tuple[int, int]] = gmsh.model.getEntities(dim=2)
     print(surfaces)
     angle = 2 * np.pi * revolve / 360 if revolve else wedge_angle * np.pi / 180

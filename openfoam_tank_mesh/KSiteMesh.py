@@ -33,11 +33,6 @@ class KSiteMesh(TankMesh):
         run_gmsh(self)
         self.run_command("gmshToFoam mesh.msh")
         self.run_command(f"transformPoints -rotate-y -{self.wedge_angle / 2}")
-        # if self.revolve:
-        #     self.run_openfoam_utility(
-        #         "createPatch -overwrite",
-        #         "createPatchDict.gmshRevolve",
-        #     )
         self.run_openfoam_utility(
             "topoSet",
             "topoSetDict.gmsh",
@@ -46,7 +41,6 @@ class KSiteMesh(TankMesh):
             "createPatch -overwrite",
             "createPatchDict.gmsh"
         )
-        input("Press Enter to continue...")  # noqa: T201
 
     def generate(self) -> None:
         """
@@ -137,46 +131,3 @@ class KSiteMesh(TankMesh):
         """
         return float(self.tank.area_gas * self.q_insulation())
 
-    def create_tank_profile(self) -> TP.TankProfile:
-        A = self.cap_height
-        B = self.cylinder_radius
-        C = self.cylinder_height
-
-        ellipse1 = EllipseArc(
-            name="ellipse1",
-            y_start=0,
-            y_end=A,
-            axis_major=B,
-            axis_minor=A,
-            length_scale=mesh.wall_tan_cell_size,
-        )
-
-        line1 = LineSegment(
-            name="line1",
-            y_start=A,
-            y_end=A + C,
-            r_start=B,
-            r_end=B,
-            length_scale=mesh.wall_tan_cell_size,
-        )
-
-        ellipse2 = EllipseArc(
-            name="ellipse2",
-            y_start=A,
-            y_end=2 * A,
-            axis_major=B,
-            axis_minor=A,
-            y_offset=C,
-            length_scale=mesh.wall_tan_cell_size,
-        )
-
-        tank_profile = TankProfile(
-            segments=[ellipse1, line1, ellipse2],
-            fill_level=0.49,  # mesh.tank.fill_level,
-            outlet_radius=mesh.tank.outlet_radius,
-            internal_outlet=mesh.internal_outlet,
-        )
-
-        tank_profile.insert_interface(tol=0.02, x_wall=mesh.wall_cell_size)
-
-        return tank_profile
