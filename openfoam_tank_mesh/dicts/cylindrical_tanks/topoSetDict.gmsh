@@ -69,14 +69,28 @@ actions
     type faceSet;
     source boundaryToFace;
   }
+
   {
     action delete;
     name walls;
     type faceSet;
     source faceToFace;
-    sets (outlet wedgePos wedgeNeg);
+    set wedgeNeg;
   }
-
+  {
+    action delete;
+    name walls;
+    type faceSet;
+    source faceToFace;
+    set wedgePos;
+  }
+  {
+    action delete;
+    name walls;
+    type faceSet;
+    source faceToFace;
+    set outlet;
+  }
 );
 
 // ************************************************************************* //

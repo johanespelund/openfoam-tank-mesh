@@ -496,7 +496,7 @@ def generate_points_and_lines(
         p1 = outer_points[i]
         p2 = inner_points[i]
         l = find_line(p1, p2)
-        gmsh.model.geo.mesh.setTransfiniteCurve(l, tank_profile.N + 1, "Progression", 1.2)
+        gmsh.model.geo.mesh.setTransfiniteCurve(l, tank_profile.N + 1, "Progression", mesh.r_BL)
         # TODO: All of these lines are not defined actually!
 
     # Add wall tangential transfinite curves
@@ -543,11 +543,11 @@ def generate_points_and_lines(
     print(f"{tank_profile.n_upper_bl_segments=}")
     print(f"{tank_profile.n_lower_bl_segments=}")
     N_above = tank_profile.N + 1  # - tank_profile.n_upper_bl_segments
-    gmsh.model.geo.mesh.setTransfiniteCurve(above, N_above, "Progression", 1.2)
+    gmsh.model.geo.mesh.setTransfiniteCurve(above, N_above, "Progression", mesh.r_BL)
     print(f"above: {above=}, {N_above}")
 
     N_below = tank_profile.N + 1  # - tank_profile.n_lower_bl_segments
-    gmsh.model.geo.mesh.setTransfiniteCurve(below, N_below, "Progression", -1.2)
+    gmsh.model.geo.mesh.setTransfiniteCurve(below, N_below, "Progression", -mesh.r_BL)
     print(f"below: {below=}, {N_below}")
 
     gmsh.model.geo.synchronize()

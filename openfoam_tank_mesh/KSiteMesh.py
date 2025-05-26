@@ -32,7 +32,9 @@ class KSiteMesh(TankMesh):
 
         run_gmsh(self)
         self.run_command("gmshToFoam mesh.msh")
-        self.run_command(f"transformPoints -rotate-y -{self.wedge_angle / 2}")
+        self.run_command(f"transformPoints -rotate-y -{self.wedge_angle / 2}") #.org
+        # self.run_command(f"transformPoints \"Ry={-self.wedge_angle / 2}\"") #.com
+
         self.run_openfoam_utility(
             "topoSet",
             "topoSetDict.gmsh",
@@ -50,8 +52,9 @@ class KSiteMesh(TankMesh):
 
         if self.internal_outlet:
             self.create_internal_outlet()
-        self.run_openfoam_utility("topoSet", "topoSetDict.createFinalFaceSets")
+        # self.run_openfoam_utility("topoSet", "topoSetDict.createFinalFaceSets")
         self.run_command("rm -rf 0/cellToRegion")
+        self.run_command("collapseEdges -overwrite")
         self.run_command("splitMeshRegions -cellZonesOnly -overwrite")
         self.run_command("rm -rf constant/polyMesh")
         # self.sed("metal_outlet", "outlet", "constant/metal/polyMesh/boundary")

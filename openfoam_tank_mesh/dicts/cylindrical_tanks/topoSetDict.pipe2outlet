@@ -27,7 +27,7 @@ actions
   source patchToFace;
   sourceInfo
   {
-    patch pipe_temp;
+    patch outlet;
   }
 }
 
@@ -51,7 +51,7 @@ actions
   source patchToFace;
   sourceInfo
   {
-    patch pipe_temp;
+    patch outlet;
   }
 }
 
