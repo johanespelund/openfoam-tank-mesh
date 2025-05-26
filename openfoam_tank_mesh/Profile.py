@@ -657,9 +657,15 @@ class TankProfile(Profile):
 
         points += inner_points
 
+        tw = 2.08e-3
+        wall_points = [] # Points for the optional wall region, outer - n*tw
+        for i, point in enumerate(profile_points[:-1]):
+            wall_points.append(point - tw * profile_normals[i])
+
         points.append(np.array([0, self.y_interface - self.t_BL]))
         points.append(np.array([0, self.y_interface]))
         points.append(np.array([0, self.y_interface + self.t_BL]))
+        axis_points = [inner_points[0]] + points[-3:]
 
         # Add the outlet points
 
@@ -667,11 +673,18 @@ class TankProfile(Profile):
 
         points.append(np.array([0, y_int_outlet]))
         points.append(np.array([self.outlet_radius, y_int_outlet]))
+        internal_outlet_points = inner_points[-2:] + points[-2:]
+        axis_points.append(points[-2])
+        points += wall_points
 
         data = {str(i): p for i, p in enumerate(points)}
         data.update({
             "inner_points": inner_points,
             "outer_points": profile_points,
+            "wall_points": wall_points,
+            "outlet_points": inner_points[-2:] + profile_points[-2:][::-1],
+            "internal_outlet_points": internal_outlet_points,
+            "axis_points": axis_points,
             "i_bl_lower": i_bl_lower,
             "i_bl": i_bl,
             "i_bl_upper": i_bl_upper,

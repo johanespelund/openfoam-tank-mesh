@@ -323,6 +323,10 @@ def generate_3D_internal_outlet_stl(mesh: "TankMesh.TankMesh") -> None:
     #     recombine=True,
     # )
 
+    if revolve == 360:
+        angle /= 3
+        n_angle /= 3
+
     _ = gmsh.model.geo.revolve(
         [(1, line) for line in lines],
         0,
@@ -335,25 +339,41 @@ def generate_3D_internal_outlet_stl(mesh: "TankMesh.TankMesh") -> None:
         numElements=[n_angle],
         recombine=True,
     )
-
-    cl = add_curve_loop(lines)
-    cyclic_surface_pos = add_surface(cl)
-
-    _, cyclic_surface_neg = gmsh.model.geo.copy([(2, cyclic_surface_pos)])[0]
-    cyclic_surface_neg = gmsh.model.geo.rotate([(2, cyclic_surface_neg)], 0, 0, 0, 0, 1, 0, angle)
-
-    gmsh.model.geo.rotate(gmsh.model.getEntities(dim=2), 0, 0, 0, 0, 1, 0, -angle / 2)
     gmsh.model.geo.synchronize()
 
-    gmsh.model.mesh.generate(2)
+    if revolve == 360:
+        # gmsh.option.setNumber("Geometry.CopyMeshingMethod", 1)
+        surfaces = gmsh.model.getEntities(dim=2)
 
-    s = gmsh.model.getEntities(dim=2)
-    add_physical_surface([0], "outlet", s)
-    add_physical_surface([1], "pipe", s)
-    add_physical_surface([2, 3], "walls", s)
-    add_physical_surface([4], "bottom", s)
-    add_physical_surface([5], "cyclic_pos_gmsh", s)
-    add_physical_surface([6], "cyclic_neg_gmsh", s)
+        # Copy a and rotate:
+        for i in [1.5]:
+            copy1 = gmsh.model.geo.copy(surfaces)
+            print(copy1)
+            gmsh.model.geo.rotate(copy1, 3, 0, 0, 0, 1, 0, angle*i)
+            gmsh.model.geo.synchronize()
+
+
+    else:
+        cl = add_curve_loop(lines)
+        cyclic_surface_pos = add_surface(cl)
+
+        _, cyclic_surface_neg = gmsh.model.geo.copy([(2, cyclic_surface_pos)])[0]
+        cyclic_surface_neg = gmsh.model.geo.rotate([(2, cyclic_surface_neg)], 0, 0, 0, 0, 1, 0, angle)
+
+        gmsh.model.geo.rotate(gmsh.model.getEntities(dim=2), 0, 0, 0, 0, 1, 0, -angle / 2)
+        gmsh.model.geo.synchronize()
+
+
+        s = gmsh.model.getEntities(dim=2)
+        add_physical_surface([0], "outlet", s)
+        add_physical_surface([1], "pipe", s)
+        add_physical_surface([2, 3], "walls", s)
+        add_physical_surface([4], "bottom", s)
+        add_physical_surface([5], "cyclic_pos_gmsh", s)
+        add_physical_surface([6], "cyclic_neg_gmsh", s)
+
+    # gmsh.model.mesh.generate(2)
+
     # add_physical_surface([5], "extra", s)
 
     # for i in range(len(s)):
@@ -362,6 +382,11 @@ def generate_3D_internal_outlet_stl(mesh: "TankMesh.TankMesh") -> None:
     #     int_string = f"s_{ind:02d}"
     #     print(f"Adding physical surface {int_string}")
     #     add_physical_surface([ind], int_string, s)
+
+    # if revolve == 360:
+    #     angle *= 3
+    #     gmsh.model.mesh.affineTransform
+
 
     # Export to STL
     gmsh.option.setNumber("Mesh.StlOneSolidPerSurface", 2)
