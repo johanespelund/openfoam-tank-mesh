@@ -27,7 +27,7 @@ actions
   source patchToFace;
   sourceInfo
   {
-    patch outlet;
+    patch pipe_temp;
   }
 }
 
@@ -40,29 +40,6 @@ actions
   {
     normal (0 1 0);
     cos 0.1;
-  }
-}
-
-
-{
-  action new;
-  name pipeSet;
-  type faceSet;
-  source patchToFace;
-  sourceInfo
-  {
-    patch outlet;
-  }
-}
-
-{
-  action delete;
-  name pipeSet;
-  type faceSet;
-  source faceToFace;
-  sourceInfo
-  {
-    set outletFaceSet;
   }
 }
 

@@ -10,9 +10,6 @@ from rich.table import Table
 
 from openfoam_tank_mesh.exceptions import CommandFailed, MissingParameter, OpenFoamNotLoaded
 from openfoam_tank_mesh.Tank import ABC, Tank, abstractmethod
-from openfoam_tank_mesh.Profile import TankProfile
-
-import numpy as np
 
 
 class TankMesh(ABC):
@@ -28,8 +25,8 @@ class TankMesh(ABC):
         "debug",
     ]
 
-    def __init__(self, tank: TankProfile, input_parameters: dict) -> None:
-        self.tank: TankProfile = tank
+    def __init__(self, tank: Tank, input_parameters: dict) -> None:
+        self.tank = tank
 
         self.name = tank.name
         self.fill_level = tank.fill_level
@@ -53,8 +50,6 @@ class TankMesh(ABC):
         self.r_BL: float = 1.1  # Boundary layer growth rate
         self.revolve: float = 0  # Revolution angle (0 means 2D)
         self.wedge_angle: float = 1  # Revolution angle if 2D
-        self.wedge_pos_normal: list = [ 0, 0, 0]
-        self.wedge_neg_normal: list = [ 0, 0, 0]
         self.surface_file = f"{self.name}.stl"
         self.non_coupled_cyclic = False
         self.patch_name_pos = "wedge_pos"
@@ -65,7 +60,6 @@ class TankMesh(ABC):
         self.set_parameters(input_parameters)
         self.n_BL, self.t_BL, self.e_BL = self.calculate_boundary_layer()
         self.wedge_angle = self.revolve if self.revolve else self.wedge_angle
-        self.calc_wedge_normal()
         super().__init__()
         self.write_mesh_parameters()
 
@@ -118,8 +112,6 @@ class TankMesh(ABC):
             for key, value in self.__dict__.items():
                 if type(value) in [int, float, str]:
                     f.write(f"{key} {value};\n")
-                elif type(value) in [list]:
-                    f.write(f"{key } ({' '.join([f'{v: .6g}' for v in value])});\n")
             for key, value in self.tank.__dict__.items():
                 if key not in self.__dict__ and type(value) in [int, float, str]:
                     f.write(f"{key} {value};\n")
@@ -151,7 +143,7 @@ class TankMesh(ABC):
             rprint(result.stderr.decode())
             if self.debug:
                 rprint(result.stdout.decode())
-            raise CommandFailed(command, result.stderr.decode())
+            raise CommandFailed(command)
 
         if self.debug:
             rprint(result.stdout.decode())
@@ -245,14 +237,13 @@ class TankMesh(ABC):
         self.multi_region = True
 
     def create_internal_outlet(self) -> None:
-        self.run_command("rm -rf 0/cellToRegion")
         self.run_openfoam_utility("topoSet", "topoSetDict.subsetMesh")
         self.run_command("cp -r 0 0.temp")
-        self.run_command("subsetMesh cellsToKeep -overwrite -patch outlet")
+        self.run_command("subsetMesh cellsToKeep -overwrite -patch pipe_temp")
         self.run_command("rm -r 0; mv 0.temp 0")
         self.run_openfoam_utility("topoSet", "topoSetDict.pipe2outlet")
         self.run_openfoam_utility("createPatch -overwrite", "createPatchDict.pipe2outlet")
-        # self.y_outlet = self.tank.y2 - self.internal_outlet
+        self.y_outlet = self.tank.y2 - self.internal_outlet
         self.write_mesh_parameters()
 
     def extrude_outlet(self, length: float) -> None:
@@ -314,13 +305,3 @@ class TankMesh(ABC):
         rprint("    [yellow]Adding createNonConformalCouplesDict to system/[/yellow]")
         rprint("    [yellow]Load OpenFOAM 11 and run the following command:[/yellow]")
         rprint("    [bold yellow]createNonConformalCouples -overwrite[/yellow bold]\n")
-
-    def calc_wedge_normal(self):
-        """
-        Calculate normal based on wedge angle (y-axis).
-        """
-        alpha = np.radians(self.wedge_angle)
-        dx = np.cos(alpha)
-        dz = np.sin(alpha)
-        self.wedge_pos_normal =  [-dz, 0, dx]
-        self.wedge_neg_normal =  [-dz, 0, -dx]

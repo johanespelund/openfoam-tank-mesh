@@ -15,7 +15,7 @@ FoamFile
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-pointSync   false;
+pointSync   true;
 
 patches
 (
@@ -26,8 +26,7 @@ patches
      {
        type wall;
      }
-   constructFrom set;
-    set pipeSet;
+   constructFrom patches;
     patches
       (
         pipe_temp

@@ -15,82 +15,87 @@ FoamFile
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-#include "/home/johan/Documents/PhD/openfoam-tank-mesh/tests/parameters.KSiteMesh"
+#include "meshdata"
 
 actions
 (
   {
     action new;
-    name outlet;
+    name boundaries;
+    type faceSet;
+    source boundaryToFace;
+  }
+  {
+    action new;
+    name bottom;
     type faceSet;
     source boundaryToFace;
   }
   {
     action subset;
-    name outlet;
+    name bottom;
     type faceSet;
-    source cylinderToFace;
-    sourceInfo
-    {
-      axis (0 1 0);
-      point1 (0 #calc "$y_outlet - 1e-6" 0);
-      point2 (0 #calc "$y_outlet + 1e-3" 0);
-      radius #calc "$outlet_radius + 1e-3";
-    }
+    source normalToFace;
+    normal (0 -1 0);
+    cos 0.01;
   }
-  // {
-  //   action subset;
-  //   name interface;
-  //   type faceSet;
-  //   source normalToFace;
-  //   normal (0 -1 0);
-  //   cos 0.01;
-  // }
 
   {
     action new;
-    name wedgePos;
+    name wedge;
     type faceSet;
-    source normalToFace;
-    normal $wedge_pos_normal;
-    cos 0.01;
+    source boxToFace;
+    min (1e-6 -1e6 #eval {-0.001 -1e-6} );
+    max (1e6 1e6 #eval {-0.001 + 1e-6});
   }
-  {
-    action new;
-    name wedgeNeg;
+{
+    action add;
+    name wedge;
     type faceSet;
-    source normalToFace;
-    normal $wedge_neg_normal;
-    cos 0.01;
+    source boxToFace;
+    min (1e-6 -1e6 #eval {0.001 -1e-6} );
+    max (1e6 1e6 #eval {0.001 + 1e-6});
   }
+{
+  action new;
+  name axis;
+  type faceSet;
+  source boundaryToFace;
+}
+{
+  action subset;
+  name axis;
+  type faceSet;
+  source boxToFace;
+  min (-1e6 -1e6 -1e6);
+  max (1e-6 1e6 1e6);
+}
+
+
+  // {
+  //   action subset;
+  //   name wedge;
+  //   type faceSet;
+  //   source normalToFace;
+  //   normal (0 0 -1);
+  //   cos 0.1;
+  // }
+
+
   {
     action new;
     name walls;
     type faceSet;
     source boundaryToFace;
   }
+  {
+    action delete;
+    name walls;
+    type faceSet;
+    source faceToFace;
+    sets (bottom wedge axis);
+  }
 
-  {
-    action delete;
-    name walls;
-    type faceSet;
-    source faceToFace;
-    set wedgeNeg;
-  }
-  {
-    action delete;
-    name walls;
-    type faceSet;
-    source faceToFace;
-    set wedgePos;
-  }
-  {
-    action delete;
-    name walls;
-    type faceSet;
-    source faceToFace;
-    set outlet;
-  }
 );
 
 // ************************************************************************* //

@@ -2,26 +2,24 @@ from __future__ import annotations
 
 import pathlib
 
-from openfoam_tank_mesh.gmsh_scripts.two_phase import run as run_gmsh
+from openfoam_tank_mesh.gmsh_scripts.ksite49 import run as run_gmsh49
+from openfoam_tank_mesh.gmsh_scripts.ksite83 import run as run_gmsh83
 from openfoam_tank_mesh.gmsh_scripts.stl import generate_3D_internal_outlet_stl, generate_3D_stl
 from openfoam_tank_mesh.KSiteTank import KSiteTank
 from openfoam_tank_mesh.TankMesh import TankMesh
-from openfoam_tank_mesh.Profile import KSiteProfile
 
 
 class KSiteMesh(TankMesh):
     def __init__(self, input_parameters: dict) -> None:
-        self.tank = KSiteProfile(
+        self.tank: KSiteTank = KSiteTank(
             fill_level=input_parameters["fill_level"],
             outlet_radius=input_parameters["outlet_radius"],
-            bulk_cell_size=input_parameters["bulk_cell_size"],
-            wall_tan_cell_size=input_parameters["wall_tan_cell_size"],
-            wall_cell_size=input_parameters["wall_cell_size"],
-            r_BL=input_parameters["r_BL"],
-            internal_outlet=input_parameters["internal_outlet"],
         )
         super().__init__(tank=self.tank, input_parameters=input_parameters)
         self.multi_region = True
+
+        if self.tank.fill_level < 0.49:
+            raise NotImplementedError("Only fill level of 0.49 is supported.")
 
         return None
 
@@ -30,19 +28,22 @@ class KSiteMesh(TankMesh):
         Generate the mesh using Gmsh.
         """
 
-        run_gmsh(self)
-        self.run_command("gmshToFoam mesh.msh")
-        self.run_command(f"transformPoints -rotate-y -{self.wedge_angle / 2}") #.org
-        # self.run_command(f"transformPoints \"Ry={-self.wedge_angle / 2}\"") #.com
-
-        self.run_openfoam_utility(
-            "topoSet",
-            "topoSetDict.gmsh",
-        )
-        self.run_openfoam_utility(
-            "createPatch -overwrite",
-            "createPatchDict.gmsh"
-        )
+        if self.tank.fill_level < 0.52:
+            run_gmsh49(self)
+        else:
+            run_gmsh83(self)
+        self.run_command("gmshToFoam KSite49.msh")
+        self.run_command(f"transformPoints -rotate-y -{self.wedge_angle / 2}")
+        if self.revolve:
+            self.run_openfoam_utility(
+                "createPatch -overwrite",
+                "createPatchDict.gmshRevolve",
+            )
+        else:
+            self.run_openfoam_utility(
+                "createPatch -overwrite",
+                "createPatchDict.gmsh_wedge",
+            )
 
     def generate(self) -> None:
         """
@@ -52,14 +53,12 @@ class KSiteMesh(TankMesh):
 
         if self.internal_outlet:
             self.create_internal_outlet()
-        # self.run_openfoam_utility("topoSet", "topoSetDict.createFinalFaceSets")
-        self.run_command("rm -rf 0/cellToRegion")
-        self.run_command("collapseEdges -overwrite")
+        self.run_openfoam_utility("topoSet", "topoSetDict.createFinalFaceSets")
         self.run_command("splitMeshRegions -cellZonesOnly -overwrite")
-        self.run_command("rm -rf constant/polyMesh")
-        # self.sed("metal_outlet", "outlet", "constant/metal/polyMesh/boundary")
+        self.run_command("rm -r constant/polyMesh")
+        self.sed("metal_outlet", "outlet", "constant/metal/polyMesh/boundary")
         # self.generate_flange_boundary()
-        self.check_mesh(regions=["gas", "liquid"])
+        self.check_mesh(regions=["gas", "metal"])
 
         return None
 
@@ -133,4 +132,3 @@ class KSiteMesh(TankMesh):
         i.e. assume all parasitic heat is transferred to the gas.
         """
         return float(self.tank.area_gas * self.q_insulation())
-
