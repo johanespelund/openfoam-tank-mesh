@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 from openfoam_tank_mesh.Profile import EllipseArc, LineSegment, TankProfile, Profile
 
-from openfoam_tank_mesh import TwoPhaseMesh
+from openfoam_tank_mesh import KSiteMesh
 from openfoam_tank_mesh.gmsh_scripts.utilities import (
     add_curve_loop,
     add_ellipse,
@@ -60,6 +60,9 @@ def find_line(start, end, tol=1e-6):
     start = (start[0], start[1], 0)
     end = (end[0], end[1], 0)
     for line in lines:
+        # Get the start and end points of the line
+        # p1, p2 = gmsh.model.getValue(1, line[1], [])
+        # print(f"Line {line[1]}: ({p1}, {p2})")
         result = gmsh.model.getBoundary([line], oriented=True)
         assert len(result) == 2, "Line should have two points"
         i1 = result[0][1]
@@ -77,6 +80,7 @@ def find_line(start, end, tol=1e-6):
             return -line[1]
     print(f"Line not found: ({start}, {end})")
     return -1
+    # raise ValueError("Line not found")
 
 
 def sort_xy(points):
@@ -108,7 +112,7 @@ def sort_xy(points):
     return _points
 
 
-def run(mesh: TwoPhaseMesh.KSiteMesh) -> None:
+def run(mesh: KSiteMesh.KSiteMesh) -> None:
     tank = mesh.tank
     y_outlet = tank.y_outlet
     y_interface = tank.y_interface
@@ -131,6 +135,9 @@ def run(mesh: TwoPhaseMesh.KSiteMesh) -> None:
     gmsh.model.geo.synchronize()
     gmsh.option.setNumber("Mesh.MshFileVersion", 2.2)
     gmsh.write("mesh.msh")
+    # log = gmsh.logger.get()
+    # with open("log.gmsh", "w") as f:
+    #     f.writelines([line + "\n" for line in log])
 
     # Run the GUI
     if debug:
@@ -139,7 +146,7 @@ def run(mesh: TwoPhaseMesh.KSiteMesh) -> None:
 
 
 def generate_points_and_lines(
-    mesh: TwoPhaseMesh.KSiteMesh,
+    mesh: KSiteMesh.KSiteMesh,
 ) -> tuple[dict[str, int], dict[str, int]]:
     """
     Generate points and lines.
@@ -219,6 +226,20 @@ def generate_points_and_lines(
     wall_lines = []
 
     i = 0
+    # for _ in range(2):
+    #     for group in curve_groups:
+    #         for seg in curve_groups[group]:
+    #             if isinstance(seg, EllipseArc):
+    #                 lines[f"{i}-{i + 1}"] = add_ellipse(p[str(i)], origoGroup[group], majorPoint[group], p[str(i + 1)])
+    #             elif isinstance(seg, LineSegment):
+    #                 lines[f"{i}-{i + 1}"] = add_line(p[str(i)], p[str(i + 1)])
+    #             line_groups[group].append(lines[f"{i}-{i + 1}"])
+    #             i += 1
+    #     lines[f"{i}-{i + 1}"] = add_line(p[str(i)], p[str(i + 1)])
+    #     line_groups["outlet"].append(lines[f"{i}-{i + 1}"])
+    #     i += 2
+
+    # line_groups["internal_outlet"].append(line_groups["outlet"][-1])
 
     i = 0
     for point_group in [outer_points, inner_points, wall_points]:
@@ -268,6 +289,11 @@ def generate_points_and_lines(
         i1 = i
         i2 = (i + 1) % len(outlet_points)
 
+        # p1 = find_point(outlet_points[i1])
+        # p2 = find_point(outlet_points[i2])
+        # add_line(p1, p2)
+    # Create outlet line_
+
         p1 = find_point(internal_outlet_points[i1])
         p2 = find_point(internal_outlet_points[i2])
         add_line(p1, p2)
@@ -281,6 +307,36 @@ def generate_points_and_lines(
         p1 = find_point(axis_points[2 + i])
         p2 = find_point(inner_points[i_bl + i])
         add_line(p1, p2)
+
+
+    # for _ in range(2):
+    #     lines[f"{i}-{i + n_segments + 2}"] = add_line(p[str(i)], p[str(i + n_segments + 2)])
+    #     normal_lines.append(lines[f"{i}-{i + n_segments + 2}"])
+    #     i += 1
+
+    # p1 = n_segments + 2
+    # p2 = 2 * (n_segments + 2)
+    # lines[f"{p1}-{p2}"] = add_line(p[str(p1)], p[str(p2)])
+
+    # for _ in range(3):
+    #     p1 = p2
+    #     p2 = p1 + 1
+    #     lines[f"{p1}-{p2}"] = add_line(p[str(p1)], p[str(p2)])
+
+    # p1 = p2
+    # p2 = p1 + 1
+    # lines[f"{p1}-{p2}"] = add_line(p[str(p1)], p[str(p2)])
+    # line_groups["internal_outlet"].append(lines[f"{p1}-{p2}"])
+
+    # p1 = p2
+    # p2 = 2 * (n_segments + 1)
+    # lines[f"{p1}-{p2}"] = add_line(p[str(p1)], p[str(p2)])
+    # line_groups["internal_outlet"].append(lines[f"{p1}-{p2}"])
+
+    # p1 -= 1
+    # p2 = 2 * (n_segments + 1) + 1
+    # lines[f"{p1}-{p2}"] = add_line(p[str(p1)], p[str(p2)])
+    # line_groups["internal_outlet"].append(lines[f"{p1}-{p2}"])
 
     gmsh.model.geo.synchronize()
 
@@ -510,6 +566,7 @@ def generate_points_and_lines(
         p2 = inner_points[i]
         l = find_line(p1, p2)
         sign = l/abs(l)  # Get the sign of the line, to determine direction
+        print(l, sign)
         gmsh.model.geo.mesh.setTransfiniteCurve(l, tank_profile.N + 1, "Progression", sign*mesh.r_BL)
         # TODO: All of these lines are not defined actually!
 
@@ -573,7 +630,10 @@ def generate_points_and_lines(
     for i in reversed(range(len(wall_points))):
         _points.append(outer_points[i])
 
+    # _points = sort_xy(_points)
+    print(_points)
     _lines = [find_line(_points[i], _points[(i + 1) % len(_points)]) for i in range(len(_points))]
+    print(_lines)
     clWall = gmsh.model.geo.addCurveLoops(_lines)
     sWall = gmsh.model.geo.addPlaneSurface(clWall)
     cornersWall = [find_point(p) for p in [
@@ -582,6 +642,10 @@ def generate_points_and_lines(
         wall_points[-1],
         outer_points[-2]
     ]]
+
+
+
+
 
     gmsh.model.geo.synchronize()
 

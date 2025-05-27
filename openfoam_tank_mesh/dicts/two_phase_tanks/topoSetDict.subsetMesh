@@ -1,0 +1,43 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  2.1.0                                 |
+|   \\  /    A nd           | Web:      www.OpenFOAM.org                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      topoSetDict;
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+#include "/home/johan/Documents/PhD/openfoam-tank-mesh/tests/parameters.KSiteMesh"
+
+actions
+(
+
+{
+  action new;
+  name cellsToKeep;
+  type cellSet;
+  source cylinderToCell;
+  p1  (0 #calc" $y_outlet - $internal_outlet" 0);
+  p2  (0 $y_outlet 0);
+  radius $outlet_radius;
+
+}
+
+{
+  action invert;
+  name cellsToKeep;
+  type cellSet;
+}
+
+
+);
+
+// ************************************************************************* //

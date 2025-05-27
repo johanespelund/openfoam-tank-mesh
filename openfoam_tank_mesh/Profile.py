@@ -391,7 +391,6 @@ class TankProfile(Profile):
             r_end=upper_segment.r_end,
             length_scale=lower_segment.length_scale,
         )
-        print(f"Created new segment {new_segment.name} from {lower_segment.name} and {upper_segment.name}.")
 
         # Remove the old segments and add the new one
         self.segments.remove(lower_segment)
@@ -482,7 +481,6 @@ class TankProfile(Profile):
         ### Upper segment
         x_bulk = self.segments[-1].length_scale
         n, t, _ = calculate_boundary_layer(r_BL, x_wall, x_bulk)
-        print(f"Created boundary layer with {n} cells and thickness {t:.2f} m.")
 
         # Split the profile
         tol = min(5 * x_wall, 2 * x_bulk)
@@ -523,7 +521,6 @@ class TankProfile(Profile):
                 N += 1
             segment.N = N
             segment.r = r_BL
-            print(f"Segment {segment.name} has {N} cells and growth rate {r_BL}.")
         if n != self.N:
             segment.N += self.N - n
             if segment.N <= 1:
@@ -531,15 +528,12 @@ class TankProfile(Profile):
                 new_segment = self.merge_segments(segment, segment.lowerNeighbor)
                 new_segment.N = new_N
                 new_segment.r = r_BL
-        print(f"Total length of the boundary layer: {L:.2f} m\n")
         total_cells_in_bl = sum([seg.N for seg in bl_segments])
-        print(f"Total number of cells in the boundary layer: {total_cells_in_bl}")
 
         # Do the same for the boundary layer below the interface
         bl_segments = []
         for segment in self.segments[::-1]:
             if segment.y_start >= self.y_interface - self.t_BL and segment.y_end <= self.y_interface:
-                print(f"Segment {segment.name} is in the lower boundary layer.")
                 bl_segments.append(segment)
         self.n_lower_bl_segments = len(bl_segments)
         # Now we need to distribute the number of cells between the segments
@@ -556,7 +550,6 @@ class TankProfile(Profile):
                 N += 1
             segment.N = N
             segment.r = -r_BL
-            print(f"Segment {segment.name} has {N} cells and growth rate {r_BL}.")
         if n != self.N:
             segment.N += self.N - n
             if segment.N <= 1:
@@ -564,11 +557,6 @@ class TankProfile(Profile):
                 new_segment = self.merge_segments(segment, segment.upperNeighbor)
                 new_segment.N = new_N
                 new_segment.r = -r_BL
-
-        print(f"Total length of the boundary layer: {L:.2f} m")
-
-        for segment in self.segments:
-            print(segment)
 
 
     def insert_interface(self, tol: float = 10e-3, x_wall: float = 1e-3) -> None:
@@ -638,7 +626,6 @@ class TankProfile(Profile):
         profile_normals[0] = np.array([0, 1])
         profile_normals[-2] = np.array([0, -1])
 
-        points += profile_points
         inner_points = [p + n * self.t_BL for p, n in zip(profile_points, profile_normals)]
 
         # Interface needs to be horizontal and hayield the same t_BL
@@ -655,7 +642,33 @@ class TankProfile(Profile):
             hor = b * np.array([1, 0])
             inner_points[j] = profile_points[j] + r * norm + (1 - r) * hor
 
+
+
+        # Here we will define some points to use for the optional
+        # TransfiniteTri strategy in gmsh, which is used for very high/low
+        # fill levels.
+        # ABANDONDED
+
+#         transTriPoints = []
+#         def func(y):
+#             r = self.get_radius(y)
+#             n = self.get_normal(y)
+
+#             p = np.array([r, y])
+#             d = inner_points[i_interface+1] - p
+#             prod = np.dot(d/np.linalg.norm(d), n)
+#             return 1 - abs(prod)
+
+        # Find root of func:
+        # result = spo.fminbound(func, self.y_interface, self.y_interface + 4*self.t_BL)
+        # profile_points[i_interface + 1] = np.array([self.get_radius(result), result])
+        # inner_points[i_interface][0] = inner_points[i_interface + 1][0]
+
+
+        points += profile_points
         points += inner_points
+
+
 
         tw = 2.08e-3
         wall_points = [] # Points for the optional wall region, outer - n*tw

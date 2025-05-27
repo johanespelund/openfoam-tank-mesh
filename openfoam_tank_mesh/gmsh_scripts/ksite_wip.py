@@ -241,20 +241,20 @@ def run(mesh: "KSiteMesh.KSiteMesh") -> None:
     gmsh.model.mesh.generate(3)
     gmsh.model.geo.synchronize()
 
-    volumes = gmsh.model.getEntities(dim=3)
+    # volumes = gmsh.model.getEntities(dim=3)
 
-    # ps2 = gmsh.model.addPhysicalGroup(2, [s2])
-    # ps3 = gmsh.model.addPhysicalGroup(2, [s3])
+    # # ps2 = gmsh.model.addPhysicalGroup(2, [s2])
+    # # ps3 = gmsh.model.addPhysicalGroup(2, [s3])
 
-    # Create physical volumes, corresponding to s2 and s3 revolved
-    pv2 = gmsh.model.addPhysicalGroup(3, [volumes[1][1]])
-    pv3 = gmsh.model.addPhysicalGroup(3, [volumes[2][1]])
+    # # Create physical volumes, corresponding to s2 and s3 revolved
+    # pv2 = gmsh.model.addPhysicalGroup(3, [volumes[1][1]])
+    # pv3 = gmsh.model.addPhysicalGroup(3, [volumes[2][1]])
 
-    nodeTags2, nodeCoords2 = gmsh.model.mesh.getNodesForPhysicalGroup(3, pv2)
-    nodeTags3, nodeCoords3 = gmsh.model.mesh.getNodesForPhysicalGroup(3, pv3)
+    # nodeTags2, nodeCoords2 = gmsh.model.mesh.getNodesForPhysicalGroup(3, pv2)
+    # nodeTags3, nodeCoords3 = gmsh.model.mesh.getNodesForPhysicalGroup(3, pv3)
 
-    nodeCoords2 = np.array(nodeCoords2).reshape(-1, 3)
-    nodeCoords3 = np.array(nodeCoords3).reshape(-1, 3)
+    # nodeCoords2 = np.array(nodeCoords2).reshape(-1, 3)
+    # nodeCoords3 = np.array(nodeCoords3).reshape(-1, 3)
 
     def get_nodes_at_x(x: float, nc: np.ndarray, nt: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         """
@@ -271,7 +271,8 @@ def run(mesh: "KSiteMesh.KSiteMesh") -> None:
 
     # input(f"{n_angle=})")
 
-    for n in range(n_angle + 1):  # type: ignore
+    # for n in range(n_angle + 1):  # type: ignore
+    if False:
         angle = 2 * np.pi * mesh.wedge_angle / 360 * (n / n_angle)  # type: ignore
         c, s = np.cos(angle), np.sin(angle)
         input(f"angle: {np.degrees(angle):.2f}")
