@@ -3,11 +3,11 @@ from __future__ import annotations
 import pathlib
 
 from openfoam_tank_mesh.gmsh_scripts.two_phase import run as run_gmsh
-from openfoam_tank_mesh.TankMesh import TankMesh
+from openfoam_tank_mesh.TwoPhaseTankMesh import TwoPhaseTankMesh
 from openfoam_tank_mesh.Profile import KSiteProfile
 
 
-class KSiteMesh(TankMesh):
+class KSiteMesh(TwoPhaseTankMesh):
     def __init__(self, input_parameters: dict) -> None:
         self.tank = KSiteProfile(
             fill_level=input_parameters["fill_level"],
