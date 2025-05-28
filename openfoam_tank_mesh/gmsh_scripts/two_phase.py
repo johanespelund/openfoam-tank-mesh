@@ -114,6 +114,7 @@ def run(mesh: TwoPhaseMesh.KSiteMesh) -> None:
     y_interface = tank.y_interface
     wedge_angle = mesh.wedge_angle
     revolve = mesh.revolve
+    n_revolve = mesh.n_revolve
     wall_cell_size = mesh.wall_cell_size
     lc = mesh.wall_tan_cell_size
     n_BL = mesh.n_BL + 1
@@ -149,6 +150,7 @@ def generate_points_and_lines(
     y_outlet = tank.y_outlet
     y_interface = tank.y_interface
     revolve = mesh.revolve
+    n_revolve = mesh.n_revolve
     wedge_angle = mesh.wedge_angle
     bulk_cell_size = mesh.bulk_cell_size
     lc = mesh.wall_tan_cell_size
@@ -645,7 +647,10 @@ def generate_points_and_lines(
 
     # surfaces: list[tuple[int, int]] = gmsh.model.getEntities(dim=2)
     angle = 2 * np.pi * revolve / 360 if revolve else wedge_angle * np.pi / 180
+
     n_angle = closest_odd(2 * np.pi * revolve / (360 * lc)) if revolve else 1
+    if n_revolve == 0:
+        n_revolve = n_angle
 
     regionSurfaces = {
         "gas": [sGas, sOuterGasBL, sInnerGasBL, sGasWall, sOutlet, sInternalOutlet],
@@ -659,7 +664,7 @@ def generate_points_and_lines(
         surfaces = [(2, s) for s in regionSurfaces[region]]
         result = gmsh.model.geo.revolve(
                 surfaces,
-                0, 0, 0, 0, 1, 0, angle, numElements=[n_angle], recombine=True)
+                0, 0, 0, 0, 1, 0, angle, numElements=[n_revolve], recombine=True)
         gmsh.model.geo.synchronize()
         regionVolumes[region] = [res[1] for res in result if res[0] == 3]
 

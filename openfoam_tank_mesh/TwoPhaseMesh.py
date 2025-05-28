@@ -30,14 +30,18 @@ class KSiteMesh(TwoPhaseTankMesh):
 
         run_gmsh(self)
         self.run_command("gmshToFoam mesh.msh")
-        self.run_command(f"transformPoints -rotate-y -{self.wedge_angle / 2}")  # .org
+        angle = max(self.wedge_angle, self.revolve)/2
+        self.run_command(f"transformPoints -rotate-y -{angle}")  # .org
         # self.run_command(f"transformPoints \"Ry={-self.wedge_angle / 2}\"") #.com
-
         self.run_openfoam_utility(
             "topoSet",
             "topoSetDict.gmsh",
         )
-        self.run_openfoam_utility("createPatch -overwrite", "createPatchDict.gmsh")
+
+        if self.revolve:
+            self.run_openfoam_utility("createPatch -overwrite", "createPatchDict.gmsh_symmetry")
+        else:
+            self.run_openfoam_utility("createPatch -overwrite", "createPatchDict.gmsh")
 
     def generate(self) -> None:
         """

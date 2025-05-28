@@ -51,6 +51,7 @@ class TwoPhaseTankMesh(ABC):
         # Default parameters (can be overwritten by input_parameters)
         self.r_BL: float = 1.1  # Boundary layer growth rate
         self.revolve: float = 0  # Revolution angle (0 means 2D)
+        self.n_revolve: float = 0  # Revolution angle (0 means 2D)
         self.wedge_angle: float = 1  # Revolution angle if 2D
         self.wedge_pos_normal: list = [ 0, 0, 0]
         self.wedge_neg_normal: list = [ 0, 0, 0]
@@ -318,7 +319,8 @@ class TwoPhaseTankMesh(ABC):
         """
         Calculate normal based on wedge angle (y-axis).
         """
-        alpha = np.radians(self.wedge_angle)
+        angle = max(self.revolve, self.wedge_angle) / 2
+        alpha = np.radians(angle)
         dx = np.cos(alpha)
         dz = np.sin(alpha)
         self.wedge_pos_normal =  [-dz, 0, dx]

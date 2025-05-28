@@ -51,6 +51,12 @@ actions
     action new;
     name wedgePos;
     type faceSet;
+    source boundaryToFace;
+  }
+  {
+    action subset;
+    name wedgePos;
+    type faceSet;
     source normalToFace;
     normal $wedge_pos_normal;
     cos 0.01;
@@ -59,10 +65,17 @@ actions
     action new;
     name wedgeNeg;
     type faceSet;
+    source boundaryToFace;
+  }
+  {
+    action subset;
+    name wedgeNeg;
+    type faceSet;
     source normalToFace;
     normal $wedge_neg_normal;
     cos 0.01;
   }
+
   {
     action new;
     name walls;
