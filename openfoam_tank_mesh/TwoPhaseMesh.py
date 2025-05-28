@@ -30,17 +30,14 @@ class KSiteMesh(TwoPhaseTankMesh):
 
         run_gmsh(self)
         self.run_command("gmshToFoam mesh.msh")
-        self.run_command(f"transformPoints -rotate-y -{self.wedge_angle / 2}") #.org
+        self.run_command(f"transformPoints -rotate-y -{self.wedge_angle / 2}")  # .org
         # self.run_command(f"transformPoints \"Ry={-self.wedge_angle / 2}\"") #.com
 
         self.run_openfoam_utility(
             "topoSet",
             "topoSetDict.gmsh",
         )
-        self.run_openfoam_utility(
-            "createPatch -overwrite",
-            "createPatchDict.gmsh"
-        )
+        self.run_openfoam_utility("createPatch -overwrite", "createPatchDict.gmsh")
 
     def generate(self) -> None:
         """
@@ -55,6 +52,10 @@ class KSiteMesh(TwoPhaseTankMesh):
         # self.run_command("collapseEdges -overwrite")
         self.run_command("splitMeshRegions -cellZonesOnly -overwrite")
         self.run_command("rm -rf constant/polyMesh")
+        self.run_command(
+            "find constant/ -type f -name boundary -exec "
+            + "sed -i 's/nearestPatchFace/matching/' {} \;"
+        )
         # self.sed("metal_outlet", "outlet", "constant/metal/polyMesh/boundary")
         # self.generate_flange_boundary()
         self.check_mesh(regions=["gas", "liquid", "metal"])
@@ -66,7 +67,9 @@ class KSiteMesh(TwoPhaseTankMesh):
         On the metal region, create a boundary for the flange.
         """
         self.run_openfoam_utility("topoSet -region metal", "topoSetDict.createFlange")
-        self.run_openfoam_utility("createPatch -overwrite -region metal", "createPatchDict.createFlange")
+        self.run_openfoam_utility(
+            "createPatch -overwrite -region metal", "createPatchDict.createFlange"
+        )
 
     def generate_stl(self) -> None:
         """
@@ -117,5 +120,3 @@ class KSiteMesh(TwoPhaseTankMesh):
         mainly support and plumbing. Exclude the heat loss from the outlet pipe.
         """
         return 0
-
-
