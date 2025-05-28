@@ -400,6 +400,18 @@ class TankProfile(Profile):
         self.check_segment_connectivity()
         return new_segment
 
+    def ymin(self):
+        """
+        Get the minimum y value of the profile.
+        """
+        return self.segments[0].y_start
+
+    def ymax(self):
+        """
+        Get the maximum y value of the profile.
+        """
+        return self.segments[-1].y_end
+
     def split_profile(self, y_split: float, tol: float = 10e-3) -> None:
         """
         Go through the segments and split the one where the interface is located.

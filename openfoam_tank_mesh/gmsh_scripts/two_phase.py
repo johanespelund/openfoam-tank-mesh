@@ -263,14 +263,15 @@ def generate_points_and_lines(
         p2 = find_point(wall_points[i])
         wall_normal_curves.append(add_line(p1, p2))
 
-    # Create outlet lines
+    # Create internal outlet lines
     for i in range(len(outlet_points)):
         i1 = i
         i2 = (i + 1) % len(outlet_points)
 
         p1 = find_point(internal_outlet_points[i1])
         p2 = find_point(internal_outlet_points[i2])
-        add_line(p1, p2)
+        line_groups["internal_outlet"].append(add_line(p1, p2))
+
 
     for i in range(len(axis_points) - 1):
         p1 = find_point(axis_points[i])
