@@ -52,7 +52,7 @@ class KSiteMesh(TwoPhaseTankMesh):
             self.create_internal_outlet()
         # self.run_openfoam_utility("topoSet", "topoSetDict.createFinalFaceSets")
         self.run_command("rm -rf 0/cellToRegion")
-        self.run_command("collapseEdges -overwrite")
+        # self.run_command("collapseEdges -overwrite")
         self.run_command("splitMeshRegions -cellZonesOnly -overwrite")
         self.run_command("rm -rf constant/polyMesh")
         # self.sed("metal_outlet", "outlet", "constant/metal/polyMesh/boundary")
