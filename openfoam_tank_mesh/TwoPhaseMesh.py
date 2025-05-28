@@ -52,13 +52,13 @@ class KSiteMesh(TwoPhaseTankMesh):
         # self.run_command("collapseEdges -overwrite")
         self.run_command("splitMeshRegions -cellZonesOnly -overwrite")
         self.run_command("rm -rf constant/polyMesh")
+        # self.sed("metal_outlet", "outlet", "constant/metal/polyMesh/boundary")
+        # self.generate_flange_boundary()
+        self.check_mesh(regions=["gas", "liquid", "metal"])
         self.run_command(
             "find constant/ -type f -name boundary -exec "
             + "sed -i 's/nearestPatchFace/matching/' {} \;"
         )
-        # self.sed("metal_outlet", "outlet", "constant/metal/polyMesh/boundary")
-        # self.generate_flange_boundary()
-        self.check_mesh(regions=["gas", "liquid", "metal"])
 
         return None
 
