@@ -490,89 +490,52 @@ class TankProfile(Profile):
         """
         Add boundary layer around the interface (on each side).
         """
-        ### Upper segment
         x_bulk = self.segments[-1].length_scale
-        n, t, _ = calculate_boundary_layer(r_BL, x_wall, x_bulk)
-
-        # Split the profile
-        tol = min(5 * x_wall, 2 * x_bulk)
-        bl_segment, _ = self.split_profile(self.y_interface + t, tol=tol)
-
-        self.sort_segments()
-        self.check_segment_connectivity()
-
-        ## Lower segment
-        x_bulk = self.segments[0].length_scale
         n, t, _ = calculate_boundary_layer(r_BL, x_wall, x_bulk)
         self.t_BL = t
         self.N = n
 
         tol = min(5 * x_wall, 2 * x_bulk)
-        _, bl_segment = self.split_profile(self.y_interface - self.t_BL, tol=tol)
+        for offset in [t, -t, 0]:
+            self.split_profile(self.y_interface + offset, tol=tol)
 
-        tol = min(5 * x_wall, 2 * x_bulk)
-        _, bl_segment = self.split_profile(self.y_interface, tol=tol)
+        def get_bl_segments(y_start, y_end, reverse=False):
+            segments = self.segments[::-1] if reverse else self.segments
+            return [seg for seg in segments if y_start <= seg.y_start and seg.y_end <= y_end]
 
-        bl_segments = []
-        for segment in self.segments:
-            if segment.y_start >= self.y_interface and segment.y_end <= self.y_interface + self.t_BL:
-                bl_segments.append(segment)
-        self.n_upper_bl_segments = len(bl_segments)
-        # Now we need to distribute the number of cells between the segments
+        def distribute_cells(bl_segments, r_sign):
+            t_local, n_local = 0, 0
+            for segment in bl_segments:
+                L = segment.get_length()
+                N = 0
+                t_accum = 0
+                while t_accum < L / r_BL or (N % 2 == 1 and N > 3):
+                    t_accum += x_wall * r_BL ** n_local
+                    n_local += 1
+                    N += 1
+                segment.N = N
+                segment.r = r_sign * r_BL
 
-        t, n, N = 0, 0, 0
-        L = 0
-        for segment in bl_segments:
-            # Get the length of the segment
-            length = segment.get_length()
-            L += length
-            N = 0
-            while t < length / r_BL or N % 2 == 1 and N > 3:
-                t += x_wall * r_BL**n
-                n += 1
-                N += 1
-            segment.N = N
-            segment.r = r_BL
-        if n != self.N:
-            segment.N += self.N - n
-            if segment.N <= 1:
-                new_N = segment.N + segment.lowerNeighbor.N
-                new_segment = self.merge_segments(segment, segment.lowerNeighbor)
-                new_segment.N = new_N
-                new_segment.r = r_BL
-        total_cells_in_bl = sum([seg.N for seg in bl_segments])
+            if n_local != self.N or segment.N <= 1:
+                segment.N += self.N - n_local
+                if segment.N <= 1:
+                    neighbor = segment.lowerNeighbor if r_sign > 0 else segment.upperNeighbor
+                    new_N = segment.N + neighbor.N
+                    new_segment = self.merge_segments(segment, neighbor)
+                    new_segment.N = new_N
+                    new_segment.r = r_sign * r_BL
 
-        # Do the same for the boundary layer below the interface
-        bl_segments = []
-        for segment in self.segments[::-1]:
-            if segment.y_start >= self.y_interface - self.t_BL and segment.y_end <= self.y_interface:
-                bl_segments.append(segment)
-        self.n_lower_bl_segments = len(bl_segments)
-        # Now we need to distribute the number of cells between the segments
-        t, n, N = 0, 0, 0
-        L = 0
-        for segment in bl_segments:
-            # Get the length of the segment
-            length = segment.get_length()
-            L += length
-            N = 0
-            while t < length / r_BL or N % 2 == 1 and N > 3:
-                t += x_wall * r_BL**n
-                n += 1
-                N += 1
-            segment.N = N
-            segment.r = -r_BL
-        if n != self.N:
-            segment.N += self.N - n
-            if segment.N <= 1:
-                new_N = segment.N + segment.upperNeighbor.N
-                new_segment = self.merge_segments(segment, segment.upperNeighbor)
-                new_segment.N = new_N
-                new_segment.r = -r_BL
+        upper_bl_segments = get_bl_segments(self.y_interface, self.y_interface + self.t_BL)
+        lower_bl_segments = get_bl_segments(self.y_interface - self.t_BL, self.y_interface, reverse=True)
 
+        self.n_upper_bl_segments = len(upper_bl_segments)
+        self.n_lower_bl_segments = len(lower_bl_segments)
 
-    def insert_interface(self, tol: float = 10e-3, x_wall: float = 1e-3) -> None:
-        self.add_boundary_layers(x_wall=x_wall, r_BL=1.2)
+        distribute_cells(upper_bl_segments, +1)
+        distribute_cells(lower_bl_segments, -1)
+
+        for seg in self.segments:
+            print(f"  {seg.name=}, {seg.r=}, {seg.N=}")
 
     def plot(self):
         fig, ax = plt.subplots()
@@ -585,7 +548,7 @@ class TankProfile(Profile):
                 r = np.array([segment.r_start, segment.r_end])
 
             ax.plot(r, y, label=segment.name)
-            ax.fill_betweenx(y, r, 0, where=y < segment.y_end, alpha=0.5)
+            # ax.fill_betweenx(y, r, 0, where=y < segment.y_end, alpha=0.5)
 
         ax.hlines(
             self.y_interface,
@@ -597,11 +560,18 @@ class TankProfile(Profile):
         )
 
         points = self.get_mesh_points()
-        for key, item in points.items():
+        normals = self.get_profile_normals()
+        for i, (key, item) in enumerate(points.items()):
             try:
                 int(key)
                 ax.plot(item[0], item[1], "ro")
                 ax.text(item[0], item[1], f"{key}", fontsize=8, ha="right")
+                x1, y1 = item[0], item[1]
+                n = normals[i]
+                x2 = x1 + n[0]
+                y2 = y1 + n[1]
+                ax.plot([x1, x2], [y1, y2])
+                
             except:
                 pass
 
@@ -640,46 +610,21 @@ class TankProfile(Profile):
 
         inner_points = [p + n * self.t_BL for p, n in zip(profile_points, profile_normals)]
 
-        # Interface needs to be horizontal and hayield the same t_BL
+        # Interface needs to be horizontal and held the same t_BL
         b = self.t_BL / profile_normals[i_interface][0]
         inner_points[i_interface] = profile_points[i_interface] + b * np.array([1, 0])
 
         # Need to adjust the neighbotr points as well, but with optional relaxation
         r = 0.0
 
-        for k in [-1, 1]:
-            j = i_interface - k
+        for j in range(i_bl_lower, i_bl_upper + 1):
             b = self.t_BL / profile_normals[j][0]
             norm = self.t_BL * profile_normals[j]
             hor = b * np.array([1, 0])
             inner_points[j] = profile_points[j] + r * norm + (1 - r) * hor
 
-
-
-        # Here we will define some points to use for the optional
-        # TransfiniteTri strategy in gmsh, which is used for very high/low
-        # fill levels.
-        # ABANDONDED
-
-#         transTriPoints = []
-#         def func(y):
-#             r = self.get_radius(y)
-#             n = self.get_normal(y)
-
-#             p = np.array([r, y])
-#             d = inner_points[i_interface+1] - p
-#             prod = np.dot(d/np.linalg.norm(d), n)
-#             return 1 - abs(prod)
-
-        # Find root of func:
-        # result = spo.fminbound(func, self.y_interface, self.y_interface + 4*self.t_BL)
-        # profile_points[i_interface + 1] = np.array([self.get_radius(result), result])
-        # inner_points[i_interface][0] = inner_points[i_interface + 1][0]
-
-
         points += profile_points
         points += inner_points
-
 
 
         tw = 2.08e-3
@@ -790,7 +735,7 @@ class KSiteProfile(TankProfile):
             internal_outlet=internal_outlet,
         )
         self.name = "KSite"
-        self.insert_interface(tol=2*wall_tan_cell_size, x_wall=wall_cell_size)
+        self.add_boundary_layers(x_wall=wall_cell_size, r_BL=r_BL)
         self.cap_height = A
         self.cylinder_radius = B
         self.cylinder_height = C
