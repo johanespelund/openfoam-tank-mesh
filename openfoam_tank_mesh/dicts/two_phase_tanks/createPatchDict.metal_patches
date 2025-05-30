@@ -56,15 +56,15 @@ patches
    constructFrom set;
    set ductsFaceSet;
  }
- {   
-   name support;
-   patchInfo
-     {   
-       type wall;  
-     }
-   constructFrom set;
-   set supportFaceSet;
- }
+ // {   
+ //   name support;
+ //   patchInfo
+ //     {   
+ //       type wall;  
+ //     }
+ //   constructFrom set;
+ //   set supportFaceSet;
+ // }
 );
 
 // ************************************************************************* //

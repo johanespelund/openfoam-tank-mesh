@@ -58,9 +58,8 @@ class KSiteMesh(TwoPhaseTankMesh):
         self.run_command("rm -rf constant/polyMesh")
         # self.sed("metal_outlet", "outlet", "constant/metal/polyMesh/boundary")
         # self.generate_flange_boundary()
-        self.check_mesh(regions=["gas", "liquid", "metal"])
         self.generate_leak_boundaries()
-
+        self.check_mesh(regions=["gas", "liquid", "metal"])
         self.run_command(
             "find constant/ -type f -name boundary -exec "
             + "sed -i 's/nearestPatchFace/matching/' {} \;"
@@ -105,7 +104,7 @@ class KSiteMesh(TwoPhaseTankMesh):
 
 
     """
-    The following methods use Table 1 from:
+    The following values use Table 1 from:
     DOI: 10.2514/6.2016-4674
     """
 
@@ -117,15 +116,10 @@ class KSiteMesh(TwoPhaseTankMesh):
 
     def Q_insulation(self) -> float:
         """
-        Return the total heat loss from the insulation.
+        Return the total heat loss from the insulation + support
         """
-        return 41.352
+        return 41.352 + 2.813
 
-    def Q_support(self) -> float:
-        """
-        Return the heat loss from support struts.
-        """
-        return 2.813
 
     def Q_ducts(self) -> float:
         """
