@@ -59,6 +59,8 @@ class KSiteMesh(TwoPhaseTankMesh):
         # self.sed("metal_outlet", "outlet", "constant/metal/polyMesh/boundary")
         # self.generate_flange_boundary()
         self.check_mesh(regions=["gas", "liquid", "metal"])
+        self.generate_leak_boundaries()
+
         self.run_command(
             "find constant/ -type f -name boundary -exec "
             + "sed -i 's/nearestPatchFace/matching/' {} \;"
@@ -66,13 +68,14 @@ class KSiteMesh(TwoPhaseTankMesh):
 
         return None
 
-    def generate_flange_boundary(self) -> None:
+
+    def generate_leak_boundaries(self) -> None:
         """
         On the metal region, create a boundary for the flange.
         """
-        self.run_openfoam_utility("topoSet -region metal", "topoSetDict.createFlange")
+        self.run_openfoam_utility("topoSet -region metal", "topoSetDict.metal_patches")
         self.run_openfoam_utility(
-            "createPatch -overwrite -region metal", "createPatchDict.createFlange"
+            "createPatch -overwrite -region metal", "createPatchDict.metal_patches"
         )
 
     def generate_stl(self) -> None:
@@ -100,27 +103,32 @@ class KSiteMesh(TwoPhaseTankMesh):
 
         return f"{pathlib.Path.cwd()}/parameters.KSiteMesh"
 
+
+    """
+    The following methods use Table 1 from:
+    DOI: 10.2514/6.2016-4674
+    """
+
     def q_insulation(self) -> float:
         """
         Return the heat flux for the MLI/insulation for T_amb = 350 K.
-        From Table 2 in:
-        Stochl, R. J.; Knoll, R. H. Thermal Performance of a Liquid
-        Hydrogen Tank Multilayer Insulation System at Warm Boundary
-        Temperatures of 630, 530, and 152 R; 1991.
         """
-        return 3.5
+        return 2.952
 
-    def Q_outlet_pipe(self) -> float:
+    def Q_insulation(self) -> float:
         """
-        Return the heat loss from the outlet pipe.
-        Total heat loss from plumbing and ducts are 3.194 W,
-        assume here that 50% of the heat loss is from the outlet pipe.
+        Return the total heat loss from the insulation.
         """
-        return 0
+        return 41.352
 
-    def Q_parasitic(self) -> float:
+    def Q_support(self) -> float:
         """
-        Return parasitic heat loss for the tank,
-        mainly support and plumbing. Exclude the heat loss from the outlet pipe.
+        Return the heat loss from support struts.
         """
-        return 0
+        return 2.813
+
+    def Q_ducts(self) -> float:
+        """
+        Return  heat loss from ducting and wires.
+        """
+        return 3.194 + 0.879

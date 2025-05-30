@@ -59,6 +59,7 @@ class TwoPhaseTankMesh(ABC):
         self.non_coupled_cyclic = False
         self.patch_name_pos = "wedge_pos"
         self.patch_name_neg = "wedge_neg"
+        self.ymax = tank.ymax()
 
         self.check_openfoam_loaded(version="com")
         self.validate_parameters(input_parameters)
