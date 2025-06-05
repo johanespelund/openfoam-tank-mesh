@@ -61,7 +61,7 @@ class TwoPhaseTankMesh(ABC):
         self.patch_name_neg = "wedge_neg"
         self.ymax = tank.ymax()
 
-        self.check_openfoam_loaded(version="com")
+        self.check_openfoam_loaded(version="org")
         self.validate_parameters(input_parameters)
         self.set_parameters(input_parameters)
         self.n_BL, self.t_BL, self.e_BL = self.calculate_boundary_layer()
@@ -293,7 +293,8 @@ class TwoPhaseTankMesh(ABC):
 
         self.write_mesh_parameters()
 
-        self.run_command(f"transformPoints -rotate-y -{self.wedge_angle / 2}")
+        # self.run_command(f"transformPoints -rotate-y -{self.wedge_angle / 2}")
+        self.run_command(f'transformPoints "Ry=-{self.wedge_angle / 2}"')
 
         self.check_mesh()
 
