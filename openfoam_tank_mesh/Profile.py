@@ -178,7 +178,7 @@ class EllipseArc(Segment):
     def get_length(self) -> float:
         y_vals = np.linspace(self.y_start, self.y_end, 1000)
         drdy = np.array([self.get_radius_derivative(yi) for yi in y_vals])
-        return float(spi.trapz(np.sqrt(drdy**2 + 1), y_vals))
+        return float(spi.trapezoid(np.sqrt(drdy**2 + 1), y_vals))
 
 
 class CircleArc(EllipseArc):
