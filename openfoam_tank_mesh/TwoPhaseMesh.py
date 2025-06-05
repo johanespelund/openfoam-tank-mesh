@@ -57,6 +57,7 @@ class KSiteMesh(TwoPhaseTankMesh):
         self.generate_leak_boundaries()
         self.check_mesh(regions=["gas", "liquid", "metal"])
 
+        # Need to run this to convert mapped patches from .com to .org format
         # self.run_command(
         #     "find constant/ -type f -name boundary -exec "
         #     + "sed -i 's/nearestPatchFace/matching/' {} \;"
