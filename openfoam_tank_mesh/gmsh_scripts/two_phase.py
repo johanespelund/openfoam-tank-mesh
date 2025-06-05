@@ -305,6 +305,10 @@ def generate_points_and_lines(
             N = closest_odd(d / lc)
         gmsh.model.geo.mesh.setTransfiniteCurve(l, N, "Progression", 1)
 
+
+    for curve in wall_normal_curves:
+        gmsh.model.geo.mesh.setTransfiniteCurve(curve, mesh.n_wall_layers + 1)
+
     gmsh.model.geo.synchronize()
 
     ## LIQUID REGION
@@ -609,7 +613,14 @@ def generate_points_and_lines(
     gmsh.option.setNumber("Mesh.MeshSizeFromCurvature", 0)
     gmsh.model.geo.synchronize()
     gmsh.model.geo.synchronize()
-    gmsh.model.mesh.generate(2)
+    try:
+        gmsh.model.mesh.generate(2)
+    except Exception as e:
+        print(f"Error generating mesh: {e}")
+        print("Opening GMSH GUI for debugging...")
+        gmsh.fltk.run()
+        gmsh.finalize()
+        raise
 
     angle = 2 * np.pi * revolve / 360 if revolve else wedge_angle * np.pi / 180
 

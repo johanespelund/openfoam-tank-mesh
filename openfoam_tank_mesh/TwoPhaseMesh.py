@@ -20,6 +20,7 @@ class KSiteMesh(TwoPhaseTankMesh):
         )
         super().__init__(tank=self.tank, input_parameters=input_parameters)
         self.multi_region = True
+        self.n_wall_layers = input_parameters["n_wall_layers"]
 
         return None
 
