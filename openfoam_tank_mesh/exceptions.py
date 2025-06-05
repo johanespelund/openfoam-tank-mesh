@@ -2,8 +2,8 @@ from rich import print as rprint
 
 
 class OutOfRange(Exception):
-    def __init__(self, y: float) -> None:
-        rprint(f"[bold red]y = {y} is out of range.[/bold red]")
+    def __init__(self, value: float) -> None:
+        rprint(f"[bold red]y = {value} is out of range.[/bold red]")
 
 
 class MissingParameter(Exception):
@@ -17,7 +17,7 @@ class OpenFoamNotLoaded(Exception):
 
 
 class CommandFailed(Exception):
-    def __init__(self, command: str, output="") -> None:
+    def __init__(self, command: str, output: str="") -> None:
         self.command = command
         rprint(f"[bold red]Command {command} failed.[/bold red]")
         rprint(f"[bold red]Output: {output}[/bold red]")
