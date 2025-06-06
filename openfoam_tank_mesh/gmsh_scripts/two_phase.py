@@ -603,9 +603,9 @@ def generate_points_and_lines(
     gmsh.model.mesh.field.add("Threshold", 2)
     gmsh.model.mesh.field.setNumber(2, "InField", 1)
     gmsh.model.mesh.field.setNumber(2, "SizeMin", mesh.wall_tan_cell_size)
-    gmsh.model.mesh.field.setNumber(2, "SizeMax", bc)
+    gmsh.model.mesh.field.setNumber(2, "SizeMax", mesh.bulk_cell_size)
     gmsh.model.mesh.field.setNumber(2, "DistMin", 2 * r_outlet)
-    gmsh.model.mesh.field.setNumber(2, "DistMax", 3 * bc)
+    gmsh.model.mesh.field.setNumber(2, "DistMax", 4 * r_outlet)
     gmsh.model.mesh.field.setAsBackgroundMesh(2)
 
     gmsh.option.setNumber("Mesh.MeshSizeExtendFromBoundary", 0)
