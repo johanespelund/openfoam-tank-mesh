@@ -33,9 +33,9 @@ actions
     sourceInfo
     {
       axis (0 1 0);
-      point1 (0 #calc "$y_outlet - 1e-6" 0);
-      point2 (0 #calc "$y_outlet + 1e-3" 0);
-      radius #calc "$outlet_radius + 1e-3";
+      point1 (0 #calc "$y_outlet - 1e-9" 0);
+      point2 (0 #calc "$y_outlet + 1e-9" 0);
+      radius #calc "$outlet_radius + 1e-6";
     }
   }
   // {

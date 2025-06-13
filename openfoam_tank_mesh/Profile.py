@@ -218,7 +218,6 @@ class Profile:
         """
         self.segments.sort(key=lambda x: x.y_start)
         for i in range(len(self.segments) - 1):
-            print(f"Connecting {self.segments[i].name} and {self.segments[i + 1].name}")
             self.segments[i].upperNeighbor = self.segments[i + 1]
             self.segments[i + 1].lowerNeighbor = self.segments[i]
 
@@ -428,7 +427,6 @@ class TankProfile(Profile):
                 # If lower segment is shorter than tol, we need to
                 # extend it downwards, and shorten the segment below.
                 if abs(segment.get_length()) < tol:
-                    # print(f"Segment {segment.name} is too short, extending it downwards.")
                     ln = segment.lowerNeighbor
                     ln.y_end = y_start - tol
                     ln.r_end = ln.get_radius(ln.y_end)
