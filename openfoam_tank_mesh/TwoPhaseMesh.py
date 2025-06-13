@@ -55,7 +55,7 @@ class KSiteMesh(TwoPhaseTankMesh):
         self.run_command("rm -rf 0/cellToRegion")
         self.run_command("splitMeshRegions -cellZonesOnly -overwrite")
         self.run_command("rm -rf constant/polyMesh")
-        self.generate_leak_boundaries()
+        # self.generate_leak_boundaries()
         self.check_mesh(regions=["gas", "liquid", "metal"])
 
         # Need to run this to convert mapped patches from .com to .org format
@@ -117,14 +117,14 @@ class KSiteMesh(TwoPhaseTankMesh):
         """
         Return the total heat loss from the insulation + support
         """
-        return 41.352 + 2.813
+        return 41.352 + 2.813 + 3.194 + 0.879
 
 
     def Q_ducts(self) -> float:
         """
         Return  heat loss from ducting and wires.
         """
-        return 3.194 + 0.879
+        return 0 # 3.194 + 0.879
 
 # class MHTBMesh(TwoPhaseTankMesh):
 #     def __init__(self, input_parameters: dict) -> None:
