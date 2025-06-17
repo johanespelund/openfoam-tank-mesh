@@ -614,7 +614,7 @@ def generate_points_and_lines(
     gmsh.model.mesh.field.setNumbers(3, "SurfacesList", [])
     gmsh.model.mesh.field.setNumber(3, "Sampling", 100)
     gmsh.model.mesh.field.add("Threshold", 4)
-    gmsh.model.mesh.field.setNumber(4, "InField", 1)
+    gmsh.model.mesh.field.setNumber(4, "InField", 3)
     gmsh.model.mesh.field.setNumber(4, "SizeMin", minSize)
     gmsh.model.mesh.field.setNumber(4, "SizeMax", mesh.bulk_cell_size)
     gmsh.model.mesh.field.setNumber(4, "DistMin", 2 * r_outlet)
