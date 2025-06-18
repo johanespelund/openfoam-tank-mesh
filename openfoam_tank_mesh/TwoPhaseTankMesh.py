@@ -256,6 +256,17 @@ class TwoPhaseTankMesh(ABC):
         # self.y_outlet = self.tank.y2 - self.internal_outlet
         self.write_mesh_parameters()
 
+    def remove_wall_outlet(self) -> None:
+        self.run_command("rm -rf 0/cellToRegion")
+        self.run_openfoam_utility("topoSet", "topoSetDict.removeWallOutlet")
+        self.run_command("cp -r 0 0.temp")
+        self.run_command("subsetMesh cellsToKeep -overwrite -patch outlet")
+        self.run_command("rm -r 0; mv 0.temp 0")
+        self.run_openfoam_utility("topoSet", "topoSetDict.pipe2outlet")
+        self.run_openfoam_utility("createPatch -overwrite", "createPatchDict.pipe2outlet")
+        # self.y_outlet = self.tank.y2 - self.internal_outlet
+        self.write_mesh_parameters()
+
     def extrude_outlet(self, length: float) -> None:
         n_layers = int(length / self.wall_tan_cell_size)
         dict_path = self.dict("extrudeMeshDict.outlet")

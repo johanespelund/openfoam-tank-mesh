@@ -237,6 +237,12 @@ def generate_points_and_lines(
                 i += 1
         i = 0
 
+    p1 = find_point(wall_points[-1])
+    p2 = find_point(wall_points[-2])
+    wall_lines.append(
+        add_line(p1, p2)
+    )
+
 
     # Create lines between inner and outer points at start and end of groups
     i = 0
@@ -289,6 +295,7 @@ def generate_points_and_lines(
     outlet_line = find_line(outer_points[-2], outer_points[-1])
     N_outlet = get_N_outlet(mesh)
     gmsh.model.geo.mesh.setTransfiniteCurve(outlet_line, N_outlet)
+    gmsh.model.geo.mesh.setTransfiniteCurve(wall_lines[-1], N_outlet)
 
     for l in line_groups["internal_outlet"]:
         result = gmsh.model.getBoundary([[1, l]], oriented=True)
@@ -563,7 +570,7 @@ def generate_points_and_lines(
         outer_points[0],
         wall_points[0],
         wall_points[-1],
-        outer_points[-2]
+        outer_points[-1]
     ]]
 
     gmsh.model.geo.synchronize()
@@ -607,22 +614,26 @@ def generate_points_and_lines(
     gmsh.model.mesh.field.setNumber(2, "DistMin", 2 * r_outlet)
     gmsh.model.mesh.field.setNumber(2, "DistMax", 4 * r_outlet)
 
-    minSize = mesh.outlet_radius/(N_outlet - 1)
-    gmsh.model.mesh.field.add("Distance", 3)
-    gmsh.model.mesh.field.setNumbers(3, "PointsList", [])
-    gmsh.model.mesh.field.setNumbers(3, "CurvesList", line_groups["internal_outlet"])
-    gmsh.model.mesh.field.setNumbers(3, "SurfacesList", [])
-    gmsh.model.mesh.field.setNumber(3, "Sampling", 100)
-    gmsh.model.mesh.field.add("Threshold", 4)
-    gmsh.model.mesh.field.setNumber(4, "InField", 3)
-    gmsh.model.mesh.field.setNumber(4, "SizeMin", minSize)
-    gmsh.model.mesh.field.setNumber(4, "SizeMax", mesh.bulk_cell_size)
-    gmsh.model.mesh.field.setNumber(4, "DistMin", 2 * r_outlet)
-    gmsh.model.mesh.field.setNumber(4, "DistMax", 4 * r_outlet)
+    if mesh.internal_outlet > mesh.t_BL:
 
-    gmsh.model.mesh.field.add("Min", 5)
-    gmsh.model.mesh.field.setNumbers(5, "FieldsList", [2, 4])
-    gmsh.model.mesh.field.setAsBackgroundMesh(5)
+        minSize = r_outlet/(N_outlet - 1)
+        gmsh.model.mesh.field.add("Distance", 3)
+        gmsh.model.mesh.field.setNumbers(3, "PointsList", [])
+        gmsh.model.mesh.field.setNumbers(3, "CurvesList", line_groups["internal_outlet"])
+        gmsh.model.mesh.field.setNumbers(3, "SurfacesList", [])
+        gmsh.model.mesh.field.setNumber(3, "Sampling", 100)
+        gmsh.model.mesh.field.add("Threshold", 4)
+        gmsh.model.mesh.field.setNumber(4, "InField", 3)
+        gmsh.model.mesh.field.setNumber(4, "SizeMin", minSize)
+        gmsh.model.mesh.field.setNumber(4, "SizeMax", mesh.bulk_cell_size)
+        gmsh.model.mesh.field.setNumber(4, "DistMin", 2 * r_outlet)
+        gmsh.model.mesh.field.setNumber(4, "DistMax", 4 * r_outlet)
+
+        gmsh.model.mesh.field.add("Min", 5)
+        gmsh.model.mesh.field.setNumbers(5, "FieldsList", [2, 4])
+        gmsh.model.mesh.field.setAsBackgroundMesh(5)
+    else:
+        gmsh.model.mesh.field.setAsBackgroundMesh(2)
 
     gmsh.option.setNumber("Mesh.MeshSizeExtendFromBoundary", 0)
     gmsh.option.setNumber("Mesh.MeshSizeFromPoints", 0)

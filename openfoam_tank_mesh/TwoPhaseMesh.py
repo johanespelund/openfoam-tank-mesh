@@ -6,9 +6,17 @@ from openfoam_tank_mesh.gmsh_scripts.two_phase import run as run_gmsh
 from openfoam_tank_mesh.TwoPhaseTankMesh import TwoPhaseTankMesh
 from openfoam_tank_mesh.Profile import KSiteProfile
 
+from numpy import isclose
+
 
 class KSiteMesh(TwoPhaseTankMesh):
     def __init__(self, input_parameters: dict) -> None:
+
+        self.modify_outlet = 1
+        if input_parameters["outlet_radius"] <= input_parameters["wall_tan_cell_size"]:
+            input_parameters["outlet_radius"] *= 2
+            self.modify_outlet = True
+
         self.tank = KSiteProfile(
             fill_level=input_parameters["fill_level"],
             outlet_radius=input_parameters["outlet_radius"],
@@ -30,6 +38,10 @@ class KSiteMesh(TwoPhaseTankMesh):
         """
 
         run_gmsh(self)
+        if self.modify_outlet:
+            self.outlet_radius /= 2
+            self.write_mesh_parameters()
+
         self.run_command("gmshToFoam mesh.msh")
         angle = max(self.wedge_angle, self.revolve)/2
         # self.run_command(f"transformPoints -rotate-y -{angle}")  # .org
@@ -52,6 +64,8 @@ class KSiteMesh(TwoPhaseTankMesh):
 
         if self.internal_outlet:
             self.create_internal_outlet()
+        else:
+            self.remove_wall_outlet()
         self.run_command("rm -rf 0/cellToRegion")
         self.run_command("splitMeshRegions -cellZonesOnly -overwrite")
         self.run_command("rm -rf constant/polyMesh")

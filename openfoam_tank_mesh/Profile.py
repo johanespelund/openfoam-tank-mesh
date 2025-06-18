@@ -548,20 +548,18 @@ class TankProfile(Profile):
             ls="--",
         )
 
-        # points = self.get_mesh_points()
+        # point_coords = self.get_mesh_points()
         # normals = self.get_profile_normals()
+        # points = point_coords.points
         # for i, (key, item) in enumerate(points.items()):
-        #     try:
-        #         int(key)
-        #         ax.plot(item[0], item[1], "ro")
-        #         ax.text(item[0], item[1], f"{key}", fontsize=8, ha="right")
-        #         x1, y1 = item[0], item[1]
-        #         n = normals[i]
-        #         x2 = x1 + n[0]
-        #         y2 = y1 + n[1]
-        #         ax.plot([x1, x2], [y1, y2])
-        # except:
-        #      pass
+        #     input(f"{i=}, {key=}, {item=}")
+        #     ax.plot(item[0], item[1], "ro")
+        #     ax.text(item[0], item[1], f"{key}", fontsize=8, ha="right")
+        #     x1, y1 = item[0], item[1]
+        #     n = normals[i]
+        #     x2 = x1 + n[0]
+        #     y2 = y1 + n[1]
+        #     ax.plot([x1, x2], [y1, y2])
 
         ax.set_aspect("equal")
         plt.legend()
@@ -616,7 +614,7 @@ class TankProfile(Profile):
 
         tw = 2.08e-3
         wall_points = []  # Points for the optional wall region, outer - n*tw
-        for i, point in enumerate(profile_points[:-1]):
+        for i, point in enumerate(profile_points):
             wall_points.append(point - tw * profile_normals[i])
 
         points.append(np.array([0, self.y_interface - self.t_BL]))
@@ -633,6 +631,7 @@ class TankProfile(Profile):
         internal_outlet_points = inner_points[-2:] + points[-2:]
         axis_points.append(points[-2])
         points += wall_points
+
 
         return PointCoords(
             points={str(i): p for i, p in enumerate(points)},
