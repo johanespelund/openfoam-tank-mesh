@@ -223,13 +223,10 @@ class TwoPhaseTankMesh(ABC):
             console.print(table)
 
     def remove_wall(self) -> None:
-        self.run_command("rm -r constant/polyMesh")
         self.run_command("rm -r constant/metal/polyMesh")
-        self.run_command("mv constant/gas/polyMesh constant/polyMesh")
-        self.sed("gas_to_metal", "walls", "constant/polyMesh/boundary")
-        self.sed("mappedWall", "wall", "constant/polyMesh/boundary")
-        self.run_command("rm -f 0/cellToRegion")
-        self.multi_region = False
+        for region in ('gas', 'liquid'):
+            self.sed(f"{region}_to_metal", "walls", f"constant/{region}/polyMesh/boundary")
+            self.sed("mappedWall", "wall", f"constant/{region}/polyMesh/boundary")
 
     def add_wall(self, wall_thickness: float, n_layers: int) -> None:
         """

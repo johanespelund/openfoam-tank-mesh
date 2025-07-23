@@ -87,6 +87,15 @@ class Segment(ABC):
     def get_length(self) -> float:
         pass
 
+    @abstractmethod
+    def get_origo(self) -> tuple[float, float]:
+        pass
+
+    @abstractmethod
+    def get_rmax(self) -> float:
+        pass
+
+
     def __str__(self) -> str:
         return f"{self.name}:\n  y: {self.y_start} - {self.y_end}\n  r: {self.r_start} - {self.r_end}\n  N: {self.N}, r: {self.r}"
 
@@ -117,6 +126,12 @@ class LineSegment(Segment):
         self.r_end = r_end
         self.length_scale = length_scale
         self.N = closest_even(self.get_length() / length_scale)
+
+    def get_origo(self) -> tuple[float, float]:
+        return (0.0, (self.y_start + self.y_end) / 2)
+
+    def get_rmax(self) -> float:
+        return max(self.r_start, self.r_end)
 
     def get_radius(self, y: float) -> float:
         if self.y_start is None or self.y_end is None or self.r_start is None or self.r_end is None:
@@ -159,6 +174,12 @@ class EllipseArc(Segment):
         self.N: int = closest_even(self.get_length() / length_scale)
         self.major_point: np.typing.NDArray = np.array([self.axis_major, self.axis_minor + self.y_offset])
         self.origo: np.typing.NDArray = np.array([0, self.axis_minor + self.y_offset])
+
+    def get_origo(self) -> tuple[float, float]:
+        return (0.0, self.axis_minor + self.y_offset)
+
+    def get_rmax(self) -> float:
+        return self.axis_major
 
     def get_radius(self, y: float) -> float:
         A, B = self.axis_major, self.axis_minor
@@ -735,6 +756,40 @@ class KSiteProfile(TankProfile):
         self.cylinder_height = C
 
 
+class SphereProfile(TankProfile):
+    def __init__(
+        self,
+        radius: float,
+        fill_level: float,
+        outlet_radius: float,
+        bulk_cell_size: float,
+        wall_tan_cell_size: float,
+        wall_cell_size: float,
+        r_BL: float = 1.2,
+        internal_outlet: float = 0,
+    ) -> None:
+        super().__init__(
+            segments=[
+                EllipseArc("ellipse1", 0, radius, radius, radius, length_scale=wall_tan_cell_size),
+                EllipseArc(
+                    "ellipse2",
+                    radius,
+                    radius*2,
+                    radius,
+                    radius,
+                    length_scale=wall_tan_cell_size,
+                ),
+            ],
+            fill_level=fill_level,
+            outlet_radius=outlet_radius,
+            internal_outlet=internal_outlet,
+        )
+        self.name = "Sphere"
+        self.add_boundary_layers(x_wall=wall_cell_size, r_BL=r_BL)
+        self.cap_height = A
+        self.cylinder_radius = B
+        self.cylinder_height = C
+
 # FEET = 0.3048
 # A = 3.05 / 4 #10 * FEET / 4
 # B = 3.05 / 2 #10 * FEET / 2
@@ -769,14 +824,16 @@ class KSiteProfile(TankProfile):
 #         self.cylinder_radius = B
 #         self.cylinder_height = C
 
-# if __name__ == "__main__":
-#     tank = MHTB(
-#         fill_level=0.5,
-#         outlet_radius=0.01,
-#         bulk_cell_size=0.01,
-#         wall_tan_cell_size=0.0001,
-#         wall_cell_size=0.005,
-#         r_BL=1.2,
-#     )
-#     print(tank.volume)
-#     print(tank.area)
+if __name__ == "__main__":
+    tank = SphereProfile(
+        radius=1,
+        fill_level=0.5,
+        outlet_radius=0.01,
+        bulk_cell_size=0.01,
+        wall_tan_cell_size=0.0001,
+        wall_cell_size=0.005,
+        r_BL=1.2,
+    )
+    tank.plot()
+    print(tank.volume)
+    print(tank.area)
