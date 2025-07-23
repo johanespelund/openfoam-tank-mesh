@@ -225,7 +225,7 @@ class TwoPhaseTankMesh(ABC):
     def remove_wall(self) -> None:
         self.run_command("rm -r constant/metal/polyMesh")
         for region in ('gas', 'liquid'):
-            self.sed(f"{region}_to_metal", "walls", f"constant/{region}/polyMesh/boundary")
+            # self.sed(f"{region}_to_metal", "walls", f"constant/{region}/polyMesh/boundary")
             # self.sed("mappedWall", "wall", f"constant/{region}/polyMesh/boundary")
             # Do the same sed command, but only for the LAST match!
             self.run_command(
