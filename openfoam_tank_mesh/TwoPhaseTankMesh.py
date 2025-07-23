@@ -226,7 +226,11 @@ class TwoPhaseTankMesh(ABC):
         self.run_command("rm -r constant/metal/polyMesh")
         for region in ('gas', 'liquid'):
             self.sed(f"{region}_to_metal", "walls", f"constant/{region}/polyMesh/boundary")
-            self.sed("mappedWall", "wall", f"constant/{region}/polyMesh/boundary")
+            # self.sed("mappedWall", "wall", f"constant/{region}/polyMesh/boundary")
+            # Do the same sed command, but only for the LAST match!
+            self.run_command(
+                f"sed -i 'H;$!d;g;s/\\(.*\\)mappedWall/\\1wall/' constant/{region}/polyMesh/boundary"
+            )
 
     def add_wall(self, wall_thickness: float, n_layers: int) -> None:
         """
