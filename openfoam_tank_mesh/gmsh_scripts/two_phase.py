@@ -42,6 +42,9 @@ def find_point(coords: np.ndarray, tol: float = 1e-6) -> int:
         # Get the coordinates of the point
         x, y, z = gmsh.model.getValue(0, point[1], [])
         # Check if the point is within the tolerance distance from coords
+        name = gmsh.model.getEntityName(0, point[1])
+        if name.startswith("origo") or name.startswith("majorPoint"):
+            continue
         if np.allclose([x, y, z], coords, atol=tol):
             return point[1]
 
@@ -168,26 +171,6 @@ def generate_points_and_lines(
     p = {}
     lines = {}
 
-    origo = add_point(0, b + y_cylinder, z0, lc)
-    major_point = add_point(a, b + y_cylinder, z0, lc)
-    y_cylinder_liq = add_point(a, b - y_cylinder, z0, lc)
-    major_point_wall = add_point(a + tw, b + y_cylinder, z0, lc)
-    p["origo"] = origo
-    p["major_point"] = major_point
-    p["y_cylinder_liq"] = y_cylinder_liq
-    majorPoint = {
-        "liquid": add_point(a, b, z0, lc),
-        "interface_liquid": add_point(a, b, z0, lc),
-        "interface_gas": add_point(a, b + y_cylinder, z0, lc),
-        "gas": add_point(a, b + y_cylinder, z0, lc),
-    }
-    origoGroup = {
-        "liquid": add_point(0, b, z0, lc),
-        "interface_liquid": add_point(0, b, z0, lc),
-        "interface_gas": add_point(0, b + y_cylinder, z0, lc),
-        "gas": add_point(0, b + y_cylinder, z0, lc),
-    }
-
     # Liquid phase points:
     tank_profile: TankProfile = mesh.tank #create_tank_profile(mesh)
     n_segments: int = len(tank_profile.segments)
@@ -229,11 +212,12 @@ def generate_points_and_lines(
                 p2 = find_point(pts[i + 1])
                 if isinstance(seg, EllipseArc):
                     o = add_point(seg.get_origo()[0], seg.get_origo()[1], z0, lc)
+                    gmsh.model.setEntityName(0, o, f"origo_{seg.name}")
                     mp = add_point(0, seg.get_rmax(), z0, lc)
+                    gmsh.model.setEntityName(0, mp, f"majorPoint_{seg.name}")
                     add_ellipse(
                         p1, o, mp, p2
                     )
-                    # Print coords of origo and majorPoint:
                 elif isinstance(seg, LineSegment):
                     add_line(p1, p2)
                 i += 1
@@ -318,6 +302,65 @@ def generate_points_and_lines(
     for curve in wall_normal_curves:
         gmsh.model.geo.mesh.setTransfiniteCurve(curve, mesh.n_wall_layers + 1)
 
+    # Add wall normal transfinite curves
+    for i in range(len(outer_points)):
+        p1 = outer_points[i]
+        p2 = inner_points[i]
+        l = find_line(p1, p2)
+        sign = l/abs(l)  # Get the sign of the line, to determine direction
+        gmsh.model.geo.mesh.setTransfiniteCurve(l, tank_profile.N + 1, "Progression", sign*mesh.r_BL)
+        # TODO: All of these lines are not defined actually!
+
+    # Add wall tangential transfinite curves
+    for i, seg in enumerate(tank_profile.segments):
+        inner_line = find_line(
+            inner_points[i],
+            inner_points[i + 1]
+        )
+        outer_line = find_line(
+            outer_points[i],
+            outer_points[i + 1],
+        )
+        wall_line = find_line(
+            wall_points[i],
+            wall_points[i + 1],
+        )
+        N = seg.N
+        r_BL = seg.r
+        gmsh.model.geo.mesh.setTransfiniteCurve(inner_line, N + 1, "Progression", r_BL)
+        gmsh.model.geo.mesh.setTransfiniteCurve(outer_line, N + 1, "Progression", r_BL)
+        gmsh.model.geo.mesh.setTransfiniteCurve(wall_line, N + 1, "Progression", r_BL)
+
+    # Finally, set N for horizontal interface (+BL) lines:
+    N_hor = closest_odd(inner_points[i_bl][0] / lc)
+    bl_up = find_line(
+        (0, tank_profile.y_interface + tank_profile.t_BL),
+        inner_points[i_bl_upper]
+    )
+    interface_line = find_line((0, tank_profile.y_interface), inner_points[i_bl])
+    bl_down = find_line(
+        (0, tank_profile.y_interface - tank_profile.t_BL),
+        inner_points[i_bl_lower],
+    )
+    gmsh.model.geo.mesh.setTransfiniteCurve(bl_up, N_hor)
+    gmsh.model.geo.mesh.setTransfiniteCurve(interface_line, N_hor)
+    gmsh.model.geo.mesh.setTransfiniteCurve(bl_down, N_hor)
+
+    # Need to set for boundary layer lines on y axis (above and below interface)
+    above = find_line(
+        (0, tank_profile.y_interface),
+        (0, tank_profile.y_interface + tank_profile.t_BL),
+    )
+    below = find_line(
+        (0, tank_profile.y_interface),
+        (0, tank_profile.y_interface - tank_profile.t_BL),
+    )
+
+    N_above = tank_profile.N + 1  # - tank_profile.n_upper_bl_segments
+    gmsh.model.geo.mesh.setTransfiniteCurve(above, N_above, "Progression", mesh.r_BL)
+
+    N_below = tank_profile.N + 1  # - tank_profile.n_lower_bl_segments
+    gmsh.model.geo.mesh.setTransfiniteCurve(below, N_below, "Progression", -mesh.r_BL)
     gmsh.model.geo.synchronize()
 
     ## LIQUID REGION
@@ -496,65 +539,6 @@ def generate_points_and_lines(
     clOutlet = gmsh.model.geo.addCurveLoops(_lines)
     sOutlet = gmsh.model.geo.addPlaneSurface(clOutlet)
 
-    # Add wall normal transfinite curves
-    for i in range(len(outer_points)):
-        p1 = outer_points[i]
-        p2 = inner_points[i]
-        l = find_line(p1, p2)
-        sign = l/abs(l)  # Get the sign of the line, to determine direction
-        gmsh.model.geo.mesh.setTransfiniteCurve(l, tank_profile.N + 1, "Progression", sign*mesh.r_BL)
-        # TODO: All of these lines are not defined actually!
-
-    # Add wall tangential transfinite curves
-    for i, seg in enumerate(tank_profile.segments):
-        inner_line = find_line(
-            inner_points[i],
-            inner_points[i + 1]
-        )
-        outer_line = find_line(
-            outer_points[i],
-            outer_points[i + 1],
-        )
-        wall_line = find_line(
-            wall_points[i],
-            wall_points[i + 1],
-        )
-        N = seg.N
-        r_BL = seg.r
-        gmsh.model.geo.mesh.setTransfiniteCurve(inner_line, N + 1, "Progression", r_BL)
-        gmsh.model.geo.mesh.setTransfiniteCurve(outer_line, N + 1, "Progression", r_BL)
-        gmsh.model.geo.mesh.setTransfiniteCurve(wall_line, N + 1, "Progression", r_BL)
-
-    # Finally, set N for horizontal interface (+BL) lines:
-    N_hor = closest_odd(inner_points[i_bl][0] / lc)
-    bl_up = find_line(
-        (0, tank_profile.y_interface + tank_profile.t_BL),
-        inner_points[i_bl_upper]
-    )
-    interface_line = find_line((0, tank_profile.y_interface), inner_points[i_bl])
-    bl_down = find_line(
-        (0, tank_profile.y_interface - tank_profile.t_BL),
-        inner_points[i_bl_lower],
-    )
-    gmsh.model.geo.mesh.setTransfiniteCurve(bl_up, N_hor)
-    gmsh.model.geo.mesh.setTransfiniteCurve(interface_line, N_hor)
-    gmsh.model.geo.mesh.setTransfiniteCurve(bl_down, N_hor)
-
-    # Need to set for boundary layer lines on y axis (above and below interface)
-    above = find_line(
-        (0, tank_profile.y_interface),
-        (0, tank_profile.y_interface + tank_profile.t_BL),
-    )
-    below = find_line(
-        (0, tank_profile.y_interface),
-        (0, tank_profile.y_interface - tank_profile.t_BL),
-    )
-
-    N_above = tank_profile.N + 1  # - tank_profile.n_upper_bl_segments
-    gmsh.model.geo.mesh.setTransfiniteCurve(above, N_above, "Progression", mesh.r_BL)
-
-    N_below = tank_profile.N + 1  # - tank_profile.n_lower_bl_segments
-    gmsh.model.geo.mesh.setTransfiniteCurve(below, N_below, "Progression", -mesh.r_BL)
 
 
     ## WALL REGION
@@ -578,8 +562,8 @@ def generate_points_and_lines(
     gmsh.model.geo.synchronize()
 
     gmsh.model.geo.mesh.setTransfiniteSurface(sOuterLiquidBL, "Left", cornersOuterLiquidBL)
-    gmsh.model.geo.mesh.setTransfiniteSurface(sInnerLiquidBL, "Left", cornersInnerLiquidBL)
     gmsh.model.geo.mesh.setTransfiniteSurface(sOuterGasBL, "Left", cornersOuterGasBL)
+    gmsh.model.geo.mesh.setTransfiniteSurface(sInnerLiquidBL, "Left", cornersInnerLiquidBL)
     gmsh.model.geo.mesh.setTransfiniteSurface(sInnerGasBL, "Left", cornersInnerGasBL)
     gmsh.model.geo.mesh.setTransfiniteSurface(sGasWall, "Left", cornersGasWall)
     gmsh.model.geo.mesh.setTransfiniteSurface(sLiquidWall, "Left", cornersLiquidWall)

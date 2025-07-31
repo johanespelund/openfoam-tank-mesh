@@ -430,6 +430,15 @@ class TankProfile(Profile):
         """
         Go through the segments and split the one where the interface is located.
         """
+
+        # Check if a split already exists at this position
+        for segment in self.segments:
+            if abs(segment.y_start - y_split) < tol/5 or abs(segment.y_end - y_split) < tol/5:
+                print(f"Split already exists at {y_split}, skipping.")
+                self.sort_segments()
+                self.check_segment_connectivity()
+                return segment, None
+
         for segment in self.segments:
             if segment.y_start <= y_split <= segment.y_end:
                 # Replace this segment with two segments of same type,
@@ -469,7 +478,8 @@ class TankProfile(Profile):
                 upper_segment.r_end = upper_segment.get_radius(y_end)
 
                 if abs(upper_segment.get_length()) < tol:
-                    # print(f"Segment {upper_segment.name} is too short, extending it upwards.")
+                    print(f"Segment {upper_segment.name} is too short, extending it upwards.")
+                    input(f"{upper_segment.get_length()=}, {tol=}")
                     un = upper_segment.upperNeighbor
                     un.y_start = y_end + tol
                     un.r_start = un.get_radius(un.y_start)
@@ -786,9 +796,9 @@ class SphereProfile(TankProfile):
         )
         self.name = "Sphere"
         self.add_boundary_layers(x_wall=wall_cell_size, r_BL=r_BL)
-        self.cap_height = A
-        self.cylinder_radius = B
-        self.cylinder_height = C
+        self.cap_height = radius
+        self.cylinder_radius = radius
+        self.cylinder_height = 0
 
 # FEET = 0.3048
 # A = 3.05 / 4 #10 * FEET / 4
@@ -829,9 +839,9 @@ if __name__ == "__main__":
         radius=1,
         fill_level=0.5,
         outlet_radius=0.01,
-        bulk_cell_size=0.01,
-        wall_tan_cell_size=0.0001,
-        wall_cell_size=0.005,
+        bulk_cell_size=0.025,
+        wall_tan_cell_size=0.005,
+        wall_cell_size=0.025,
         r_BL=1.2,
     )
     tank.plot()
