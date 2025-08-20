@@ -52,6 +52,7 @@ class TwoPhaseTankMesh(ABC):
         self.r_BL: float = 1.1  # Boundary layer growth rate
         self.revolve: float = 0  # Revolution angle (0 means 2D)
         self.n_revolve: float = 0  # Revolution angle (0 means 2D)
+        self.symmetry: bool = True  # Revolution angle (0 means 2D)
         self.wedge_angle: float = 1  # Revolution angle if 2D
         self.wedge_pos_normal: list = [ 0, 0, 0]
         self.wedge_neg_normal: list = [ 0, 0, 0]
@@ -68,6 +69,7 @@ class TwoPhaseTankMesh(ABC):
         self.wedge_angle = self.revolve if self.revolve else self.wedge_angle
         self.calc_wedge_normal()
         super().__init__()
+        self.cyclic = not self.symmetry
         self.write_mesh_parameters()
 
     @property
