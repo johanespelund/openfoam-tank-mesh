@@ -51,8 +51,10 @@ class KSiteMesh(TwoPhaseTankMesh):
             "topoSetDict.gmsh",
         )
 
-        if self.revolve:
+        if self.revolve and self.symmetry:
             self.run_openfoam_utility("createPatch -overwrite", "createPatchDict.gmsh_symmetry")
+        elif self.revolve and self.cyclic:
+            self.run_openfoam_utility("createPatch -overwrite", "createPatchDict.gmsh_cyclic")
         else:
             self.run_openfoam_utility("createPatch -overwrite", "createPatchDict.gmsh")
 
