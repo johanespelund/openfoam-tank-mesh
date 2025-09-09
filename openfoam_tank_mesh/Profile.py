@@ -306,6 +306,16 @@ class Profile:
         integrand = lambda y: 2 * np.pi * r(y) * np.sqrt(1 + drdy(y) ** 2)
         return float(spi.quad(integrand, y1, y2)[0])
 
+    def get_y(self, radius: float, ymin: float, ymax: float):
+
+        def objective(y: float) -> float:
+            current_radius = self.get_radius(y)
+            return current_radius - radius
+
+        y0 = 0.5*(ymin + ymax)
+        result = float(spo.least_squares(objective, y0, bounds=(ymin, ymax)).x)
+        return result
+
 
 
 class TankProfile(Profile):
@@ -764,6 +774,10 @@ class KSiteProfile(TankProfile):
         self.cap_height = A
         self.cylinder_radius = B
         self.cylinder_height = C
+
+        self.r_lid = 0.302
+        self.y_lid = self.get_y(self.r_lid, 0.5*self.ymax(), self.ymax())
+        self.split_profile(self.y_lid)
 
 
 class SphereProfile(TankProfile):

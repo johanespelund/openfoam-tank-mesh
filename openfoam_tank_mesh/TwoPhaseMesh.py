@@ -67,6 +67,26 @@ class KSiteMesh(TwoPhaseTankMesh):
         else:
             self.remove_wall_outlet()
         self.run_command("rm -rf 0/cellToRegion")
+        self.lid_region = True
+        if self.lid_region:
+
+            y = self.tank.y_lid
+            r = self.tank.r_lid
+            nx, ny = self.tank.get_normal(y)/4
+            r1, y1 = r - nx, y - ny
+            r2, y2 = r + nx, y + ny
+
+            print(f"{r1=}, {r2=}")
+            print(f"{y1=}, {y2=}")
+            input("...")
+
+            topodict = self.dict("topoSetDict.splitMetalRegions")
+            self.sed("radius1 .*;", f"radius1 {r1:.4f};", topodict)
+            self.sed("radius2 .*;", f"radius2 {r2:.4f};", topodict)
+            self.sed("point1 .*;", f"point1 (0 {y1:.4f} 0);", topodict)
+            self.sed("point2 .*;", f"point2 (0 {y2:.4f} 0);", topodict)
+
+            self.run_openfoam_utility("topoSet", "topoSetDict.splitMetalRegions")
         self.run_command("splitMeshRegions -cellZonesOnly -overwrite")
         self.run_command("rm -rf constant/polyMesh")
         # self.generate_leak_boundaries()
