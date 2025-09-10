@@ -78,10 +78,6 @@ class KSiteMesh(TwoPhaseTankMesh):
             r1, y1 = r - nx, y - ny
             r2, y2 = r + nx, y + ny
 
-            print(f"{r1=}, {r2=}")
-            print(f"{y1=}, {y2=}")
-            input("...")
-
             topodict = self.dict("topoSetDict.splitMetalRegions")
             self.sed("radius1 .*;", f"radius1 {r1:.4f};", topodict)
             self.sed("radius2 .*;", f"radius2 {r2:.4f};", topodict)

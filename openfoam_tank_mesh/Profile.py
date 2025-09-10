@@ -489,7 +489,6 @@ class TankProfile(Profile):
 
                 if abs(upper_segment.get_length()) < tol:
                     print(f"Segment {upper_segment.name} is too short, extending it upwards.")
-                    input(f"{upper_segment.get_length()=}, {tol=}")
                     un = upper_segment.upperNeighbor
                     un.y_start = y_end + tol
                     un.r_start = un.get_radius(un.y_start)
