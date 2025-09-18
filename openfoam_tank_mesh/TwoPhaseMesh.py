@@ -69,8 +69,9 @@ class KSiteMesh(TwoPhaseTankMesh):
         else:
             self.remove_wall_outlet()
         self.run_command("rm -rf 0/cellToRegion")
-        self.lid_region = True
-        if self.lid_region:
+        if self.lid:
+            self.regions.append("lid")
+            self.write_mesh_parameters()
 
             y = self.tank.y_lid
             r = self.tank.r_lid
@@ -87,8 +88,7 @@ class KSiteMesh(TwoPhaseTankMesh):
             self.run_openfoam_utility("topoSet", "topoSetDict.splitMetalRegions")
         self.run_command("splitMeshRegions -cellZonesOnly -overwrite")
         self.run_command("rm -rf constant/polyMesh")
-        # self.generate_leak_boundaries()
-        self.check_mesh(regions=["gas", "liquid", "metal"])
+        self.check_mesh(regions=self.regions)
 
         # Need to run this to convert mapped patches from .com to .org format
         # self.run_command(
@@ -103,10 +103,12 @@ class KSiteMesh(TwoPhaseTankMesh):
         """
         On the metal region, create a boundary for the flange.
         """
-        self.run_openfoam_utility("topoSet -region metal", "topoSetDict.metal_patches")
-        self.run_openfoam_utility(
-            "createPatch -overwrite -region metal", "createPatchDict.metal_patches"
-        )
+        for region in ["metal", "lid"]:
+            self.run_openfoam_utility(f"topoSet -region {region}", "topoSetDict.metal_patches")
+            self.run_openfoam_utility(
+                f"createPatch -overwrite -region {region}", "createPatchDict.metal_patches"
+            )
+
 
     def generate_stl(self) -> None:
         """
@@ -235,10 +237,12 @@ class SphereMesh(TwoPhaseTankMesh):
         """
         On the metal region, create a boundary for the flange.
         """
-        self.run_openfoam_utility("topoSet -region metal", "topoSetDict.metal_patches")
-        self.run_openfoam_utility(
-            "createPatch -overwrite -region metal", "createPatchDict.metal_patches"
-        )
+        for region in ["metal", "lid"]:
+            input(f"{region=}")
+            self.run_openfoam_utility(f"topoSet -region {region}", "topoSetDict.metal_patches")
+            self.run_openfoam_utility(
+                f"createPatch -overwrite -region {region}", "createPatchDict.metal_patches"
+            )
 
     def generate_stl(self) -> None:
         """
