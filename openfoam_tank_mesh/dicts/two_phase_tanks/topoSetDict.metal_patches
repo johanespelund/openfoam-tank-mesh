@@ -37,32 +37,32 @@ actions
   //  sourceInfo
   //    {
   //       p1 (0 0.5 0);
-  //       p2 (0 0.65 0);
+  //       p2 (0 1.8595 0);
   //       radius 1e3;
   //    }
   //  type faceSet;
  // }
 
- {
+{
   action new;
   name   ductsFaceSet;
   type   faceSet;
   source patchToFace;
   sourceInfo
-    {
-      name walls;
-    }
+  {
+    name walls;
+  }
 }
 {
   action delete;
   name ductsFaceSet;
   source cylinderToFace;
   sourceInfo
-    {
-      p1 (0 #calc "0.015*$ymax" 0);
-      p2 (0 #calc "0.969*$ymax" 0);
-      radius 1e6;
-    }
+  {
+    p1 (0 #calc "0.015*$ymax" 0);
+    p2 (0 1.8595 0);
+    radius 1e6;
+  }
   type faceSet;
 }
 );

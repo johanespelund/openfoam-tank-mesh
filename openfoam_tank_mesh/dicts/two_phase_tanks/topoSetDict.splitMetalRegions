@@ -22,10 +22,10 @@ actions
         type    cellSet;
         action  new;
         source  truncatedConeToCell;
-        point1 (0 2.2025 0);
-        point2 (0 1.7157 0);
+        point1 (0 2.1009 0);
+        point2 (0 0.8840 0);
         radius1 0.3592;
-        radius2 0.2448;
+        radius2 0.0732;
     }
     {
         name    lidCells;

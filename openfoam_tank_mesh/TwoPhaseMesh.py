@@ -75,15 +75,21 @@ class KSiteMesh(TwoPhaseTankMesh):
 
             y = self.tank.y_lid
             r = self.tank.r_lid
-            nx, ny = self.tank.get_normal(y)/4
-            r1, y1 = r - nx, y - ny
+            nx, ny = self.tank.get_normal(y)
+            r1, y1 = r - nx/4, y - ny/4
             r2, y2 = r + nx, y + ny
+
+            y_duct = y - ny*2.08e-3
 
             topodict = self.dict("topoSetDict.splitMetalRegions")
             self.sed("radius1 .*;", f"radius1 {r1:.4f};", topodict)
             self.sed("radius2 .*;", f"radius2 {r2:.4f};", topodict)
             self.sed("point1 .*;", f"point1 (0 {y1:.4f} 0);", topodict)
             self.sed("point2 .*;", f"point2 (0 {y2:.4f} 0);", topodict)
+
+            topodict = self.dict("topoSetDict.metal_patches")
+            self.sed("p2 .*;", f"p2 (0 {y_duct:.4f} 0);", topodict)
+
 
             self.run_openfoam_utility("topoSet", "topoSetDict.splitMetalRegions")
         self.run_command("splitMeshRegions -cellZonesOnly -overwrite")
