@@ -62,6 +62,7 @@ class KSiteMesh(TwoPhaseTankMesh):
         """
         Generate the mesh.
         """
+        self.check_openfoam_loaded(version="org")
         self.gmsh()
 
         if self.internal_outlet:
