@@ -601,6 +601,10 @@ def generate_points_and_lines(
     for p in inner_points:
         _points.append(find_point(p))
 
+    for p in internal_outlet_points:
+        if p[0] == 0:
+            _points.append(find_point(p))
+
     gmsh.model.mesh.field.add("Distance", 1)
     gmsh.model.mesh.field.setNumbers(1, "PointsList", _points)
     # gmsh.model.mesh.field.setNumbers(1, "CurvesList", line_groups["gas"] + line_groups["liquid"])
