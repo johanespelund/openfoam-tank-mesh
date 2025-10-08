@@ -106,15 +106,14 @@ class KSiteMesh(TwoPhaseTankMesh):
         return None
 
 
-    def generate_leak_boundaries(self) -> None:
+    def generate_leak_boundaries(self, region: str) -> None:
         """
         On the metal region, create a boundary for the flange.
         """
-        for region in ["metal", "lid"]:
-            self.run_openfoam_utility(f"topoSet -region {region}", "topoSetDict.metal_patches")
-            self.run_openfoam_utility(
-                f"createPatch -overwrite -region {region}", "createPatchDict.metal_patches"
-            )
+        self.run_openfoam_utility(f"topoSet -region {region}", "topoSetDict.metal_patches")
+        self.run_openfoam_utility(
+            f"createPatch -overwrite -region {region}", "createPatchDict.metal_patches"
+        )
 
 
     def generate_stl(self) -> None:
