@@ -68,7 +68,7 @@ class TwoPhaseTankMesh(ABC):
         self.lid = False
         self.regions = ["gas", "liquid", "metal"]
 
-        self.check_openfoam_loaded(version="org")
+        # self.check_openfoam_loaded(version="org")
         self.validate_parameters(input_parameters)
         self.set_parameters(input_parameters)
         self.n_BL, self.t_BL, self.e_BL = self.calculate_boundary_layer()

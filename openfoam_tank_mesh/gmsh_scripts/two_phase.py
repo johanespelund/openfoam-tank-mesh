@@ -200,6 +200,7 @@ def generate_points_and_lines(
     line_groups = {group: [] for group in list(curve_groups.keys()) + ["outlet", "internal_outlet"]}
     normal_lines = []
     wall_lines = []
+    inner_lines = []
 
     i = 0
 
@@ -215,12 +216,16 @@ def generate_points_and_lines(
                     gmsh.model.setEntityName(0, o, f"origo_{seg.name}")
                     mp = add_point(0, seg.get_rmax(), z0, lc)
                     gmsh.model.setEntityName(0, mp, f"majorPoint_{seg.name}")
-                    add_ellipse(
+                    line = add_ellipse(
                         p1, o, mp, p2
                     )
                 elif isinstance(seg, LineSegment):
-                    add_line(p1, p2)
+                    line = add_line(p1, p2)
+                if point_group is inner_points:
+                    inner_lines.append(line)
+
                 i += 1
+
         i = 0
 
     p1 = find_point(wall_points[-1])
@@ -420,6 +425,7 @@ def generate_points_and_lines(
     _lines = [find_line(_points[i], _points[(i + 1) % len(_points)]) for i in range(len(_points))]
     clInnerLiquidBL = gmsh.model.geo.addCurveLoops(_lines)
     sInnerLiquidBL = gmsh.model.geo.addPlaneSurface(clInnerLiquidBL)
+    inner_lines.extend(_lines)
 
     cornersInnerLiquidBL = [
         find_point(p)
@@ -463,6 +469,7 @@ def generate_points_and_lines(
     _lines = [find_line(_points[i], _points[(i + 1) % len(_points)]) for i in range(len(_points))]
     clInnerGasBL = gmsh.model.geo.addCurveLoops(_lines)
     sInnerGasBL = gmsh.model.geo.addPlaneSurface(clInnerGasBL)
+    inner_lines.extend(_lines)
 
     cornersInnerGasBL = [
         find_point(p)
@@ -587,18 +594,29 @@ def generate_points_and_lines(
     gmsh.option.setNumber("Mesh.RecombinationAlgorithm", 2)  # 2 or 3
     gmsh.model.geo.synchronize()
 
+    _points = []
+    for i, key in [(-1, i_bl_lower), (1, i_bl_upper)]:
+        _points.append(find_point(axis_points[2 + i]))
+
+    for p in inner_points:
+        _points.append(find_point(p))
+
+    for p in internal_outlet_points:
+        if p[0] == 0:
+            _points.append(find_point(p))
 
     gmsh.model.mesh.field.add("Distance", 1)
-    gmsh.model.mesh.field.setNumbers(1, "PointsList", [])
-    gmsh.model.mesh.field.setNumbers(1, "CurvesList", line_groups["gas"] + line_groups["liquid"])
+    gmsh.model.mesh.field.setNumbers(1, "PointsList", _points)
+    # gmsh.model.mesh.field.setNumbers(1, "CurvesList", line_groups["gas"] + line_groups["liquid"])
+    gmsh.model.mesh.field.setNumbers(1, "CurvesList", [abs(l) for l in inner_lines])
     gmsh.model.mesh.field.setNumbers(1, "SurfacesList", [])
     gmsh.model.mesh.field.setNumber(1, "Sampling", 100)
     gmsh.model.mesh.field.add("Threshold", 2)
     gmsh.model.mesh.field.setNumber(2, "InField", 1)
     gmsh.model.mesh.field.setNumber(2, "SizeMin", mesh.wall_tan_cell_size)
     gmsh.model.mesh.field.setNumber(2, "SizeMax", mesh.bulk_cell_size)
-    gmsh.model.mesh.field.setNumber(2, "DistMin", 2 * r_outlet)
-    gmsh.model.mesh.field.setNumber(2, "DistMax", 4 * r_outlet)
+    gmsh.model.mesh.field.setNumber(2, "DistMin", 2 * mesh.wall_tan_cell_size)
+    gmsh.model.mesh.field.setNumber(2, "DistMax", 6 * mesh.bulk_cell_size)
 
     if mesh.internal_outlet > mesh.t_BL:
 

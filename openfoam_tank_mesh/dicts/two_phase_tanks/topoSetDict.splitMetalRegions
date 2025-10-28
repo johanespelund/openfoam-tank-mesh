@@ -25,7 +25,7 @@ actions
         point1 (0 2.1009 0);
         point2 (0 1.6141 0);
         radius1 0.3592;
-        radius2 0.2448;
+        radius2 0.0732;
     }
     {
         name    lidCells;
