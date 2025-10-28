@@ -8,6 +8,8 @@ import copy
 from typing import Optional
 from dataclasses import dataclass
 
+from math import sqrt
+
 
 @dataclass
 class PointCoords:
@@ -65,7 +67,7 @@ class Segment(ABC):
     def __init__(self, name: str, y_start: float) -> None:
         self.name: str = name
         self.y_start: float = y_start
-        self.y_end: float = 0.0 
+        self.y_end: float = 0.0
         self.r_start: float = 0.0
         self.r_end: float = 0.0
         self.length: float = 0.0
@@ -101,12 +103,12 @@ class Segment(ABC):
 
     def get_tangent(self, y: float) -> np.ndarray:
         dy_dx = self.get_radius_derivative(y)
-        norm = np.sqrt(dy_dx**2 + 1)
+        norm = sqrt(dy_dx**2 + 1)
         return np.array([dy_dx / norm, 1 / norm])
 
     def get_normal(self, y: float) -> np.ndarray:
         dy_dx = self.get_radius_derivative(y)
-        norm = np.sqrt(dy_dx**2 + 1)
+        norm = sqrt(dy_dx**2 + 1)
         return np.array([-1 / norm, dy_dx / norm])
 
 
@@ -148,7 +150,7 @@ class LineSegment(Segment):
     def get_length(self) -> float:
         if self.r_start is None or self.r_end is None or self.y_start is None or self.y_end is None:
             raise RuntimeError("Segment not fully initialized.")
-        return float(np.sqrt((self.r_end - self.r_start) ** 2 + (self.y_end - self.y_start) ** 2))
+        return float(sqrt((self.r_end - self.r_start) ** 2 + (self.y_end - self.y_start) ** 2))
 
 
 class EllipseArc(Segment):
@@ -186,14 +188,14 @@ class EllipseArc(Segment):
         _y = y - B - self.y_offset
         if y < self.y_start or y > self.y_end:
             raise OutOfRange(y)
-        return A * float(np.sqrt(max(0.0, 1.0 - (_y / B) ** 2)))
+        return A * float(sqrt(max(0.0, 1.0 - (_y / B) ** 2)))
 
     def get_radius_derivative(self, y: float) -> float:
         A, B = self.axis_major, self.axis_minor
         _y = y - B - self.y_offset
         if y < self.y_start or y > self.y_end:
             raise OutOfRange(y)
-        denom = np.sqrt(max(0.0, 1.0 - (_y / B) ** 2))
+        denom = sqrt(max(0.0, 1.0 - (_y / B) ** 2))
         return -float(A * _y / (B**2 * denom) if denom != 0 else 0.0)
 
     def get_length(self) -> float:
