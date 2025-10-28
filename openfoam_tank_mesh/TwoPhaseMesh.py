@@ -86,6 +86,22 @@ class KSiteMesh(TwoPhaseTankMesh):
             self.sed("point2 .*;", f"point2 (0 {y2:.4f} 0);", topodict)
 
             self.run_openfoam_utility("topoSet", "topoSetDict.splitMetalRegions")
+
+        # self.obstacle = True
+        # if self.obstacle:
+        #     y = self.tank.y_lid
+        #     r = self.tank.r_lid
+        #     w = 0.02
+        #     h = 0.01
+        #     n = self.tank.get_normal(y)
+        #     tr, ty = n[1], -n[0]
+        #     topodict = self.dict("topoSetDict.obstacle")
+        #     self.sed("n1 .*;", "n1 (-1 0 0);", topodict)
+        #     self.sed("n2 .*;", f"n2 ({tr} {ty} 0);", topodict)
+        #     self.sed("centre .*;", f"centre ({r} {y} 0);", topodict)
+        #     self.sed("box .*;", f"box ({r-w} {y-h} -1e6) ({r} {y} 1e6);", topodict)
+        #     self.run_openfoam_utility("topoSet", "topoSetDict.obstacle")
+
         self.run_command("splitMeshRegions -cellZonesOnly -overwrite")
         self.run_command("rm -rf constant/polyMesh")
         self.check_mesh(regions=self.regions)
