@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pathlib
+import shutil
 
 from openfoam_tank_mesh.gmsh_scripts.two_phase import run as run_gmsh
 from openfoam_tank_mesh.TwoPhaseTankMesh import TwoPhaseTankMesh
@@ -26,11 +27,23 @@ class KSiteMesh(TwoPhaseTankMesh):
             r_BL=input_parameters["r_BL"],
             internal_outlet=input_parameters["internal_outlet"],
         )
+        self._work_dict_path = pathlib.Path.cwd() / "system" / "openfoam-tank-mesh" / "dicts"
+        self._setup_writable_dicts()
         super().__init__(tank=self.tank, input_parameters=input_parameters)
         self.multi_region = True
         self.n_wall_layers = input_parameters["n_wall_layers"]
 
         return None
+
+    def _setup_writable_dicts(self):
+        """Copy template dicts to a writable location in the workdir."""
+        if not self._work_dict_path.exists():
+            self._work_dict_path.mkdir(parents=True, exist_ok=True)
+
+            # Copy files from package to workdir
+            pkg_dicts = pathlib.Path(__file__).parent / "dicts" / "two_phase_tanks"
+            shutil.copytree(pkg_dicts, self._work_dict_path, dirs_exist_ok=True)
+
 
     def gmsh(self) -> None:
         """
@@ -147,7 +160,8 @@ class KSiteMesh(TwoPhaseTankMesh):
         The path to the OpenFOAM dict folder.
         """
 
-        return f"{pathlib.Path(__file__).parent}/dicts/two_phase_tanks/"
+        # return f"{pathlib.Path(__file__).parent}/dicts/two_phase_tanks/"
+        return str(self._work_dict_path)
 
     @property
     def parameters_path(self) -> str:
