@@ -10,48 +10,41 @@ FoamFile
     version     2.0;
     format      ascii;
     class       dictionary;
-    object      topoSetDict;
+    object      createPatchDict;
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-obstacleRegion banana;
+pointSync   false;
+extrude true;
+patchName walls;
 
-actions
+  #if $extrude
+patches
 (
- {
-   action new;
-   name obstacle;
-   source rotatedBoxToCell;
-   sourceInfo
-     {
-        // n1 (-1 0 0);
-        // n2 (-0.9734725857503166 0.22880368177237081 0);
-        // centre (0.302 1.8574882375605168 0);
-        // box (0.282 1.8474882375605168 -1e6) (0.302 1.8574882375605168 1e6);
-        origin ( r y -1e6);
-        i      ( 0 0 0 );
-        j      ( 0 0 0 );
-        k      ( 0 0 0 );
-     }
-   type cellSet;
- }
-
- {
-    action add;
-    name $obstacleRegion;
-    source setToCellZone;
-    set obstacle;
-    type cellZoneSet;
- }
-
- {
-    action delete;
-    name gas;
-    source setToCellZone;
-    set obstacle;
-    type cellZoneSet;
- }
+   {
+     name patch_extrude;
+     patchInfo
+       {
+         type wall;
+       }
+     constructFrom set;
+     set extrudeFaceSet;
+   }
 );
+  #else
+patches
+(
+   {
+     name $patchName;
+     patchInfo
+       {
+         type wall;
+       }
+     constructFrom patches;
+     patches (patch_extrude);
+   }
+);
+  #endif
 
 // ************************************************************************* //

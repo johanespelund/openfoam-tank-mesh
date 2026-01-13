@@ -66,6 +66,7 @@ class TwoPhaseTankMesh(ABC):
         self.patch_name_neg = "wedge_neg"
         self.ymax = tank.ymax()
         self.lid = False
+        self.obstacle = False
         self.regions = ["gas", "liquid", "metal"]
 
         # self.check_openfoam_loaded(version="org")
@@ -293,6 +294,43 @@ class TwoPhaseTankMesh(ABC):
         )
         # self.y_outlet = self.tank.y2 - self.internal_outlet
         self.write_mesh_parameters()
+
+    def add_wall_thickness(
+            self, region: str, patchName: str, ranges: list[tuple[float, float]], thicknesses: list[float]
+    ) -> None:
+        """
+        Extrude the wall outwards in region. Extrudes between y_start and y_end,
+        specified in the list of ranges, each with their own thickness.
+        """
+
+        topo_dict_path = self.dict("topoSetDict.add_wall_thickness")
+        create_dict_path = self.dict("createPatchDict.add_wall_thickness")
+        extrude_dict_path = self.dict("extrudeMeshDict.add_wall_thickness")
+
+        for p in [topo_dict_path, create_dict_path, extrude_dict_path]:
+            self.sed("^patchName .*;", f"patchName {patchName};", p)
+        for r, t in zip(ranges, thicknesses):
+            print("Adding wall thickness", t, "in range", r)
+            ys, ye = r
+            n = max(3, int(self.n_wall_layers*(t / 2.08e-3)))
+            self.sed("(-1e6 .* 1e6)", f"(-1e6 {ys} -1e6) (1e6 {ye} 1e6)", topo_dict_path)
+            self.run_openfoam_utility(
+                f"topoSet -region {region}", "topoSetDict.add_wall_thickness"
+            )
+            self.sed("^extrude .*;", "extrude true;", create_dict_path)
+            self.run_openfoam_utility(
+                f"createPatch -overwrite -region {region}", "createPatchDict.add_wall_thickness"
+            )
+            self.sed("^thickness .*;", f"thickness {t};", extrude_dict_path)
+            self.sed("^nLayers .*;", f"nLayers {n};", extrude_dict_path)
+            self.run_openfoam_utility(
+                f"extrudeMesh  -region {region}", "extrudeMeshDict.add_wall_thickness"
+            )
+            self.sed("^extrude .*;", "extrude false;", create_dict_path)
+            self.run_openfoam_utility(
+                f"createPatch -overwrite -region {region}", "createPatchDict.add_wall_thickness"
+            )
+
 
     def extrude_outlet(self, length: float) -> None:
         n_layers = int(length / self.wall_tan_cell_size)

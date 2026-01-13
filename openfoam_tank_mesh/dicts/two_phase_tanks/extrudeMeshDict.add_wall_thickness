@@ -25,10 +25,10 @@ constructFrom mesh;
 
 // If construct from patch/mesh:
 sourceCase    "$FOAM_CASE";
-sourcePatches (outlet);
+sourcePatches (patch_extrude);
 
 // If construct from patch: patch to use for back (can be same as sourcePatch)
-exposedPatchName outlet;
+// exposedPatchName walls;
 
 // If construct from surface:
 // surface "movingWall.stl";
@@ -67,17 +67,18 @@ extrudeModel        linearNormal;
 //  surfaces (e.g. one is an offsetted version of the other)
 //extrudeModel        offsetSurface;
 
-nLayers 25;
+nLayers 5;
+thickness 1;
 
 expansionRatio 1;
 // expansionRatio 0.8333333333333334;
 // expansionRatio 1.2;
 
-linearDirectionCoeffs
-{
-thickness 0.05;
-    direction (0 1 0);
-}
+// linearDirectionCoeffs
+// {
+// thickness 0.05;
+//     direction (0 1 0);
+// }
 
 radialCoeffs
 {

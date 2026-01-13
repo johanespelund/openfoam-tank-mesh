@@ -7,7 +7,7 @@ from openfoam_tank_mesh.gmsh_scripts.two_phase import run as run_gmsh
 from openfoam_tank_mesh.TwoPhaseTankMesh import TwoPhaseTankMesh
 from openfoam_tank_mesh.Profile import KSiteProfile, SphereProfile
 
-from numpy import isclose
+import numpy as np
 
 
 class KSiteMesh(TwoPhaseTankMesh):
@@ -40,9 +40,9 @@ class KSiteMesh(TwoPhaseTankMesh):
         if not self._work_dict_path.exists():
             self._work_dict_path.mkdir(parents=True, exist_ok=True)
 
-            # Copy files from package to workdir
-            pkg_dicts = pathlib.Path(__file__).parent / "dicts" / "two_phase_tanks"
-            shutil.copytree(pkg_dicts, self._work_dict_path, dirs_exist_ok=True)
+        # Copy files from package to workdir
+        pkg_dicts = pathlib.Path(__file__).parent / "dicts" / "two_phase_tanks"
+        shutil.copytree(pkg_dicts, self._work_dict_path, dirs_exist_ok=True)
 
 
     def gmsh(self) -> None:
@@ -83,6 +83,10 @@ class KSiteMesh(TwoPhaseTankMesh):
         else:
             self.remove_wall_outlet()
         self.run_command("rm -rf 0/cellToRegion")
+        if self.obstacle:
+            self.add_wall_thickness("region0", "walls", [(1.849, 1e6)], [2.12e-3])
+            self.add_wall_thickness("region0", "walls", [(1.859, 1e6)], [10e-3 - 2.12e-3])
+            self.add_wall_thickness("region0", "walls", [(0.9136, 0.9605)], [2.12e-3])
         if self.lid:
             self.regions.append("lid")
             self.write_mesh_parameters()
@@ -107,20 +111,66 @@ class KSiteMesh(TwoPhaseTankMesh):
 
             self.run_openfoam_utility("topoSet", "topoSetDict.splitMetalRegions")
 
+
+        ys = [self.tank.y_lid]
+        rs = [self.tank.r_lid]
+        ws, hs = [0.05], [0.02]
+
+        # Add y values corresponding to r=1.6 and above, but split into 5 separate entries:
+        r0 = 0.16
+        _n = 10
+        for _i in range(_n-0):
+            _w = (0.16 - self.outlet_radius)/_n
+            _r = r0 - _i * _w
+            if _i > 1:
+                _r += 1*self.wall_tan_cell_size
+                _w += 1*self.wall_tan_cell_size
+            elif _i < _n - 1:
+                _w += 1*self.wall_tan_cell_size
+            _y = self.tank.get_y(_r, 1.5, self.y_outlet)
+            _h = 0.008
+            ys.append(_y)
+            rs.append(_r)
+            ws.append(_w)
+            hs.append(_h)
+
+
         # self.obstacle = True
-        # if self.obstacle:
-        #     y = self.tank.y_lid
-        #     r = self.tank.r_lid
-        #     w = 0.02
-        #     h = 0.01
-        #     n = self.tank.get_normal(y)
-        #     tr, ty = n[1], -n[0]
-        #     topodict = self.dict("topoSetDict.obstacle")
-        #     self.sed("n1 .*;", "n1 (-1 0 0);", topodict)
-        #     self.sed("n2 .*;", f"n2 ({tr} {ty} 0);", topodict)
-        #     self.sed("centre .*;", f"centre ({r} {y} 0);", topodict)
-        #     self.sed("box .*;", f"box ({r-w} {y-h} -1e6) ({r} {y} 1e6);", topodict)
-        #     self.run_openfoam_utility("topoSet", "topoSetDict.obstacle")
+        if self.obstacle:
+            for y, r, w, h in zip(ys, rs, ws, hs):
+                # y = self.tank.y_lid
+                # r = self.tank.r_lid
+                # w = 0.05
+                # h = 0.02
+                y_average = (y + self.tank.get_y(r-w, 1.5, self.y_outlet))/2
+                n = self.tank.get_normal(y_average)
+                n = np.array([n[0], n[1], 0])
+                # t = np.array([-n[1], n[0], 0])  # Tangential vector
+                tr, ty = n[1], -n[0]
+                topodict = self.dict("topoSetDict.obstacle")
+                region = "lid" if self.lid else "metal"
+                self.sed("^obstacleRegion .*;", f"obstacleRegion {region};", topodict)
+
+                # Do it another way, usign origin, i, j, and k.
+                origin = np.array([r, y, -1e6]) - n * 5*h # First point of box.
+                # Define i to be the vector that points in the tangential dir with length w:
+                iHat = [tr * w, ty * w, 0]
+                # Define j to be the vector that points in the normal dir with length h:
+                jHat = np.array([n[0] * h, n[1] * h, 0]) * 6
+                kHat = [0, 0, 2e6]  # Very long in z-dir.
+
+                self.sed("origin .*;", f"origin ({origin[0]:.6f} {origin[1]:.6f} {origin[2]:.6f});", topodict)
+                self.sed("i .*(.*;", f"i ({iHat[0]:.6f} {iHat[1]:.6f} {iHat[2]:.6f});", topodict)
+                self.sed("j .*(.*;", f"j ({jHat[0]:.6f} {jHat[1]:.6f} {jHat[2]:.6f});", topodict)
+                self.sed("k .*(.*);", f"k ({kHat[0]:.6f} {kHat[1]:.6f} {kHat[2]:.6f});", topodict)
+
+                # self.sed("n1 .*;", "n1 (-1 0 0);", topodict)
+                # self.sed("n2 .*;", f"n2 ({tr} {ty} 0);", topodict)
+                # self.sed("centre .*;", f"centre ({r} {y} 0);", topodict)
+                # self.sed("box .*;", f"box ({r-w} {y-h} -1e6) ({r} {y} 1e6);", topodict)
+                # input(f"{region=}, {origin=}, {iHat=}, {jHat=}, {kHat=}")
+                self.run_openfoam_utility("topoSet", "topoSetDict.obstacle")
+                # input("Done")
 
         self.run_command("splitMeshRegions -cellZonesOnly -overwrite")
         self.run_command("rm -rf constant/polyMesh")
@@ -274,7 +324,6 @@ class SphereMesh(TwoPhaseTankMesh):
         On the metal region, create a boundary for the flange.
         """
         for region in ["metal", "lid"]:
-            input(f"{region=}")
             self.run_openfoam_utility(f"topoSet -region {region}", "topoSetDict.metal_patches")
             self.run_openfoam_utility(
                 f"createPatch -overwrite -region {region}", "createPatchDict.metal_patches"
