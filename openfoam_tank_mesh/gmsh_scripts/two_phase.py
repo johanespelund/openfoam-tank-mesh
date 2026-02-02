@@ -594,6 +594,14 @@ def generate_points_and_lines(
     gmsh.option.setNumber("Mesh.RecombinationAlgorithm", 2)  # 2 or 3
     gmsh.model.geo.synchronize()
 
+    gmsh.model.geo.synchronize()
+
+    # Treat curves 2, 3 and 4 as a single curve when meshing (i.e. mesh across
+    # points 6 and 7)
+    gmsh.model.mesh.setCompound(1, [sGas, sOutlet, sInternalOutlet, sInnerGasBL, sOuterGasBL])
+
+
+    gmsh.model.geo.synchronize()
     _points = []
     for i, key in [(-1, i_bl_lower), (1, i_bl_upper)]:
         _points.append(find_point(axis_points[2 + i]))
@@ -643,9 +651,11 @@ def generate_points_and_lines(
     gmsh.option.setNumber("Mesh.MeshSizeFromPoints", 0)
     gmsh.option.setNumber("Mesh.MeshSizeFromCurvature", 0)
     gmsh.model.geo.synchronize()
-    gmsh.model.geo.synchronize()
     try:
         gmsh.model.mesh.generate(2)
+        gmsh.model.geo.synchronize()
+        gmsh.model.mesh.optimize()
+        gmsh.model.geo.synchronize()
     except Exception as e:
         print(f"Error generating mesh: {e}")
         print("Opening GMSH GUI for debugging...")
@@ -664,6 +674,11 @@ def generate_points_and_lines(
         "liquid": [sLiquid, sOuterLiquidBL, sInnerLiquidBL, sLiquidWall],
         "metal": [sWall],
     }
+
+    # If the VoF flag is true, we merge liquid surfaces into the gas entry (will use a two phase solver):
+    if mesh.VoF:
+        regionSurfaces["gas"].extend(regionSurfaces["liquid"])
+        regionSurfaces["liquid"] = []
 
     regionVolumes = {}
 
@@ -688,4 +703,3 @@ def generate_points_and_lines(
     gmsh.model.mesh.optimize()
 
     return p, lines
-

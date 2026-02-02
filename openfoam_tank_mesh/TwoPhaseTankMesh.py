@@ -68,6 +68,10 @@ class TwoPhaseTankMesh(ABC):
         self.lid = False
         self.obstacle = False
         self.regions = ["gas", "liquid", "metal"]
+        self.VoF = False
+
+        if self.VoF:
+            self.regions.remove("liquid")
 
         # self.check_openfoam_loaded(version="org")
         self.validate_parameters(input_parameters)
