@@ -624,7 +624,7 @@ def generate_points_and_lines(
     gmsh.model.mesh.field.setNumber(2, "SizeMin", mesh.wall_tan_cell_size)
     gmsh.model.mesh.field.setNumber(2, "SizeMax", mesh.bulk_cell_size)
     gmsh.model.mesh.field.setNumber(2, "DistMin", 2 * mesh.wall_tan_cell_size)
-    gmsh.model.mesh.field.setNumber(2, "DistMax", 6 * mesh.bulk_cell_size)
+    gmsh.model.mesh.field.setNumber(2, "DistMax", 8 * mesh.bulk_cell_size)
 
     if mesh.internal_outlet > mesh.t_BL:
 
