@@ -1,0 +1,158 @@
+"""
+Tests for CylinderCapsMesh.
+
+The geometry-comparison tests run in CI (no OpenFOAM needed).
+The full generate() test is skipped in CI because it requires an OpenFOAM
+installation and a valid case directory.
+"""
+
+import os
+
+import pytest
+
+from openfoam_tank_mesh.Profile import CylinderCapsTankProfile, KSiteProfile
+
+# K-Site dimensions (Stochl & Knoll, 1991)
+INCH = 0.0254
+KSITE_A = 0.5 * 73 * INCH    # cap height
+KSITE_B = 0.5 * 87.6 * INCH  # cylinder radius
+KSITE_C = 1.5 * INCH          # cylinder height
+
+# Common mesh parameters shared by both tests below.
+_MESH_PARAMS = dict(
+    fill_level=0.49,
+    wall_cell_size=5.0e-3,
+    wall_tan_cell_size=5.0e-3,
+    bulk_cell_size=25e-3,
+    r_BL=1.05,
+    tri_bulk=False,
+    outlet_radius=0.0127,
+    internal_outlet=0.0127 * 4,
+    debug=True,
+    revolve=0,
+    n_revolve=0,
+    n_wall_layers=6,
+    VoF=False,
+)
+
+# CylinderCapsMesh additionally needs the geometry parameters.
+CAPS_KSITE_PARAMS = dict(
+    **_MESH_PARAMS,
+    cylinder_radius=KSITE_B,
+    cylinder_height=KSITE_C,
+    cap_height=KSITE_A,
+)
+
+
+# ---------------------------------------------------------------------------
+# Geometry-comparison tests (run in CI, no OpenFOAM required)
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def ksite_profile():
+    return KSiteProfile(
+        fill_level=_MESH_PARAMS["fill_level"],
+        outlet_radius=_MESH_PARAMS["outlet_radius"],
+        bulk_cell_size=_MESH_PARAMS["bulk_cell_size"],
+        wall_tan_cell_size=_MESH_PARAMS["wall_tan_cell_size"],
+        wall_cell_size=_MESH_PARAMS["wall_cell_size"],
+        r_BL=_MESH_PARAMS["r_BL"],
+        internal_outlet=_MESH_PARAMS["internal_outlet"],
+    )
+
+
+@pytest.fixture
+def caps_ksite_profile():
+    return CylinderCapsTankProfile(
+        cylinder_radius=KSITE_B,
+        cylinder_height=KSITE_C,
+        cap_height=KSITE_A,
+        fill_level=_MESH_PARAMS["fill_level"],
+        outlet_radius=_MESH_PARAMS["outlet_radius"],
+        bulk_cell_size=_MESH_PARAMS["bulk_cell_size"],
+        wall_tan_cell_size=_MESH_PARAMS["wall_tan_cell_size"],
+        wall_cell_size=_MESH_PARAMS["wall_cell_size"],
+        r_BL=_MESH_PARAMS["r_BL"],
+        internal_outlet=_MESH_PARAMS["internal_outlet"],
+    )
+
+
+def test_cylinder_caps_ksite_dimensions(caps_ksite_profile):
+    """CylinderCapsTankProfile with K-Site dims stores the correct dimensions."""
+    assert caps_ksite_profile.cylinder_radius == pytest.approx(KSITE_B)
+    assert caps_ksite_profile.cylinder_height == pytest.approx(KSITE_C)
+    assert caps_ksite_profile.cap_height == pytest.approx(KSITE_A)
+
+
+def test_cylinder_caps_matches_ksite_volume(caps_ksite_profile, ksite_profile):
+    """CylinderCapsTankProfile with K-Site dims should have the same volume as KSiteProfile."""
+    assert caps_ksite_profile.volume == pytest.approx(ksite_profile.volume, rel=1e-4)
+
+
+def test_cylinder_caps_matches_ksite_interface(caps_ksite_profile, ksite_profile):
+    """Interface height should match between CylinderCaps and KSite profiles."""
+    assert caps_ksite_profile.y_interface == pytest.approx(ksite_profile.y_interface, rel=1e-3)
+
+
+def test_cylinder_caps_matches_ksite_liquid_volume(caps_ksite_profile, ksite_profile):
+    """Liquid volume should match between CylinderCaps and KSite profiles."""
+    assert caps_ksite_profile.volume_liquid == pytest.approx(ksite_profile.volume_liquid, rel=1e-3)
+
+
+def test_cylinder_caps_matches_ksite_cylinder_radius(caps_ksite_profile, ksite_profile):
+    """cylinder_radius attribute must match."""
+    assert caps_ksite_profile.cylinder_radius == pytest.approx(ksite_profile.cylinder_radius, rel=1e-6)
+
+
+@pytest.mark.skipif("CI" in os.environ, reason="OpenFOAM is not available in CI")
+def test_cylinder_caps_mesh_missing_radius_raises():
+    """CylinderCapsMesh should raise ValueError when neither cylinder_radius nor cylinder_diameter is given."""
+    from openfoam_tank_mesh.TwoPhaseMesh import CylinderCapsMesh
+
+    bad_params = dict(CAPS_KSITE_PARAMS)
+    del bad_params["cylinder_radius"]
+
+    with pytest.raises(ValueError, match="cylinder_radius.*cylinder_diameter"):
+        CylinderCapsMesh(input_parameters=bad_params)
+
+
+# ---------------------------------------------------------------------------
+# Full mesh-generation tests (skipped in CI – require OpenFOAM)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.skipif("CI" in os.environ, reason="OpenFOAM is not available in CI")
+def test_cylinder_caps_mesh():
+    """CylinderCapsMesh with K-Site dimensions should generate a valid mesh."""
+    from openfoam_tank_mesh.TwoPhaseMesh import CylinderCapsMesh
+
+    mesh = CylinderCapsMesh(input_parameters=dict(CAPS_KSITE_PARAMS))
+    mesh.generate()
+    assert mesh.tank.get_radius(mesh.tank.y_start) == pytest.approx(0.0, abs=1e-9)
+    assert mesh.tank.cylinder_radius == pytest.approx(KSITE_B)
+
+
+@pytest.mark.skipif("CI" in os.environ, reason="OpenFOAM is not available in CI")
+def test_cylinder_caps_mesh_matches_ksite_mesh():
+    """CylinderCapsMesh with K-Site dims should produce the same mesh as KSiteMesh."""
+    from openfoam_tank_mesh.TwoPhaseMesh import CylinderCapsMesh, KSiteMesh
+
+    ksite_mesh = KSiteMesh(input_parameters=dict(_MESH_PARAMS))
+    caps_mesh = CylinderCapsMesh(input_parameters=dict(CAPS_KSITE_PARAMS))
+
+    # Geometry must be identical.
+    assert caps_mesh.tank.cylinder_radius == pytest.approx(ksite_mesh.tank.cylinder_radius, rel=1e-6)
+    assert caps_mesh.tank.cylinder_height == pytest.approx(ksite_mesh.tank.cylinder_height, rel=1e-6)
+    assert caps_mesh.tank.cap_height == pytest.approx(ksite_mesh.tank.cap_height, rel=1e-6)
+    assert caps_mesh.tank.volume == pytest.approx(ksite_mesh.tank.volume, rel=1e-4)
+    assert caps_mesh.tank.y_interface == pytest.approx(ksite_mesh.tank.y_interface, rel=1e-3)
+
+    # Both meshes should generate without errors.
+    ksite_mesh.generate()
+    caps_mesh.generate()
+
+
+if __name__ == "__main__":
+    test_cylinder_caps_mesh()
+    print("test_cylinder_caps_mesh passed")
