@@ -6,6 +6,16 @@ class OutOfRange(Exception):
         rprint(f"[bold red]y = {value} is out of range.[/bold red]")
 
 
+class SegmentNotInitialized(RuntimeError):
+    def __init__(self) -> None:
+        super().__init__("Segment not fully initialized.")
+
+
+class SegmentsNotConnected(ValueError):
+    def __init__(self, name1: str, name2: str) -> None:
+        super().__init__(f"Segments {name1} and {name2} are not connected.")
+
+
 class MissingParameter(Exception):
     def __init__(self, missing_parameter: str) -> None:
         rprint(f"[bold red]Missing parameter: {missing_parameter}[/bold red]")
@@ -17,7 +27,7 @@ class OpenFoamNotLoaded(Exception):
 
 
 class CommandFailed(Exception):
-    def __init__(self, command: str, output: str="") -> None:
+    def __init__(self, command: str, output: str = "") -> None:
         self.command = command
         rprint(f"[bold red]Command {command} failed.[/bold red]")
         rprint(f"[bold red]Output: {output}[/bold red]")

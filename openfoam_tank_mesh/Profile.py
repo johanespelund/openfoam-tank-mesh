@@ -1,14 +1,15 @@
-import numpy as np
+import copy
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from math import sqrt
+from typing import Optional
+
+import matplotlib.pyplot as plt
+import numpy as np
 import scipy.integrate as spi  # type: ignore[import-untyped]
 import scipy.optimize as spo  # type: ignore[import-untyped]
-from openfoam_tank_mesh.exceptions import OutOfRange
-import matplotlib.pyplot as plt
-import copy
-from typing import Optional
-from dataclasses import dataclass
 
-from math import sqrt
+from openfoam_tank_mesh.exceptions import OutOfRange, SegmentNotInitialized, SegmentsNotConnected
 
 
 @dataclass
@@ -97,9 +98,11 @@ class Segment(ABC):
     def get_rmax(self) -> float:
         pass
 
-
     def __str__(self) -> str:
-        return f"{self.name}:\n  y: {self.y_start} - {self.y_end}\n  r: {self.r_start} - {self.r_end}\n  N: {self.N}, r: {self.r}"
+        return (
+            f"{self.name}:\n  y: {self.y_start} - {self.y_end}"
+            f"\n  r: {self.r_start} - {self.r_end}\n  N: {self.N}, r: {self.r}"
+        )
 
     def get_tangent(self, y: float) -> np.ndarray:
         dy_dx = self.get_radius_derivative(y)
@@ -137,19 +140,19 @@ class LineSegment(Segment):
 
     def get_radius(self, y: float) -> float:
         if self.y_start is None or self.y_end is None or self.r_start is None or self.r_end is None:
-            raise RuntimeError("Segment not fully initialized.")
+            raise SegmentNotInitialized()
         if y < self.y_start or y > self.y_end:
             raise OutOfRange(y)
         return self.r_start + (self.r_end - self.r_start) * (y - self.y_start) / (self.y_end - self.y_start)
 
     def get_radius_derivative(self, y: float) -> float:
         if self.r_start is None or self.r_end is None or self.y_start is None or self.y_end is None:
-            raise RuntimeError("Segment not fully initialized.")
+            raise SegmentNotInitialized()
         return (self.r_end - self.r_start) / (self.y_end - self.y_start)
 
     def get_length(self) -> float:
         if self.r_start is None or self.r_end is None or self.y_start is None or self.y_end is None:
-            raise RuntimeError("Segment not fully initialized.")
+            raise SegmentNotInitialized()
         return float(sqrt((self.r_end - self.r_start) ** 2 + (self.y_end - self.y_start) ** 2))
 
 
@@ -223,12 +226,8 @@ class Profile:
         self.sort_segments()
         self.check_segment_connectivity()
 
-        self.volume: float = self.get_partial_volume(
-            self.segments[0].y_start, self.segments[-1].y_end
-        )
-        self.area: float = self.get_partial_area(
-            self.segments[0].y_start, self.segments[-1].y_end
-        )
+        self.volume: float = self.get_partial_volume(self.segments[0].y_start, self.segments[-1].y_end)
+        self.area: float = self.get_partial_area(self.segments[0].y_start, self.segments[-1].y_end)
         self.y_start: float = self.segments[0].y_start
         self.y_end: float = self.segments[-1].y_end
         self.i_interface: int = 0
@@ -252,12 +251,12 @@ class Profile:
             if self.segments[i].y_end != self.segments[i + 1].y_start:
                 print(self.segments[i].y_end, self.segments[i + 1].y_start)
 
-                raise ValueError(f"Segments {self.segments[i].name} and {self.segments[i + 1].name} are not connected.")
+                raise SegmentsNotConnected(self.segments[i].name, self.segments[i + 1].name)
             if self.segments[i].r_end != self.segments[i + 1].r_start:
                 print(self.segments[i])
                 print(self.segments[i + 1])
 
-                raise ValueError(f"Segments {self.segments[i].name} and {self.segments[i + 1].name} are not connected.")
+                raise SegmentsNotConnected(self.segments[i].name, self.segments[i + 1].name)
 
     def get_radius(self, y: float) -> float:
         """
@@ -308,16 +307,13 @@ class Profile:
         integrand = lambda y: 2 * np.pi * r(y) * np.sqrt(1 + drdy(y) ** 2)
         return float(spi.quad(integrand, y1, y2)[0])
 
-    def get_y(self, radius: float, ymin: float, ymax: float):
+    def get_y(self, radius: float, ymin: float, ymax: float) -> float:
 
         def objective(y: float) -> float:
             current_radius = self.get_radius(y)
             return current_radius - radius
 
-        y0 = 0.5*(ymin + ymax)
-        result = float(spo.least_squares(objective, y0, bounds=(ymin, ymax)).x)
-        return result
-
+        return float(spo.brentq(objective, ymin, ymax))
 
 
 class TankProfile(Profile):
@@ -334,11 +330,15 @@ class TankProfile(Profile):
         internal_outlet: float = 0,
     ) -> None:
         super().__init__(segments=segments)
+        self.name: str = ""
         self.fill_level: float = fill_level
         self.outlet_radius: float = outlet_radius
         self.internal_outlet: float = internal_outlet
         self.t_BL: float = 0
         self.N: int = 0
+        self.cylinder_radius: float = 0.0
+        self.cylinder_height: float = 0.0
+        self.cap_height: float = 0.0
         self.y_interface: float = self.calculate_interface_position()
         self.y_outlet: float = self.calculate_outlet_position()
         self.interface_radius: float = self.get_radius(self.y_interface)
@@ -356,11 +356,10 @@ class TankProfile(Profile):
         """
 
         def objective(y: float) -> float:
-            current_volume = self.get_partial_volume(0, y)
+            current_volume = self.get_partial_volume(0, float(y))
             return current_volume - self.fill_level * self.volume
 
-        guess = 0.5 * (self.y_start + self.y_end)
-        return float(spo.fsolve(objective, guess)[0])
+        return float(spo.brentq(objective, self.y_start, self.y_end))
 
     def calculate_outlet_position(self) -> float:
         """
@@ -371,8 +370,7 @@ class TankProfile(Profile):
             current_radius = self.get_radius(y)
             return current_radius - self.outlet_radius
 
-        result = float(spo.least_squares(objective, 0.9 * self.y_end, bounds=(0.6 * self.y_end, self.y_end)).x)
-        return result
+        return float(spo.brentq(objective, 0.6 * self.y_end, self.y_end))
 
     def merge_segments(self, segment1: Segment, segment2: Segment) -> Segment:
         """
@@ -403,7 +401,7 @@ class TankProfile(Profile):
         self.check_segment_connectivity()
         return new_segment
 
-    def get_profile_points(self) ->tuple[list[np.ndarray], int]:
+    def get_profile_points(self) -> tuple[list[np.ndarray], int]:
         points = []
 
         for segment in self.segments:
@@ -438,14 +436,37 @@ class TankProfile(Profile):
         """
         return self.segments[-1].y_end
 
-    def split_profile(self, y_split: float, tol: float = 10e-3) -> tuple[Segment,Segment]:
+# The following error in the following function def line:
+# ==================================== ERRORS ====================================
+# ____________________ ERROR collecting tests/test_profile.py ____________________
+# tests/test_profile.py:4: in <module>
+#     from openfoam_tank_mesh.Profile import KSiteProfile, SphereProfile
+# openfoam_tank_mesh/Profile.py:318: in <module>
+#     class TankProfile(Profile):
+# openfoam_tank_mesh/Profile.py:438: in TankProfile
+#     def split_profile(self, y_split: float, tol: float = 10e-3) -> tuple[Segment, Segment | None]:
+# E   TypeError: unsupported operand type(s) for |: 'ABCMeta' and 'NoneType'
+#
+# ---------- coverage: platform linux, python 3.9.25-final-0 -----------
+# Coverage XML written to file coverage.xml
+#
+# =========================== short test summary info ============================
+# ERROR tests/test_profile.py - TypeError: unsupported operand type(s) for |: 'ABCMeta' and 'NoneType'
+# !!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+# =============================== 1 error in 4.69s ===============================
+
+#Q: How to fix??
+#A: The error is due to the use of the union type hint `Segment | None`, which is only supported in Python 3.10 and later. Since the error message indicates that you are using Python 3.9, you should replace `Segment | None` with `Optional[Segment]` and import `Optional` from the `typing` module.
+
+
+    def split_profile(self, y_split: float, tol: float = 10e-3) -> tuple[Segment, Optional[Segment]]:
         """
         Go through the segments and split the one where the interface is located.
         """
 
         # Check if a split already exists at this position
         for segment in self.segments:
-            if abs(segment.y_start - y_split) < tol/5 or abs(segment.y_end - y_split) < tol/5:
+            if abs(segment.y_start - y_split) < tol / 5 or abs(segment.y_end - y_split) < tol / 5:
                 print(f"Split already exists at {y_split}, skipping.")
                 self.sort_segments()
                 self.check_segment_connectivity()
@@ -533,12 +554,12 @@ class TankProfile(Profile):
         for offset in [t, -t, 0]:
             self.split_profile(self.y_interface + offset, tol=tol)
 
-        def get_bl_segments(y_start: float, y_end: float, reverse: bool=False) -> list[Segment]:
+        def get_bl_segments(y_start: float, y_end: float, reverse: bool = False) -> list[Segment]:
             segments = self.segments[::-1] if reverse else self.segments
             return [seg for seg in segments if y_start <= seg.y_start and seg.y_end <= y_end]
 
         def distribute_cells(bl_segments: list[Segment], r_sign: int) -> None:
-            t_local, n_local = 0, 0
+            n_local = 0
             for segment in bl_segments:
                 L = segment.get_length()
                 N = 0
@@ -569,7 +590,7 @@ class TankProfile(Profile):
         distribute_cells(lower_bl_segments, -1)
 
     def plot(self) -> None:
-        fig, ax = plt.subplots()
+        _fig, ax = plt.subplots()
 
         for segment in self.segments:
             y = np.linspace(segment.y_start, segment.y_end, 1000)
@@ -662,7 +683,7 @@ class TankProfile(Profile):
         points.append(np.array([0, self.y_interface - self.t_BL]))
         points.append(np.array([0, self.y_interface]))
         points.append(np.array([0, self.y_interface + self.t_BL]))
-        axis_points = [inner_points[0]] + points[-3:]
+        axis_points = [inner_points[0], *points[-3:]]
 
         # Add the outlet points
 
@@ -673,7 +694,6 @@ class TankProfile(Profile):
         internal_outlet_points = inner_points[-2:] + points[-2:]
         axis_points.append(points[-2])
         points += wall_points
-
 
         return PointCoords(
             points={str(i): p for i, p in enumerate(points)},
@@ -777,7 +797,7 @@ class KSiteProfile(TankProfile):
         self.cylinder_height = C
 
         self.r_lid = 0.302
-        self.y_lid = self.get_y(self.r_lid, 0.5*self.ymax(), self.ymax())
+        self.y_lid = self.get_y(self.r_lid, 0.5 * self.ymax(), self.ymax())
         self.split_profile(self.y_lid)
 
 
@@ -799,7 +819,7 @@ class SphereProfile(TankProfile):
                 EllipseArc(
                     "ellipse2",
                     radius,
-                    radius*2,
+                    radius * 2,
                     radius,
                     radius,
                     length_scale=wall_tan_cell_size,
@@ -814,6 +834,7 @@ class SphereProfile(TankProfile):
         self.cap_height = radius
         self.cylinder_radius = radius
         self.cylinder_height = 0
+
 
 # FEET = 0.3048
 # A = 3.05 / 4 #10 * FEET / 4

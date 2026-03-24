@@ -62,9 +62,9 @@ class NASA1m3Mesh(TankMesh):
         Generate a stl file with named surfaces for use in cfMesh.
         """
         if self.internal_outlet:
-            generate_3D_internal_outlet_stl(self)
+            generate_3D_internal_outlet_stl(self)  # type: ignore[arg-type]
         else:
-            generate_3D_stl(self)
+            generate_3D_stl(self)  # type: ignore[arg-type]
 
     @property
     def dict_path(self) -> str:

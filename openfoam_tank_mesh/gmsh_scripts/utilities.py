@@ -3,14 +3,14 @@
 import gmsh  # type: ignore[import-untyped]
 import numpy as np
 
-from openfoam_tank_mesh import TankMesh
+from openfoam_tank_mesh import TwoPhaseTankMesh as TwoPhaseTankMeshModule
 
 
 def closest_odd(n: float) -> int:
     return max(3, int(np.ceil(n)) // 2 * 2 + 1)
 
 
-def get_N_outlet(mesh: "TankMesh.TankMesh") -> int:
+def get_N_outlet(mesh: "TwoPhaseTankMeshModule.TwoPhaseTankMesh") -> int:
     if mesh.wall_tan_cell_size >= mesh.outlet_radius:
         return 3
     else:
@@ -18,16 +18,13 @@ def get_N_outlet(mesh: "TankMesh.TankMesh") -> int:
         return temp
         # residual = abs(mesh.wall_tan_cell_size - mesh.outlet_radius / temp)
         # print(f"{residual=}")
-        
+
         # # increase N by 2:
         # temp += 2
         # residual2 = abs(mesh.wall_tan_cell_size - mesh.outlet_radius / temp)
         # print(f"{residual2=}")
 
         # return temp - 2
-
-
-
 
 
 def gmsh_setup() -> None:
@@ -59,12 +56,12 @@ def add_surface(loop: int) -> int:
     return int(gmsh.model.geo.addPlaneSurface([loop]))
 
 
-def print_debug(mesh: "TankMesh.TankMesh", msg: str) -> None:
+def print_debug(mesh: "TwoPhaseTankMeshModule.TwoPhaseTankMesh", msg: str) -> None:
     if mesh.debug:
         print(msg)
 
 
-def generate_stl2(mesh: "TankMesh.TankMesh") -> None:
+def generate_stl2(mesh: "TwoPhaseTankMeshModule.TwoPhaseTankMesh") -> None:
     """
     Generate a stl file with named surfaces for use in cfMesh.
     """

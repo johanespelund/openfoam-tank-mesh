@@ -51,6 +51,7 @@ class TwoPhaseTankMesh(ABC):
         self.debug: bool = False
         self.tri_bulk: bool = False  # Use triangle cells for bulk mesh
         self.multi_region: bool = False  # Use multiple regions
+        self.n_wall_layers: int = 0  # Number of wall layers
 
         # Default parameters (can be overwritten by input_parameters)
         self.r_BL: float = 1.1  # Boundary layer growth rate
@@ -141,9 +142,7 @@ class TwoPhaseTankMesh(ABC):
                     f.write(f"{key} {value};\n")
         self.run_command(f"cp {self.parameters_path} system/meshdata")
 
-    def run_command(
-        self, command: str, no_output: bool = False, return_exception: bool = False
-    ) -> None | Exception:
+    def run_command(self, command: str, no_output: bool = False, return_exception: bool = False) -> None | Exception:
         """
         Method to run shell commands. The result should always be captured,
         and an error should be raised if the command fails (even if no_output is True).
@@ -227,9 +226,7 @@ class TwoPhaseTankMesh(ABC):
         regions = [""] if not regions else [f"-region {region}" for region in regions]
         for region in regions:
             table = Table(title=f"Mesh Summary ({region})", show_header=False)
-            output = run(
-                ["checkMesh", *region.split()], capture_output=True, text=True
-            )  # noqa: S603 S607
+            output = run(["checkMesh", *region.split()], capture_output=True, text=True)  # noqa: S603, S607
             if "FAILED" in output.stdout:
                 rprint(output.stdout)
                 raise CommandFailed("checkMesh")
@@ -247,14 +244,12 @@ class TwoPhaseTankMesh(ABC):
 
     def remove_wall(self) -> None:
         self.run_command("rm -r constant/metal/polyMesh")
-        self.regions.pop("metal")
+        self.regions.remove("metal")
         for region in ("gas", "liquid"):
             # self.sed(f"{region}_to_metal", "walls", f"constant/{region}/polyMesh/boundary")
             # self.sed("mappedWall", "wall", f"constant/{region}/polyMesh/boundary")
             # Do the same sed command, but only for the LAST match!
-            self.run_command(
-                f"sed -i 'H;$!d;g;s/\\(.*\\)mappedWall/\\1wall/' constant/{region}/polyMesh/boundary"
-            )
+            self.run_command(f"sed -i 'H;$!d;g;s/\\(.*\\)mappedWall/\\1wall/' constant/{region}/polyMesh/boundary")
 
     def add_wall(self, wall_thickness: float, n_layers: int) -> None:
         """
@@ -263,9 +258,7 @@ class TwoPhaseTankMesh(ABC):
         self.regions.append("metal")
         extrude_mesh_dict = "extrudeMeshDict.addWall"
         topo_set_dict = "topoSetDict.addWall"
-        self.sed(
-            "thickness.*;", f"thickness {wall_thickness};", self.dict(extrude_mesh_dict)
-        )
+        self.sed("thickness.*;", f"thickness {wall_thickness};", self.dict(extrude_mesh_dict))
         self.sed("nLayers.*;", f"nLayers {n_layers};", self.dict(extrude_mesh_dict))
         self.run_openfoam_utility("extrudeMesh", extrude_mesh_dict)
         self.run_openfoam_utility("topoSet", topo_set_dict)
@@ -280,9 +273,7 @@ class TwoPhaseTankMesh(ABC):
         self.run_command("subsetMesh cellsToKeep -overwrite -patch outlet")
         self.run_command("rm -r 0; mv 0.temp 0")
         self.run_openfoam_utility("topoSet", "topoSetDict.pipe2outlet")
-        self.run_openfoam_utility(
-            "createPatch -overwrite", "createPatchDict.pipe2outlet"
-        )
+        self.run_openfoam_utility("createPatch -overwrite", "createPatchDict.pipe2outlet")
         # self.y_outlet = self.tank.y2 - self.internal_outlet
         self.write_mesh_parameters()
 
@@ -293,14 +284,12 @@ class TwoPhaseTankMesh(ABC):
         self.run_command("subsetMesh cellsToKeep -overwrite -patch outlet")
         self.run_command("rm -r 0; mv 0.temp 0")
         self.run_openfoam_utility("topoSet", "topoSetDict.pipe2outlet")
-        self.run_openfoam_utility(
-            "createPatch -overwrite", "createPatchDict.pipe2outlet"
-        )
+        self.run_openfoam_utility("createPatch -overwrite", "createPatchDict.pipe2outlet")
         # self.y_outlet = self.tank.y2 - self.internal_outlet
         self.write_mesh_parameters()
 
     def add_wall_thickness(
-            self, region: str, patchName: str, ranges: list[tuple[float, float]], thicknesses: list[float]
+        self, region: str, patchName: str, ranges: list[tuple[float, float]], thicknesses: list[float]
     ) -> None:
         """
         Extrude the wall outwards in region. Extrudes between y_start and y_end,
@@ -316,25 +305,16 @@ class TwoPhaseTankMesh(ABC):
         for r, t in zip(ranges, thicknesses):
             print("Adding wall thickness", t, "in range", r)
             ys, ye = r
-            n = max(3, int(self.n_wall_layers*(t / 2.08e-3)))
+            n = max(3, int(self.n_wall_layers * (t / 2.08e-3)))
             self.sed("(-1e6 .* 1e6)", f"(-1e6 {ys} -1e6) (1e6 {ye} 1e6)", topo_dict_path)
-            self.run_openfoam_utility(
-                f"topoSet -region {region}", "topoSetDict.add_wall_thickness"
-            )
+            self.run_openfoam_utility(f"topoSet -region {region}", "topoSetDict.add_wall_thickness")
             self.sed("^extrude .*;", "extrude true;", create_dict_path)
-            self.run_openfoam_utility(
-                f"createPatch -overwrite -region {region}", "createPatchDict.add_wall_thickness"
-            )
+            self.run_openfoam_utility(f"createPatch -overwrite -region {region}", "createPatchDict.add_wall_thickness")
             self.sed("^thickness .*;", f"thickness {t};", extrude_dict_path)
             self.sed("^nLayers .*;", f"nLayers {n};", extrude_dict_path)
-            self.run_openfoam_utility(
-                f"extrudeMesh  -region {region}", "extrudeMeshDict.add_wall_thickness"
-            )
+            self.run_openfoam_utility(f"extrudeMesh  -region {region}", "extrudeMeshDict.add_wall_thickness")
             self.sed("^extrude .*;", "extrude false;", create_dict_path)
-            self.run_openfoam_utility(
-                f"createPatch -overwrite -region {region}", "createPatchDict.add_wall_thickness"
-            )
-
+            self.run_openfoam_utility(f"createPatch -overwrite -region {region}", "createPatchDict.add_wall_thickness")
 
     def extrude_outlet(self, length: float) -> None:
         n_layers = int(length / self.wall_tan_cell_size)
@@ -342,9 +322,7 @@ class TwoPhaseTankMesh(ABC):
         self.sed("nLayers.*;", f"nLayers {n_layers};", dict_path)
         self.sed("thickness.*;", f"thickness {length};", dict_path)
         region = "gas" if self.multi_region else "region0"
-        self.run_openfoam_utility(
-            f"extrudeMesh -region {region}", "extrudeMeshDict.outlet"
-        )
+        self.run_openfoam_utility(f"extrudeMesh -region {region}", "extrudeMeshDict.outlet")
         self.y_outlet += length
         self.write_mesh_parameters()
 
@@ -354,15 +332,11 @@ class TwoPhaseTankMesh(ABC):
         """
 
         self.generate_stl()
-        self.run_command(
-            "rm -rf constant/polyMesh constant/metal/polyMesh constant/gas/polyMesh"
-        )
+        self.run_command("rm -rf constant/polyMesh constant/metal/polyMesh constant/gas/polyMesh")
         self.run_command(f"cp {self.dict_path}/meshDict system/meshDict")
         self.sed("nLayers.*;", f"nLayers {nLayers};", "system/meshDict")
         self.run_command("cartesianMesh")
-        result = self.run_openfoam_utility(
-            "createPatch -overwrite", "createPatchDict.cfMesh", return_exception=True
-        )
+        result = self.run_openfoam_utility("createPatch -overwrite", "createPatchDict.cfMesh", return_exception=True)
         if result:
             self.run_openfoam_utility(
                 "createPatch -overwrite",
@@ -371,9 +345,7 @@ class TwoPhaseTankMesh(ABC):
             self.non_coupled_cyclic = True
             self.patch_name_pos = "couple1"
             self.patch_name_neg = "couple2"
-            self.run_command(
-                f"cp {self.dict_path}/createNonConformalCouplesDict system/"
-            )
+            self.run_command(f"cp {self.dict_path}/createNonConformalCouplesDict system/")
             self.non_coupled_info()
         else:
             self.patch_name_pos = "cyclic_pos"
@@ -400,14 +372,12 @@ class TwoPhaseTankMesh(ABC):
         return f"{self.dict_path}/{name}"
 
     def non_coupled_info(self) -> None:
-        rprint(
-            "\n[bold yellow]Non-coupled cyclic boundary conditions detected[/bold yellow]"
-        )
+        rprint("\n[bold yellow]Non-coupled cyclic boundary conditions detected[/bold yellow]")
         rprint("    [yellow]Adding createNonConformalCouplesDict to system/[/yellow]")
         rprint("    [yellow]Load OpenFOAM 11 and run the following command:[/yellow]")
         rprint("    [bold yellow]createNonConformalCouples -overwrite[/yellow bold]\n")
 
-    def calc_wedge_normal(self):
+    def calc_wedge_normal(self) -> None:
         """
         Calculate normal based on wedge angle (y-axis).
         """
