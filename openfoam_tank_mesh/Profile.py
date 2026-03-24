@@ -97,7 +97,6 @@ class Segment(ABC):
     def get_rmax(self) -> float:
         pass
 
-
     def __str__(self) -> str:
         return f"{self.name}:\n  y: {self.y_start} - {self.y_end}\n  r: {self.r_start} - {self.r_end}\n  N: {self.N}, r: {self.r}"
 
@@ -223,12 +222,8 @@ class Profile:
         self.sort_segments()
         self.check_segment_connectivity()
 
-        self.volume: float = self.get_partial_volume(
-            self.segments[0].y_start, self.segments[-1].y_end
-        )
-        self.area: float = self.get_partial_area(
-            self.segments[0].y_start, self.segments[-1].y_end
-        )
+        self.volume: float = self.get_partial_volume(self.segments[0].y_start, self.segments[-1].y_end)
+        self.area: float = self.get_partial_area(self.segments[0].y_start, self.segments[-1].y_end)
         self.y_start: float = self.segments[0].y_start
         self.y_end: float = self.segments[-1].y_end
         self.i_interface: int = 0
@@ -314,10 +309,9 @@ class Profile:
             current_radius = self.get_radius(y)
             return current_radius - radius
 
-        y0 = 0.5*(ymin + ymax)
+        y0 = 0.5 * (ymin + ymax)
         result = float(spo.least_squares(objective, y0, bounds=(ymin, ymax)).x)
         return result
-
 
 
 class TankProfile(Profile):
@@ -403,7 +397,7 @@ class TankProfile(Profile):
         self.check_segment_connectivity()
         return new_segment
 
-    def get_profile_points(self) ->tuple[list[np.ndarray], int]:
+    def get_profile_points(self) -> tuple[list[np.ndarray], int]:
         points = []
 
         for segment in self.segments:
@@ -438,14 +432,14 @@ class TankProfile(Profile):
         """
         return self.segments[-1].y_end
 
-    def split_profile(self, y_split: float, tol: float = 10e-3) -> tuple[Segment,Segment]:
+    def split_profile(self, y_split: float, tol: float = 10e-3) -> tuple[Segment, Segment]:
         """
         Go through the segments and split the one where the interface is located.
         """
 
         # Check if a split already exists at this position
         for segment in self.segments:
-            if abs(segment.y_start - y_split) < tol/5 or abs(segment.y_end - y_split) < tol/5:
+            if abs(segment.y_start - y_split) < tol / 5 or abs(segment.y_end - y_split) < tol / 5:
                 print(f"Split already exists at {y_split}, skipping.")
                 self.sort_segments()
                 self.check_segment_connectivity()
@@ -533,7 +527,7 @@ class TankProfile(Profile):
         for offset in [t, -t, 0]:
             self.split_profile(self.y_interface + offset, tol=tol)
 
-        def get_bl_segments(y_start: float, y_end: float, reverse: bool=False) -> list[Segment]:
+        def get_bl_segments(y_start: float, y_end: float, reverse: bool = False) -> list[Segment]:
             segments = self.segments[::-1] if reverse else self.segments
             return [seg for seg in segments if y_start <= seg.y_start and seg.y_end <= y_end]
 
@@ -674,7 +668,6 @@ class TankProfile(Profile):
         axis_points.append(points[-2])
         points += wall_points
 
-
         return PointCoords(
             points={str(i): p for i, p in enumerate(points)},
             inner_points=inner_points,
@@ -777,7 +770,7 @@ class KSiteProfile(TankProfile):
         self.cylinder_height = C
 
         self.r_lid = 0.302
-        self.y_lid = self.get_y(self.r_lid, 0.5*self.ymax(), self.ymax())
+        self.y_lid = self.get_y(self.r_lid, 0.5 * self.ymax(), self.ymax())
         self.split_profile(self.y_lid)
 
 
@@ -799,7 +792,7 @@ class SphereProfile(TankProfile):
                 EllipseArc(
                     "ellipse2",
                     radius,
-                    radius*2,
+                    radius * 2,
                     radius,
                     radius,
                     length_scale=wall_tan_cell_size,
@@ -814,6 +807,7 @@ class SphereProfile(TankProfile):
         self.cap_height = radius
         self.cylinder_radius = radius
         self.cylinder_height = 0
+
 
 # FEET = 0.3048
 # A = 3.05 / 4 #10 * FEET / 4

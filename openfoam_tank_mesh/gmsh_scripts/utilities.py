@@ -27,9 +27,6 @@ def get_N_outlet(mesh: "TankMesh.TankMesh") -> int:
         # return temp - 2
 
 
-
-
-
 def gmsh_setup() -> None:
     gmsh.initialize()
     gmsh.logger.start()

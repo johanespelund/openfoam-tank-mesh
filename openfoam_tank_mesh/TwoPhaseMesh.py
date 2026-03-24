@@ -44,7 +44,6 @@ class KSiteMesh(TwoPhaseTankMesh):
         pkg_dicts = pathlib.Path(__file__).parent / "dicts" / "two_phase_tanks"
         shutil.copytree(pkg_dicts, self._work_dict_path, dirs_exist_ok=True)
 
-
     def gmsh(self) -> None:
         """
         Generate the mesh using Gmsh.
@@ -56,9 +55,9 @@ class KSiteMesh(TwoPhaseTankMesh):
             self.write_mesh_parameters()
 
         self.run_command("gmshToFoam mesh.msh")
-        angle = max(self.wedge_angle, self.revolve)/2
+        angle = max(self.wedge_angle, self.revolve) / 2
         # self.run_command(f"transformPoints -rotate-y -{angle}")  # .org
-        self.run_command(f"transformPoints \"Ry={-self.wedge_angle / 2}\"") #.com
+        self.run_command(f'transformPoints "Ry={-self.wedge_angle / 2}"')  # .com
         self.run_openfoam_utility(
             "topoSet",
             "topoSetDict.gmsh",
@@ -94,10 +93,10 @@ class KSiteMesh(TwoPhaseTankMesh):
             y = self.tank.y_lid
             r = self.tank.r_lid
             nx, ny = self.tank.get_normal(y)
-            r1, y1 = r - nx/4, y - ny/4
+            r1, y1 = r - nx / 4, y - ny / 4
             r2, y2 = r + nx, y + ny
 
-            y_duct = y - ny*2.08e-3
+            y_duct = y - ny * 2.08e-3
 
             topodict = self.dict("topoSetDict.splitMetalRegions")
             self.sed("radius1 .*;", f"radius1 {r1:.4f};", topodict)
@@ -108,9 +107,7 @@ class KSiteMesh(TwoPhaseTankMesh):
             topodict = self.dict("topoSetDict.metal_patches")
             self.sed("p2 .*;", f"p2 (0 {y_duct:.4f} 0);", topodict)
 
-
             self.run_openfoam_utility("topoSet", "topoSetDict.splitMetalRegions")
-
 
         ys = [self.tank.y_lid]
         rs = [self.tank.r_lid]
@@ -119,21 +116,20 @@ class KSiteMesh(TwoPhaseTankMesh):
         # Add y values corresponding to r=1.6 and above, but split into 5 separate entries:
         r0 = 0.16
         _n = 10
-        for _i in range(_n-0):
-            _w = (0.16 - self.outlet_radius)/_n
+        for _i in range(_n - 0):
+            _w = (0.16 - self.outlet_radius) / _n
             _r = r0 - _i * _w
             if _i > 1:
-                _r += 1*self.wall_tan_cell_size
-                _w += 1*self.wall_tan_cell_size
+                _r += 1 * self.wall_tan_cell_size
+                _w += 1 * self.wall_tan_cell_size
             elif _i < _n - 1:
-                _w += 1*self.wall_tan_cell_size
+                _w += 1 * self.wall_tan_cell_size
             _y = self.tank.get_y(_r, 1.5, self.y_outlet)
             _h = 0.008
             ys.append(_y)
             rs.append(_r)
             ws.append(_w)
             hs.append(_h)
-
 
         # self.obstacle = True
         if self.obstacle:
@@ -142,7 +138,7 @@ class KSiteMesh(TwoPhaseTankMesh):
                 # r = self.tank.r_lid
                 # w = 0.05
                 # h = 0.02
-                y_average = (y + self.tank.get_y(r-w, 1.5, self.y_outlet))/2
+                y_average = (y + self.tank.get_y(r - w, 1.5, self.y_outlet)) / 2
                 n = self.tank.get_normal(y_average)
                 n = np.array([n[0], n[1], 0])
                 # t = np.array([-n[1], n[0], 0])  # Tangential vector
@@ -152,7 +148,7 @@ class KSiteMesh(TwoPhaseTankMesh):
                 self.sed("^obstacleRegion .*;", f"obstacleRegion {region};", topodict)
 
                 # Do it another way, usign origin, i, j, and k.
-                origin = np.array([r, y, -1e6]) - n * 5*h # First point of box.
+                origin = np.array([r, y, -1e6]) - n * 5 * h  # First point of box.
                 # Define i to be the vector that points in the tangential dir with length w:
                 iHat = [tr * w, ty * w, 0]
                 # Define j to be the vector that points in the normal dir with length h:
@@ -184,16 +180,12 @@ class KSiteMesh(TwoPhaseTankMesh):
 
         return None
 
-
     def generate_leak_boundaries(self, region: str) -> None:
         """
         On the metal region, create a boundary for the flange.
         """
         self.run_openfoam_utility(f"topoSet -region {region}", "topoSetDict.metal_patches")
-        self.run_openfoam_utility(
-            f"createPatch -overwrite -region {region}", "createPatchDict.metal_patches"
-        )
-
+        self.run_openfoam_utility(f"createPatch -overwrite -region {region}", "createPatchDict.metal_patches")
 
     def generate_stl(self) -> None:
         """
@@ -221,7 +213,6 @@ class KSiteMesh(TwoPhaseTankMesh):
 
         return f"{pathlib.Path.cwd()}/parameters.KSiteMesh"
 
-
     """
     The following values use Table 1 from:
     DOI: 10.2514/6.2016-4674
@@ -239,12 +230,12 @@ class KSiteMesh(TwoPhaseTankMesh):
         """
         return 41.352 + 2.813 + 3.194 + 0.879
 
-
     def Q_ducts(self) -> float:
         """
         Return  heat loss from ducting and wires.
         """
-        return 0 # 3.194 + 0.879
+        return 0  # 3.194 + 0.879
+
 
 class SphereMesh(TwoPhaseTankMesh):
     def __init__(self, input_parameters: dict) -> None:
@@ -281,9 +272,9 @@ class SphereMesh(TwoPhaseTankMesh):
             self.write_mesh_parameters()
 
         self.run_command("gmshToFoam mesh.msh")
-        angle = max(self.wedge_angle, self.revolve)/2
+        angle = max(self.wedge_angle, self.revolve) / 2
         # self.run_command(f"transformPoints -rotate-y -{angle}")  # .org
-        self.run_command(f"transformPoints \"Ry={-self.wedge_angle / 2}\"") #.com
+        self.run_command(f'transformPoints "Ry={-self.wedge_angle / 2}"')  # .com
         self.run_openfoam_utility(
             "topoSet",
             "topoSetDict.gmsh",
@@ -318,16 +309,13 @@ class SphereMesh(TwoPhaseTankMesh):
 
         return None
 
-
     def generate_leak_boundaries(self) -> None:
         """
         On the metal region, create a boundary for the flange.
         """
         for region in ["metal", "lid"]:
             self.run_openfoam_utility(f"topoSet -region {region}", "topoSetDict.metal_patches")
-            self.run_openfoam_utility(
-                f"createPatch -overwrite -region {region}", "createPatchDict.metal_patches"
-            )
+            self.run_openfoam_utility(f"createPatch -overwrite -region {region}", "createPatchDict.metal_patches")
 
     def generate_stl(self) -> None:
         """
@@ -354,7 +342,6 @@ class SphereMesh(TwoPhaseTankMesh):
 
         return f"{pathlib.Path.cwd()}/parameters.KSiteMesh"
 
-
     """
     The following values use Table 1 from:
     DOI: 10.2514/6.2016-4674
@@ -372,12 +359,13 @@ class SphereMesh(TwoPhaseTankMesh):
         """
         return 41.352 + 2.813 + 3.194 + 0.879
 
-
     def Q_ducts(self) -> float:
         """
         Return  heat loss from ducting and wires.
         """
-        return 0 # 3.194 + 0.879
+        return 0  # 3.194 + 0.879
+
+
 # class MHTBMesh(TwoPhaseTankMesh):
 #     def __init__(self, input_parameters: dict) -> None:
 #         self.tank = KSiteProfile(

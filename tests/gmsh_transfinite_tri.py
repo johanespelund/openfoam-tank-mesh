@@ -45,8 +45,16 @@ gmsh.option.setNumber("Mesh.RecombineAll", 1)
 n_angle = 3
 angle = 10 * np.pi / 180  # 5 degrees
 outDimTag = gmsh.model.geo.revolve(
-    [(2, s)] , #, (1, l1), (1, l2), (1, l3)],
-    0, 0, 0, 0, 1, 0, angle, numElements=[n_angle], recombine=True,
+    [(2, s)],  # , (1, l1), (1, l2), (1, l3)],
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    angle,
+    numElements=[n_angle],
+    recombine=True,
 )
 s1 = outDimTag[2][1]  # The first surface tag after revolution
 s2 = outDimTag[3][1]  # The second surface tag after revolution
@@ -104,7 +112,7 @@ for iAngle in range(n_angle + 1):
     a = iAngle * angle / n_angle
     print(f"Angle: {np.rad2deg(a)} degrees")
 
-    for _ in range(int(nElements/n_angle)):
+    for _ in range(int(nElements / n_angle)):
         for i, eType in enumerate(elementTypes):
             for eTag in elementTags[i]:
                 _, eNodes, _, _ = gmsh.model.mesh.getElement(eTag)
@@ -138,7 +146,6 @@ for iAngle in range(n_angle + 1):
                             continue
                         break
                     break
-
 
 
 gmsh.write("transfinite_tri.msh")

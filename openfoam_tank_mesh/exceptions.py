@@ -17,7 +17,7 @@ class OpenFoamNotLoaded(Exception):
 
 
 class CommandFailed(Exception):
-    def __init__(self, command: str, output: str="") -> None:
+    def __init__(self, command: str, output: str = "") -> None:
         self.command = command
         rprint(f"[bold red]Command {command} failed.[/bold red]")
         rprint(f"[bold red]Output: {output}[/bold red]")

@@ -223,6 +223,3 @@ class Tank(ABC):
                 f.write(f"\tstart{start};\n")
                 f.write(f"\tend{end};\n")
                 f.write("}\n\n")
-
-
-

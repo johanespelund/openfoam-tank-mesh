@@ -349,9 +349,8 @@ def generate_3D_internal_outlet_stl(mesh: "TankMesh.TankMesh") -> None:
         for i in [1.5]:
             copy1 = gmsh.model.geo.copy(surfaces)
             print(copy1)
-            gmsh.model.geo.rotate(copy1, 3, 0, 0, 0, 1, 0, angle*i)
+            gmsh.model.geo.rotate(copy1, 3, 0, 0, 0, 1, 0, angle * i)
             gmsh.model.geo.synchronize()
-
 
     else:
         cl = add_curve_loop(lines)
@@ -362,7 +361,6 @@ def generate_3D_internal_outlet_stl(mesh: "TankMesh.TankMesh") -> None:
 
         gmsh.model.geo.rotate(gmsh.model.getEntities(dim=2), 0, 0, 0, 0, 1, 0, -angle / 2)
         gmsh.model.geo.synchronize()
-
 
         s = gmsh.model.getEntities(dim=2)
         add_physical_surface([0], "outlet", s)
@@ -386,7 +384,6 @@ def generate_3D_internal_outlet_stl(mesh: "TankMesh.TankMesh") -> None:
     # if revolve == 360:
     #     angle *= 3
     #     gmsh.model.mesh.affineTransform
-
 
     # Export to STL
     gmsh.option.setNumber("Mesh.StlOneSolidPerSurface", 2)

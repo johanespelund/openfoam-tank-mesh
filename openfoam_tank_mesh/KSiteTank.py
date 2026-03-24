@@ -20,4 +20,3 @@ class KSiteTank(CylinderTank):
             cap_height=0.5 * 73 * INCH,
         )
         return None
-

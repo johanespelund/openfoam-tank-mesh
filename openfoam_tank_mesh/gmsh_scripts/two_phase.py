@@ -127,7 +127,6 @@ def run(mesh: TwoPhaseMesh.KSiteMesh) -> None:
 
     p, lines = generate_points_and_lines(mesh)
 
-
     gmsh.model.geo.synchronize()
     gmsh.option.setNumber("Mesh.MshFileVersion", 2.2)
     gmsh.write("mesh.msh")
@@ -168,7 +167,7 @@ def generate_points_and_lines(
     lines = {}
 
     # Liquid phase points:
-    tank_profile: TankProfile = mesh.tank #create_tank_profile(mesh)
+    tank_profile: TankProfile = mesh.tank  # create_tank_profile(mesh)
     n_segments: int = len(tank_profile.segments)
     point_coords: PointCoords = tank_profile.get_mesh_points()
 
@@ -212,9 +211,7 @@ def generate_points_and_lines(
                     gmsh.model.setEntityName(0, o, f"origo_{seg.name}")
                     mp = add_point(0, seg.get_rmax(), z0, lc)
                     gmsh.model.setEntityName(0, mp, f"majorPoint_{seg.name}")
-                    line = add_ellipse(
-                        p1, o, mp, p2
-                    )
+                    line = add_ellipse(p1, o, mp, p2)
                 elif isinstance(seg, LineSegment):
                     line = add_line(p1, p2)
                 if point_group is inner_points:
@@ -226,10 +223,7 @@ def generate_points_and_lines(
 
     p1 = find_point(wall_points[-1])
     p2 = find_point(wall_points[-2])
-    wall_lines.append(
-        add_line(p1, p2)
-    )
-
+    wall_lines.append(add_line(p1, p2))
 
     # Create lines between inner and outer points at start and end of groups
     i = 0
@@ -249,7 +243,6 @@ def generate_points_and_lines(
     p2 = find_point(outer_points[-1])
     add_line(p1, p2)
 
-
     # Crreate lines between outer and wall points for only first and last point
     wall_normal_curves = []
     for i in (0, len(wall_points) - 1):
@@ -265,7 +258,6 @@ def generate_points_and_lines(
         p1 = find_point(internal_outlet_points[i1])
         p2 = find_point(internal_outlet_points[i2])
         line_groups["internal_outlet"].append(add_line(p1, p2))
-
 
     for i in range(len(axis_points) - 1):
         p1 = find_point(axis_points[i])
@@ -299,7 +291,6 @@ def generate_points_and_lines(
             N = closest_odd(d / lc)
         gmsh.model.geo.mesh.setTransfiniteCurve(l, N, "Progression", 1)
 
-
     for curve in wall_normal_curves:
         gmsh.model.geo.mesh.setTransfiniteCurve(curve, mesh.n_wall_layers + 1)
 
@@ -308,16 +299,13 @@ def generate_points_and_lines(
         p1 = outer_points[i]
         p2 = inner_points[i]
         l = find_line(p1, p2)
-        sign = l/abs(l)  # Get the sign of the line, to determine direction
-        gmsh.model.geo.mesh.setTransfiniteCurve(l, tank_profile.N + 1, "Progression", sign*mesh.r_BL)
+        sign = l / abs(l)  # Get the sign of the line, to determine direction
+        gmsh.model.geo.mesh.setTransfiniteCurve(l, tank_profile.N + 1, "Progression", sign * mesh.r_BL)
         # TODO: All of these lines are not defined actually!
 
     # Add wall tangential transfinite curves
     for i, seg in enumerate(tank_profile.segments):
-        inner_line = find_line(
-            inner_points[i],
-            inner_points[i + 1]
-        )
+        inner_line = find_line(inner_points[i], inner_points[i + 1])
         outer_line = find_line(
             outer_points[i],
             outer_points[i + 1],
@@ -334,10 +322,7 @@ def generate_points_and_lines(
 
     # Finally, set N for horizontal interface (+BL) lines:
     N_hor = closest_odd(inner_points[i_bl][0] / lc)
-    bl_up = find_line(
-        (0, tank_profile.y_interface + tank_profile.t_BL),
-        inner_points[i_bl_upper]
-    )
+    bl_up = find_line((0, tank_profile.y_interface + tank_profile.t_BL), inner_points[i_bl_upper])
     interface_line = find_line((0, tank_profile.y_interface), inner_points[i_bl])
     bl_down = find_line(
         (0, tank_profile.y_interface - tank_profile.t_BL),
@@ -542,8 +527,6 @@ def generate_points_and_lines(
     clOutlet = gmsh.model.geo.addCurveLoops(_lines)
     sOutlet = gmsh.model.geo.addPlaneSurface(clOutlet)
 
-
-
     ## WALL REGION
     _points = []
 
@@ -555,12 +538,7 @@ def generate_points_and_lines(
     _lines = [find_line(_points[i], _points[(i + 1) % len(_points)]) for i in range(len(_points))]
     clWall = gmsh.model.geo.addCurveLoops(_lines)
     sWall = gmsh.model.geo.addPlaneSurface(clWall)
-    cornersWall = [find_point(p) for p in [
-        outer_points[0],
-        wall_points[0],
-        wall_points[-1],
-        outer_points[-1]
-    ]]
+    cornersWall = [find_point(p) for p in [outer_points[0], wall_points[0], wall_points[-1], outer_points[-1]]]
 
     gmsh.model.geo.synchronize()
 
@@ -583,7 +561,7 @@ def generate_points_and_lines(
         sGasWall,
         sInternalOutlet,
         sOutlet,
-        sWall
+        sWall,
     ] + [sGas, sLiquid]:
         gmsh.model.geo.mesh.setRecombine(2, s)
     gmsh.option.setNumber("Mesh.Algorithm", 8)  # 5 or 6
@@ -595,7 +573,6 @@ def generate_points_and_lines(
     # Treat curves 2, 3 and 4 as a single curve when meshing (i.e. mesh across
     # points 6 and 7)
     gmsh.model.mesh.setCompound(1, [sGas, sOutlet, sInternalOutlet, sInnerGasBL, sOuterGasBL])
-
 
     gmsh.model.geo.synchronize()
     _points = []
@@ -623,8 +600,7 @@ def generate_points_and_lines(
     gmsh.model.mesh.field.setNumber(2, "DistMax", 8 * mesh.bulk_cell_size)
 
     if mesh.internal_outlet > mesh.t_BL:
-
-        minSize = r_outlet/(N_outlet - 1)
+        minSize = r_outlet / (N_outlet - 1)
         gmsh.model.mesh.field.add("Distance", 3)
         gmsh.model.mesh.field.setNumbers(3, "PointsList", [])
         gmsh.model.mesh.field.setNumbers(3, "CurvesList", line_groups["internal_outlet"])
@@ -680,12 +656,9 @@ def generate_points_and_lines(
 
     for region in regionSurfaces:
         surfaces = [(2, s) for s in regionSurfaces[region]]
-        result = gmsh.model.geo.revolve(
-                surfaces,
-                0, 0, 0, 0, 1, 0, angle, numElements=[n_revolve], recombine=True)
+        result = gmsh.model.geo.revolve(surfaces, 0, 0, 0, 0, 1, 0, angle, numElements=[n_revolve], recombine=True)
         gmsh.model.geo.synchronize()
         regionVolumes[region] = [res[1] for res in result if res[0] == 3]
-
 
     gas = gmsh.model.addPhysicalGroup(3, regionVolumes["gas"])
     liquid = gmsh.model.addPhysicalGroup(3, regionVolumes["liquid"])
