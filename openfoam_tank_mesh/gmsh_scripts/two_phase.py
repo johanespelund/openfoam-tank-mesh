@@ -258,7 +258,7 @@ def generate_points_and_lines(  # noqa: C901
         _p1 = gmsh.model.getValue(0, i1, [])
         _p2 = gmsh.model.getValue(0, i2, [])
 
-        d = np.linalg.norm(np.array(p1) - np.array(p2))
+        d = np.linalg.norm(np.array(_p1) - np.array(_p2))
 
         N = N_outlet if _p1[1] == _p2[1] else closest_odd(float(d / lc))
         gmsh.model.geo.mesh.setTransfiniteCurve(ln, N, "Progression", 1)
