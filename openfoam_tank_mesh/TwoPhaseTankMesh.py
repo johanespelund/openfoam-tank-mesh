@@ -51,6 +51,7 @@ class TwoPhaseTankMesh(ABC):
         self.debug: bool = False
         self.tri_bulk: bool = False  # Use triangle cells for bulk mesh
         self.multi_region: bool = False  # Use multiple regions
+        self.n_wall_layers: int = 0  # Number of wall layers
 
         # Default parameters (can be overwritten by input_parameters)
         self.r_BL: float = 1.1  # Boundary layer growth rate
@@ -243,7 +244,7 @@ class TwoPhaseTankMesh(ABC):
 
     def remove_wall(self) -> None:
         self.run_command("rm -r constant/metal/polyMesh")
-        self.regions.pop("metal")
+        self.regions.remove("metal")
         for region in ("gas", "liquid"):
             # self.sed(f"{region}_to_metal", "walls", f"constant/{region}/polyMesh/boundary")
             # self.sed("mappedWall", "wall", f"constant/{region}/polyMesh/boundary")
@@ -376,7 +377,7 @@ class TwoPhaseTankMesh(ABC):
         rprint("    [yellow]Load OpenFOAM 11 and run the following command:[/yellow]")
         rprint("    [bold yellow]createNonConformalCouples -overwrite[/yellow bold]\n")
 
-    def calc_wedge_normal(self):
+    def calc_wedge_normal(self) -> None:
         """
         Calculate normal based on wedge angle (y-axis).
         """

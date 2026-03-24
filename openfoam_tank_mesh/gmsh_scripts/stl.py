@@ -1,7 +1,7 @@
 import gmsh  # type: ignore[import-untyped]
 import numpy as np
 
-from openfoam_tank_mesh import TankMesh
+from openfoam_tank_mesh import TwoPhaseTankMesh as TwoPhaseTankMeshModule
 from openfoam_tank_mesh.gmsh_scripts.utilities import (
     add_curve_loop,
     add_ellipse,
@@ -14,7 +14,7 @@ from openfoam_tank_mesh.gmsh_scripts.utilities import (
 )
 
 
-def generate_3D_stl(mesh: "TankMesh.TankMesh") -> None:
+def generate_3D_stl(mesh: "TwoPhaseTankMeshModule.TwoPhaseTankMesh") -> None:
     """
     Generate a stl file with named surfaces for use in cfMesh.
     """
@@ -99,7 +99,7 @@ def generate_3D_stl(mesh: "TankMesh.TankMesh") -> None:
         gmsh.finalize()
 
 
-def generate_2D_stl(mesh: "TankMesh.TankMesh") -> None:
+def generate_2D_stl(mesh: "TwoPhaseTankMeshModule.TwoPhaseTankMesh") -> None:
     """
     Generate a stl file with named surfaces for use in cfMesh.
     """
@@ -183,7 +183,7 @@ def generate_2D_stl(mesh: "TankMesh.TankMesh") -> None:
         gmsh.finalize()
 
 
-def generate_2D_internal_outlet_stl(mesh: "TankMesh.TankMesh") -> None:
+def generate_2D_internal_outlet_stl(mesh: "TwoPhaseTankMeshModule.TwoPhaseTankMesh") -> None:
     """
     Generate a stl file with named surfaces for use in cfMesh.
     """
@@ -270,7 +270,7 @@ def generate_2D_internal_outlet_stl(mesh: "TankMesh.TankMesh") -> None:
         gmsh.finalize()
 
 
-def generate_3D_internal_outlet_stl(mesh: "TankMesh.TankMesh") -> None:
+def generate_3D_internal_outlet_stl(mesh: "TwoPhaseTankMeshModule.TwoPhaseTankMesh") -> None:
     """
     Generate a stl file with named surfaces for use in cfMesh.
     """
@@ -325,7 +325,7 @@ def generate_3D_internal_outlet_stl(mesh: "TankMesh.TankMesh") -> None:
 
     if revolve == 360:
         angle /= 3
-        n_angle /= 3
+        n_angle = n_angle // 3
 
     _ = gmsh.model.geo.revolve(
         [(1, line) for line in lines],

@@ -19,7 +19,7 @@ class KSiteMesh(TwoPhaseTankMesh):
             input_parameters["outlet_radius"] *= 2
             self.modify_outlet = True
 
-        self.tank = KSiteProfile(
+        self.tank: KSiteProfile = KSiteProfile(
             fill_level=input_parameters["fill_level"],
             outlet_radius=input_parameters["outlet_radius"],
             bulk_cell_size=input_parameters["bulk_cell_size"],
@@ -36,7 +36,7 @@ class KSiteMesh(TwoPhaseTankMesh):
 
         return None
 
-    def _setup_writable_dicts(self):
+    def _setup_writable_dicts(self) -> None:
         """Copy template dicts to a writable location in the workdir."""
         if not self._work_dict_path.exists():
             self._work_dict_path.mkdir(parents=True, exist_ok=True)
@@ -245,7 +245,7 @@ class SphereMesh(TwoPhaseTankMesh):
             input_parameters["outlet_radius"] *= 2
             self.modify_outlet = True
 
-        self.tank = SphereProfile(
+        self.tank: SphereProfile = SphereProfile(
             radius=input_parameters["radius"],
             fill_level=input_parameters["fill_level"],
             outlet_radius=input_parameters["outlet_radius"],

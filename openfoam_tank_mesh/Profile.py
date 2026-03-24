@@ -306,7 +306,7 @@ class Profile:
         integrand = lambda y: 2 * np.pi * r(y) * np.sqrt(1 + drdy(y) ** 2)
         return float(spi.quad(integrand, y1, y2)[0])
 
-    def get_y(self, radius: float, ymin: float, ymax: float):
+    def get_y(self, radius: float, ymin: float, ymax: float) -> float:
 
         def objective(y: float) -> float:
             current_radius = self.get_radius(y)
@@ -329,11 +329,15 @@ class TankProfile(Profile):
         internal_outlet: float = 0,
     ) -> None:
         super().__init__(segments=segments)
+        self.name: str = ""
         self.fill_level: float = fill_level
         self.outlet_radius: float = outlet_radius
         self.internal_outlet: float = internal_outlet
         self.t_BL: float = 0
         self.N: int = 0
+        self.cylinder_radius: float = 0.0
+        self.cylinder_height: float = 0.0
+        self.cap_height: float = 0.0
         self.y_interface: float = self.calculate_interface_position()
         self.y_outlet: float = self.calculate_outlet_position()
         self.interface_radius: float = self.get_radius(self.y_interface)
@@ -431,7 +435,7 @@ class TankProfile(Profile):
         """
         return self.segments[-1].y_end
 
-    def split_profile(self, y_split: float, tol: float = 10e-3) -> tuple[Segment, Segment]:
+    def split_profile(self, y_split: float, tol: float = 10e-3) -> tuple[Segment, Segment | None]:
         """
         Go through the segments and split the one where the interface is located.
         """

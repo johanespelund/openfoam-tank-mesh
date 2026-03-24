@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+from typing import Any
+
 import gmsh  # type: ignore[import-untyped]
 import numpy as np
 
-from openfoam_tank_mesh import TwoPhaseMesh
 from openfoam_tank_mesh.gmsh_scripts.utilities import (
     add_ellipse,
     add_line,
@@ -14,6 +15,7 @@ from openfoam_tank_mesh.gmsh_scripts.utilities import (
     gmsh_setup,
 )
 from openfoam_tank_mesh.Profile import EllipseArc, LineSegment, PointCoords, TankProfile
+from openfoam_tank_mesh.TwoPhaseTankMesh import TwoPhaseTankMesh
 
 
 def get_coords(pointID: int) -> tuple[float, float]:
@@ -24,7 +26,7 @@ def get_coords(pointID: int) -> tuple[float, float]:
     return x, y
 
 
-def find_point(coords: np.ndarray, tol: float = 1e-6) -> int:
+def find_point(coords: Any, tol: float = 1e-6) -> int:
     """
     Loop through all points in the gmsh model,
     and return the point label for the point which is within
@@ -33,7 +35,7 @@ def find_point(coords: np.ndarray, tol: float = 1e-6) -> int:
 
     # Get all points
     points = gmsh.model.getEntities(dim=0)
-    coords = (coords[0], coords[1], 0)
+    coords_3d = (coords[0], coords[1], 0)
     for point in points[::-1]:
         # Get the coordinates of the point
         x, y, z = gmsh.model.getValue(0, point[1], [])
@@ -41,13 +43,13 @@ def find_point(coords: np.ndarray, tol: float = 1e-6) -> int:
         name = gmsh.model.getEntityName(0, point[1])
         if name.startswith("origo") or name.startswith("majorPoint"):
             continue
-        if np.allclose([x, y, z], coords, atol=tol):
-            return point[1]
+        if np.allclose([x, y, z], coords_3d, atol=tol):
+            return int(point[1])
 
     return -1
 
 
-def find_line(start: np.ndarray, end: np.ndarray, tol: float = 1e-6) -> int:
+def find_line(start: Any, end: Any, tol: float = 1e-6) -> int:
     """
     Loop through all lines in the gmsh model,
     and return the line label for the line which is within
@@ -56,8 +58,8 @@ def find_line(start: np.ndarray, end: np.ndarray, tol: float = 1e-6) -> int:
 
     # Get all lines
     lines = gmsh.model.getEntities(dim=1)
-    start = (start[0], start[1], 0)
-    end = (end[0], end[1], 0)
+    start_3d = (start[0], start[1], 0)
+    end_3d = (end[0], end[1], 0)
     for line in lines:
         result = gmsh.model.getBoundary([line], oriented=True)
         if len(result) != 2:
@@ -71,15 +73,15 @@ def find_line(start: np.ndarray, end: np.ndarray, tol: float = 1e-6) -> int:
         # Need to account for the fact that the line may be reversed,
         # if so, return negative label value.
 
-        if np.allclose([p1, p2], [start, end], atol=tol):
-            return line[1]
-        elif np.allclose([p2, p1], [start, end], atol=tol):
-            return -line[1]
-    print(f"Line not found: ({start}, {end})")
+        if np.allclose([p1, p2], [start_3d, end_3d], atol=tol):
+            return int(line[1])
+        elif np.allclose([p2, p1], [start_3d, end_3d], atol=tol):
+            return -int(line[1])
+    print(f"Line not found: ({start_3d}, {end_3d})")
     return -1
 
 
-def sort_xy(points):
+def sort_xy(points: list[Any]) -> list[Any]:
     x = np.array([_point[0] for _point in points])
     y = np.array([_point[1] for _point in points])
 
@@ -108,7 +110,7 @@ def sort_xy(points):
     return _points
 
 
-def run(mesh: TwoPhaseMesh.KSiteMesh) -> None:
+def run(mesh: TwoPhaseTankMesh) -> None:
     debug = mesh.debug
 
     gmsh_setup()
@@ -126,7 +128,7 @@ def run(mesh: TwoPhaseMesh.KSiteMesh) -> None:
 
 
 def generate_points_and_lines(  # noqa: C901
-    mesh: TwoPhaseMesh.KSiteMesh,
+    mesh: TwoPhaseTankMesh,
 ) -> tuple[dict[str, int], dict[str, int]]:
     """
     Generate points and lines.
@@ -166,7 +168,9 @@ def generate_points_and_lines(  # noqa: C901
 
     curve_groups = tank_profile.get_curve_groups()
     lines: dict[str, int] = {}
-    line_groups = {group: [] for group in [*list(curve_groups.keys()), "outlet", "internal_outlet"]}
+    line_groups: dict[str, list[int]] = {
+        group: [] for group in [*list(curve_groups.keys()), "outlet", "internal_outlet"]
+    }
     wall_lines = []
     inner_lines = []
 
@@ -256,7 +260,7 @@ def generate_points_and_lines(  # noqa: C901
 
         d = np.linalg.norm(np.array(p1) - np.array(p2))
 
-        N = N_outlet if p1[1] == p2[1] else closest_odd(d / lc)
+        N = N_outlet if p1[1] == p2[1] else closest_odd(float(d / lc))
         gmsh.model.geo.mesh.setTransfiniteCurve(ln, N, "Progression", 1)
 
     for curve in wall_normal_curves:
@@ -264,9 +268,9 @@ def generate_points_and_lines(  # noqa: C901
 
     # Add wall normal transfinite curves
     for i in range(len(outer_points)):
-        p1 = outer_points[i]
-        p2 = inner_points[i]
-        ln = find_line(p1, p2)
+        outer_pt = outer_points[i]
+        inner_pt = inner_points[i]
+        ln = find_line(outer_pt, inner_pt)
         sign = ln / abs(ln)  # Get the sign of the line, to determine direction
         gmsh.model.geo.mesh.setTransfiniteCurve(ln, tank_profile.N + 1, "Progression", sign * mesh.r_BL)
         # TODO: All of these lines are not defined actually!
@@ -289,7 +293,7 @@ def generate_points_and_lines(  # noqa: C901
         gmsh.model.geo.mesh.setTransfiniteCurve(wall_line, N + 1, "Progression", r_BL)
 
     # Finally, set N for horizontal interface (+BL) lines:
-    N_hor = closest_odd(inner_points[i_bl][0] / lc)
+    N_hor = closest_odd(float(inner_points[i_bl][0] / lc))
     bl_up = find_line((0, tank_profile.y_interface + tank_profile.t_BL), inner_points[i_bl_upper])
     interface_line = find_line((0, tank_profile.y_interface), inner_points[i_bl])
     bl_down = find_line(
@@ -318,7 +322,7 @@ def generate_points_and_lines(  # noqa: C901
     gmsh.model.geo.synchronize()
 
     ## LIQUID REGION
-    _points = []
+    _points: list[Any] = []
     for i in range(i_bl_lower + 1):
         _points.append(inner_points[i])
     _points.append((0, tank_profile.y_interface - tank_profile.t_BL))
@@ -549,12 +553,12 @@ def generate_points_and_lines(  # noqa: C901
     for i in [-1, 1]:
         _points.append(find_point(axis_points[2 + i]))
 
-    for p in inner_points:
-        _points.append(find_point(p))
+    for pt in inner_points:
+        _points.append(find_point(pt))
 
-    for p in internal_outlet_points:
-        if p[0] == 0:
-            _points.append(find_point(p))
+    for pt in internal_outlet_points:
+        if pt[0] == 0:
+            _points.append(find_point(pt))
 
     gmsh.model.mesh.field.add("Distance", 1)
     gmsh.model.mesh.field.setNumbers(1, "PointsList", _points)

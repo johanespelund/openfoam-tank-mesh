@@ -1,3 +1,4 @@
+# mypy: ignore-errors
 import gmsh  # type: ignore[import-untyped]
 import numpy as np
 
