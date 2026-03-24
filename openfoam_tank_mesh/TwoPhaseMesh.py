@@ -7,7 +7,7 @@ import numpy as np
 
 from openfoam_tank_mesh.gmsh_scripts.stl import generate_3D_internal_outlet_stl, generate_3D_stl
 from openfoam_tank_mesh.gmsh_scripts.two_phase import run as run_gmsh
-from openfoam_tank_mesh.Profile import KSiteProfile, SphereProfile
+from openfoam_tank_mesh.Profile import CylinderCapsTankProfile, KSiteProfile, SphereProfile
 from openfoam_tank_mesh.TwoPhaseTankMesh import TwoPhaseTankMesh
 
 
@@ -365,7 +365,118 @@ class SphereMesh(TwoPhaseTankMesh):
         return 0  # 3.194 + 0.879
 
 
-# class MHTBMesh(TwoPhaseTankMesh):
+class CylinderCapsMesh(TwoPhaseTankMesh):
+    """
+    Mesh class for a general tank with a cylindrical midsection and
+    ellipsoidal caps, using the :class:`CylinderCapsTankProfile` geometry
+    and the ``two_phase.py`` Gmsh script.
+
+    Required keys in ``input_parameters``
+    --------------------------------------
+    In addition to the base-class requirements (``bulk_cell_size``,
+    ``wall_cell_size``, ``outlet_radius``, ``fill_level``, ``debug``):
+
+    * ``cylinder_radius`` *or* ``cylinder_diameter`` – radius / diameter of
+      the cylindrical section.
+    * ``cylinder_height`` – axial height of the cylindrical section.
+    * ``cap_height`` – axial height of each ellipsoidal cap.
+    * ``wall_tan_cell_size`` – tangential cell size along the wall.
+    * ``r_BL`` – boundary-layer growth ratio.
+    * ``internal_outlet`` – depth of the internal outlet pipe (0 = flush).
+    * ``n_wall_layers`` – number of layers in the wall region.
+    """
+
+    def __init__(self, input_parameters: dict) -> None:
+
+        self.modify_outlet = False
+        if input_parameters["outlet_radius"] <= input_parameters["wall_tan_cell_size"]:
+            input_parameters["outlet_radius"] *= 2
+            self.modify_outlet = True
+
+        self.tank: CylinderCapsTankProfile = CylinderCapsTankProfile(
+            cylinder_radius=input_parameters.get("cylinder_radius", 0),
+            cylinder_height=input_parameters["cylinder_height"],
+            cap_height=input_parameters["cap_height"],
+            fill_level=input_parameters["fill_level"],
+            outlet_radius=input_parameters["outlet_radius"],
+            bulk_cell_size=input_parameters["bulk_cell_size"],
+            wall_tan_cell_size=input_parameters["wall_tan_cell_size"],
+            wall_cell_size=input_parameters["wall_cell_size"],
+            r_BL=input_parameters["r_BL"],
+            internal_outlet=input_parameters["internal_outlet"],
+            cylinder_diameter=input_parameters.get("cylinder_diameter"),
+        )
+        super().__init__(tank=self.tank, input_parameters=input_parameters)
+        self.multi_region = True
+        self.n_wall_layers = input_parameters["n_wall_layers"]
+
+        return None
+
+    def gmsh(self) -> None:
+        """
+        Generate the mesh using Gmsh.
+        """
+
+        run_gmsh(self)
+        if self.modify_outlet:
+            self.outlet_radius /= 2
+            self.write_mesh_parameters()
+
+        self.run_command("gmshToFoam mesh.msh")
+        self.run_command(f'transformPoints "Ry={-self.wedge_angle / 2}"')
+        self.run_openfoam_utility(
+            "topoSet",
+            "topoSetDict.gmsh",
+        )
+
+        if self.revolve and self.symmetry:
+            self.run_openfoam_utility("createPatch -overwrite", "createPatchDict.gmsh_symmetry")
+        elif self.revolve and self.cyclic:
+            self.run_openfoam_utility("createPatch -overwrite", "createPatchDict.gmsh_cyclic")
+        else:
+            self.run_openfoam_utility("createPatch -overwrite", "createPatchDict.gmsh")
+
+    def generate(self) -> None:
+        """
+        Generate the mesh.
+        """
+        self.gmsh()
+
+        if self.internal_outlet:
+            self.create_internal_outlet()
+        else:
+            self.remove_wall_outlet()
+        self.run_command("rm -rf 0/cellToRegion")
+        self.run_command("splitMeshRegions -cellZonesOnly -overwrite")
+        self.run_command("rm -rf constant/polyMesh")
+        self.check_mesh(regions=["gas", "liquid", "metal"])
+
+        return None
+
+    def generate_stl(self) -> None:
+        """
+        Generate a stl file with named surfaces for use in cfMesh.
+        """
+        if self.internal_outlet:
+            generate_3D_internal_outlet_stl(self)
+        else:
+            generate_3D_stl(self)
+
+    @property
+    def dict_path(self) -> str:
+        """
+        The path to the OpenFOAM dict folder.
+        """
+
+        return f"{pathlib.Path(__file__).parent}/dicts/two_phase_tanks/"
+
+    @property
+    def parameters_path(self) -> str:
+        """
+        The path to the mesh parameters.
+        """
+
+        return f"{pathlib.Path.cwd()}/parameters.CylinderCapsMesh"
 #     def __init__(self, input_parameters: dict) -> None:
 #         self.tank = KSiteProfile(
 #             fill_level=input_parameters["fill_level"],

@@ -836,6 +836,122 @@ class SphereProfile(TankProfile):
         self.cylinder_height = 0
 
 
+class CylinderCapsTankProfile(TankProfile):
+    """
+    General tank profile with a cylindrical midsection and ellipsoidal caps.
+
+    The tank geometry consists of three sections stacked along the y-axis:
+
+    1. **Bottom cap** – an ellipsoidal cap of height ``cap_height`` and
+       equatorial radius ``cylinder_radius`` (semi-minor axis = ``cap_height``,
+       semi-major axis = ``cylinder_radius``).
+    2. **Cylinder** – a straight cylindrical section of height
+       ``cylinder_height`` and radius ``cylinder_radius``.
+    3. **Top cap** – a mirror of the bottom cap.
+
+    Total tank height = ``2 * cap_height + cylinder_height``.
+
+    This is a generalisation of :class:`KSiteProfile` that accepts
+    user-supplied dimensions instead of the hard-coded K-Site values.
+
+    Parameters
+    ----------
+    cylinder_radius:
+        Radius of the cylindrical section (and the equatorial radius of each
+        ellipsoidal cap).  Alternatively supply ``cylinder_diameter`` and this
+        value will be computed as ``cylinder_diameter / 2``.
+    cylinder_height:
+        Height (axial length) of the cylindrical section.  May be zero for a
+        purely spheroidal tank.
+    cap_height:
+        Height of each ellipsoidal cap (semi-minor axis in the axial
+        direction).  When ``cap_height == cylinder_radius`` the caps are
+        hemispheres.
+    fill_level:
+        Fractional liquid fill level in [0, 1].
+    outlet_radius:
+        Radius of the outlet opening at the top of the tank.
+    bulk_cell_size:
+        Target cell size in the bulk mesh regions.
+    wall_tan_cell_size:
+        Target cell size along the wall (tangential direction).
+    wall_cell_size:
+        Target first-cell size normal to the wall (used for boundary-layer
+        mesh generation).
+    r_BL:
+        Boundary-layer cell growth ratio.  Default is 1.2.
+    internal_outlet:
+        Depth of an internal outlet pipe extending into the tank.
+        Set to 0 (default) for a flush outlet.
+    cylinder_diameter:
+        Optional alternative to ``cylinder_radius``.  If provided,
+        ``cylinder_radius`` is set to ``cylinder_diameter / 2`` and any
+        explicit ``cylinder_radius`` argument is ignored.
+    """
+
+    def __init__(
+        self,
+        cylinder_radius: float,
+        cylinder_height: float,
+        cap_height: float,
+        fill_level: float,
+        outlet_radius: float,
+        bulk_cell_size: float,
+        wall_tan_cell_size: float,
+        wall_cell_size: float,
+        r_BL: float = 1.2,
+        internal_outlet: float = 0,
+        cylinder_diameter: Optional[float] = None,
+    ) -> None:
+        if cylinder_diameter is not None:
+            cylinder_radius = cylinder_diameter / 2.0
+
+        segments: list[Segment] = [
+            EllipseArc(
+                "ellipse1",
+                0,
+                cap_height,
+                cylinder_radius,
+                cap_height,
+                length_scale=wall_tan_cell_size,
+            ),
+        ]
+        if cylinder_height > 0:
+            segments.append(
+                LineSegment(
+                    "line1",
+                    cap_height,
+                    cap_height + cylinder_height,
+                    cylinder_radius,
+                    cylinder_radius,
+                    length_scale=wall_tan_cell_size,
+                )
+            )
+        segments.append(
+            EllipseArc(
+                "ellipse2",
+                cap_height,
+                2 * cap_height,
+                cylinder_radius,
+                cap_height,
+                y_offset=cylinder_height,
+                length_scale=wall_tan_cell_size,
+            )
+        )
+
+        super().__init__(
+            segments=segments,
+            fill_level=fill_level,
+            outlet_radius=outlet_radius,
+            internal_outlet=internal_outlet,
+        )
+        self.name = "CylinderCaps"
+        self.add_boundary_layers(x_wall=wall_cell_size, r_BL=r_BL)
+        self.cap_height = cap_height
+        self.cylinder_radius = cylinder_radius
+        self.cylinder_height = cylinder_height
+
+
 # FEET = 0.3048
 # A = 3.05 / 4 #10 * FEET / 4
 # B = 3.05 / 2 #10 * FEET / 2

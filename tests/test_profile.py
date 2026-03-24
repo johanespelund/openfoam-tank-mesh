@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from openfoam_tank_mesh.Profile import KSiteProfile, SphereProfile
+from openfoam_tank_mesh.Profile import CylinderCapsTankProfile, KSiteProfile, SphereProfile
 
 INCH = 0.0254
 KSITE_A = 0.5 * 73 * INCH  # cap height
@@ -84,3 +84,113 @@ def test_sphere_profile_interface_at_equator(sphere_profile):
 def test_sphere_profile_volume_conservation(sphere_profile):
     """Liquid + gas volumes must sum to the total volume."""
     assert np.isclose(sphere_profile.volume_liquid + sphere_profile.volume_gas, sphere_profile.volume, rtol=1e-3)
+
+
+# ---------------------------------------------------------------------------
+# CylinderCapsTankProfile
+# ---------------------------------------------------------------------------
+
+CYL_RADIUS = 0.5
+CYL_HEIGHT = 1.0
+CAP_HEIGHT = 0.4
+
+
+@pytest.fixture
+def cylinder_caps_profile():
+    return CylinderCapsTankProfile(
+        cylinder_radius=CYL_RADIUS,
+        cylinder_height=CYL_HEIGHT,
+        cap_height=CAP_HEIGHT,
+        fill_level=0.5,
+        outlet_radius=0.03,
+        bulk_cell_size=0.05,
+        wall_tan_cell_size=0.01,
+        wall_cell_size=0.005,
+        r_BL=1.1,
+    )
+
+
+@pytest.fixture
+def cylinder_caps_profile_via_diameter():
+    """Same geometry as cylinder_caps_profile but specified with diameter."""
+    return CylinderCapsTankProfile(
+        cylinder_radius=0.0,  # will be overridden by cylinder_diameter
+        cylinder_height=CYL_HEIGHT,
+        cap_height=CAP_HEIGHT,
+        fill_level=0.5,
+        outlet_radius=0.03,
+        bulk_cell_size=0.05,
+        wall_tan_cell_size=0.01,
+        wall_cell_size=0.005,
+        r_BL=1.1,
+        cylinder_diameter=CYL_RADIUS * 2,
+    )
+
+
+@pytest.fixture
+def cylinder_caps_profile_zero_cylinder():
+    """Degenerate case: cylinder_height = 0 gives a purely spheroidal tank."""
+    return CylinderCapsTankProfile(
+        cylinder_radius=0.6,
+        cylinder_height=0.0,
+        cap_height=0.6,
+        fill_level=0.5,
+        outlet_radius=0.03,
+        bulk_cell_size=0.05,
+        wall_tan_cell_size=0.01,
+        wall_cell_size=0.005,
+        r_BL=1.1,
+    )
+
+
+def test_cylinder_caps_profile_dimensions(cylinder_caps_profile):
+    assert cylinder_caps_profile.cylinder_radius == pytest.approx(CYL_RADIUS)
+    assert cylinder_caps_profile.cylinder_height == pytest.approx(CYL_HEIGHT)
+    assert cylinder_caps_profile.cap_height == pytest.approx(CAP_HEIGHT)
+
+
+def test_cylinder_caps_profile_total_height(cylinder_caps_profile):
+    """Total height (y_end attribute) should be 2 * cap_height + cylinder_height."""
+    expected_height = 2 * CAP_HEIGHT + CYL_HEIGHT
+    assert cylinder_caps_profile.y_end == pytest.approx(expected_height)
+
+
+def test_cylinder_caps_profile_radius_at_poles(cylinder_caps_profile):
+    """Radius at the bottom pole must be zero."""
+    assert cylinder_caps_profile.get_radius(cylinder_caps_profile.y_start) == pytest.approx(0.0, abs=1e-9)
+
+
+def test_cylinder_caps_profile_radius_at_equator(cylinder_caps_profile):
+    """Radius at cap–cylinder junction must equal cylinder_radius."""
+    y_junction = CAP_HEIGHT
+    assert cylinder_caps_profile.get_radius(y_junction) == pytest.approx(CYL_RADIUS, rel=1e-6)
+
+
+def test_cylinder_caps_profile_fill_level(cylinder_caps_profile):
+    """Liquid volume / total volume should match the specified fill level."""
+    assert cylinder_caps_profile.volume_liquid / cylinder_caps_profile.volume == pytest.approx(0.5, rel=1e-2)
+
+
+def test_cylinder_caps_profile_volume_conservation(cylinder_caps_profile):
+    """Liquid + gas volumes must sum to the total volume."""
+    assert cylinder_caps_profile.volume_liquid + cylinder_caps_profile.volume_gas == pytest.approx(
+        cylinder_caps_profile.volume, rel=1e-3
+    )
+
+
+def test_cylinder_caps_profile_interface_inside_tank(cylinder_caps_profile):
+    """Interface must lie inside the tank."""
+    assert cylinder_caps_profile.y_start < cylinder_caps_profile.y_interface < cylinder_caps_profile.y_end
+
+
+def test_cylinder_caps_profile_diameter_equivalent(cylinder_caps_profile, cylinder_caps_profile_via_diameter):
+    """Specifying cylinder_diameter should give the same geometry as cylinder_radius."""
+    assert cylinder_caps_profile_via_diameter.cylinder_radius == pytest.approx(CYL_RADIUS)
+    assert cylinder_caps_profile_via_diameter.volume == pytest.approx(cylinder_caps_profile.volume, rel=1e-6)
+
+
+def test_cylinder_caps_profile_zero_cylinder_height(cylinder_caps_profile_zero_cylinder):
+    """A zero cylinder_height tank should still build and conserve volume."""
+    p = cylinder_caps_profile_zero_cylinder
+    assert p.cylinder_height == pytest.approx(0.0)
+    assert p.volume_liquid + p.volume_gas == pytest.approx(p.volume, rel=1e-3)
