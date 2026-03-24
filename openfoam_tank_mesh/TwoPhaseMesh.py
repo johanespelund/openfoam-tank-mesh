@@ -5,6 +5,7 @@ import shutil
 
 import numpy as np
 
+from openfoam_tank_mesh.gmsh_scripts.stl import generate_3D_internal_outlet_stl, generate_3D_stl
 from openfoam_tank_mesh.gmsh_scripts.two_phase import run as run_gmsh
 from openfoam_tank_mesh.Profile import KSiteProfile, SphereProfile
 from openfoam_tank_mesh.TwoPhaseTankMesh import TwoPhaseTankMesh
@@ -55,8 +56,7 @@ class KSiteMesh(TwoPhaseTankMesh):
             self.write_mesh_parameters()
 
         self.run_command("gmshToFoam mesh.msh")
-        angle = max(self.wedge_angle, self.revolve) / 2
-        # self.run_command(f"transformPoints -rotate-y -{angle}")  # .org
+        # self.run_command(f"transformPoints -rotate-y -{max(self.wedge_angle, self.revolve) / 2}")  # .org
         self.run_command(f'transformPoints "Ry={-self.wedge_angle / 2}"')  # .com
         self.run_openfoam_utility(
             "topoSet",
@@ -272,8 +272,7 @@ class SphereMesh(TwoPhaseTankMesh):
             self.write_mesh_parameters()
 
         self.run_command("gmshToFoam mesh.msh")
-        angle = max(self.wedge_angle, self.revolve) / 2
-        # self.run_command(f"transformPoints -rotate-y -{angle}")  # .org
+        # self.run_command(f"transformPoints -rotate-y -{max(self.wedge_angle, self.revolve) / 2}")  # .org
         self.run_command(f'transformPoints "Ry={-self.wedge_angle / 2}"')  # .com
         self.run_openfoam_utility(
             "topoSet",

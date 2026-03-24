@@ -138,10 +138,10 @@ class Tank(ABC):
         """
 
         def objective(y: float) -> float:
-            current_volume = self.get_partial_volume(self.y1, y)
+            current_volume = self.get_partial_volume(self.y1, float(y))
             return current_volume - self.fill_level * self.volume
 
-        return float(spo.fsolve(objective, 0)[0])
+        return float(spo.brentq(objective, self.y1, self.y2))
 
     def calculate_outlet_position(self) -> float:
         """
@@ -152,7 +152,7 @@ class Tank(ABC):
             current_radius = self.get_radius(y)
             return current_radius - self.outlet_radius
 
-        return float(spo.least_squares(objective, 0.95 * self.y2, bounds=(0, self.y2)).x)
+        return float(spo.brentq(objective, 0, self.y2))
 
     def plot_tank(self, ax: Axes) -> None:
         """

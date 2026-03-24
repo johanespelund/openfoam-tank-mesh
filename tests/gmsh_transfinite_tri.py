@@ -122,7 +122,7 @@ for iAngle in range(n_angle + 1):
 
                     eNodesSet = set(eNodes)
 
-                    freeNode = list(eNodesSet - set(fixedNodes))[0]
+                    freeNode = next(iter(eNodesSet - set(fixedNodes)))
                     cornerNodes = [n for n in eNodes if n != freeNode]
 
                     # Create the three vectors spanned by the three nodes

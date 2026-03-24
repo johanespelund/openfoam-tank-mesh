@@ -1,4 +1,3 @@
-# ruff: noqa
 import gmsh  # type: ignore[import-untyped]
 import numpy as np
 
@@ -12,8 +11,6 @@ def run(mesh: "TankMesh.TankMesh") -> None:
     y_interface = tank.y_interface
     wedge_angle = mesh.wedge_angle
     revolve = mesh.revolve
-    bulk_cell_size = mesh.bulk_cell_size
-    wall_cell_size = mesh.wall_cell_size
     lc = mesh.wall_tan_cell_size
     t_BL = mesh.t_BL
     n_BL = mesh.n_BL + 1
@@ -108,12 +105,12 @@ def run(mesh: "TankMesh.TankMesh") -> None:
     l_8_13 = add_line(p8, p13)
     l_12_13 = add_line(p12, p13)
 
-    l_11_9 = add_line(p11, p9)
+    add_line(p11, p9)
     l_9_2 = add_line(p9, p2)
     l_2_3 = add_line(p2, p3)
     l_8_9 = add_line(p8, p9)
 
-    l_10_4 = add_line(p10, p4)
+    add_line(p10, p4)
     l_6_7 = add_line(p6, p7)
     l_7_1 = add_line(p7, p1)
     l_1_11 = add_line(p1, p11)

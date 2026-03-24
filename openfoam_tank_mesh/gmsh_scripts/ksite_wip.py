@@ -1,5 +1,3 @@
-# ruff: noqa
-# type: ignore
 import gmsh  # type: ignore[import-untyped]
 import numpy as np
 
@@ -14,7 +12,6 @@ def run(mesh: "KSiteMesh.KSiteMesh") -> None:
     wedge_angle = mesh.wedge_angle
     revolve = mesh.revolve
     bulk_cell_size = mesh.bulk_cell_size
-    wall_cell_size = mesh.wall_cell_size
     lc = bulk_cell_size
     t_BL = mesh.t_BL
     n_BL = mesh.n_BL + 1
@@ -54,7 +51,7 @@ def run(mesh: "KSiteMesh.KSiteMesh") -> None:
 
     n = tank.get_normal(y_bl)
     t = tank.get_tangent(y_bl)
-    d = n[0] + t[0]
+    _d = n[0] + t[0]
     # x10, y10 = tank.get_radius(y_bl) + t_BL*d, y_bl
     x10, y10 = get_corner_coords(mesh)
     p10 = add_point(x10, y10, z0, lc)
@@ -271,19 +268,19 @@ def run(mesh: "KSiteMesh.KSiteMesh") -> None:
 
     # input(f"{n_angle=})")
 
-    # for n in range(n_angle + 1):  # type: ignore
+    # for n in range(n_angle + 1):
     if False:
-        angle = 2 * np.pi * mesh.wedge_angle / 360 * (n / n_angle)  # type: ignore
+        angle = 2 * np.pi * mesh.wedge_angle / 360 * (n / n_angle)  # type: ignore[operator]
         c, s = np.cos(angle), np.sin(angle)
         input(f"angle: {np.degrees(angle):.2f}")
         R = np.array([[c, 0, -s], [0, 1, 0], [s, 0, c]])
 
-        nc2 = np.dot(nodeCoords2, R.T)
-        nc3 = np.dot(nodeCoords3, R.T)
+        nc2 = np.dot(nodeCoords2, R.T)  # noqa: F821
+        nc3 = np.dot(nodeCoords3, R.T)  # noqa: F821
 
-        nt2 = nodeTags2[np.where(np.isclose(nc2[:, 2], 0))]
+        nt2 = nodeTags2[np.where(np.isclose(nc2[:, 2], 0))]  # noqa: F821
         nc2 = nc2[np.where(np.isclose(nc2[:, 2], 0))]
-        nt3 = nodeTags3[np.where(np.isclose(nc3[:, 2], 0))]
+        nt3 = nodeTags3[np.where(np.isclose(nc3[:, 2], 0))]  # noqa: F821
         nc3 = nc3[np.where(np.isclose(nc3[:, 2], 0))]
 
         tags, indices = get_nodes_at_x(x7, nc3, nt3)
@@ -302,7 +299,7 @@ def run(mesh: "KSiteMesh.KSiteMesh") -> None:
 
             for i in range(1, len(y) - 1):
                 current_coords = gmsh.model.mesh.getNode(tags[i])[0]
-                xc, yc, zc = current_coords
+                xc, _yc, zc = current_coords
                 gmsh.model.mesh.setNode(tags[i], (xc, y_correct[i], zc), (0, 0, 0))
 
             # Now for s2, which is tricier. Instead of having a constant reference y=y6,
@@ -390,7 +387,7 @@ def run(mesh: "KSiteMesh.KSiteMesh") -> None:
     #             for t in current_tags:
     #                 if t not in edited_tags+list(lower_tags)+list(upper_tags):
     #                     current_coords = nc2[np.where(nt2 == t)][0]
-    #                     xc, yc, zc = current_coords
+    #                     xc, _yc, zc = current_coords
     #                     gmsh.model.mesh.setNode(t, (xc, a*xc + b, zc), (0, 0, 0))
     #                     edited_tags.append(t)
 

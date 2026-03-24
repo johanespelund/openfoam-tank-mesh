@@ -225,7 +225,7 @@ class TwoPhaseTankMesh(ABC):
         regions = [""] if not regions else [f"-region {region}" for region in regions]
         for region in regions:
             table = Table(title=f"Mesh Summary ({region})", show_header=False)
-            output = run(["checkMesh", *region.split()], capture_output=True, text=True)
+            output = run(["checkMesh", *region.split()], capture_output=True, text=True)  # noqa: S603, S607
             if "FAILED" in output.stdout:
                 rprint(output.stdout)
                 raise CommandFailed("checkMesh")

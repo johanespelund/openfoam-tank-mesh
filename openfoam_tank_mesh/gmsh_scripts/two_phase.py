@@ -20,7 +20,7 @@ def get_coords(pointID: int) -> tuple[float, float]:
     """
     Get the coordinates of a point in the gmsh model.
     """
-    x, y, z = gmsh.model.getValue(0, pointID, [])
+    x, y, _z = gmsh.model.getValue(0, pointID, [])
     return x, y
 
 
@@ -60,7 +60,8 @@ def find_line(start: np.ndarray, end: np.ndarray, tol: float = 1e-6) -> int:
     end = (end[0], end[1], 0)
     for line in lines:
         result = gmsh.model.getBoundary([line], oriented=True)
-        assert len(result) == 2, "Line should have two points"
+        if len(result) != 2:
+            raise ValueError("Line should have two points")  # noqa: TRY003
         i1 = result[0][1]
         i2 = result[1][1]
 
@@ -108,24 +109,11 @@ def sort_xy(points):
 
 
 def run(mesh: TwoPhaseMesh.KSiteMesh) -> None:
-    tank = mesh.tank
-    y_outlet = tank.y_outlet
-    y_interface = tank.y_interface
-    wedge_angle = mesh.wedge_angle
-    revolve = mesh.revolve
-    n_revolve = mesh.n_revolve
-    wall_cell_size = mesh.wall_cell_size
-    lc = mesh.wall_tan_cell_size
-    n_BL = mesh.n_BL + 1
-    r_BL = mesh.r_BL
-
     debug = mesh.debug
-
-    nw = 10
 
     gmsh_setup()
 
-    p, lines = generate_points_and_lines(mesh)
+    generate_points_and_lines(mesh)
 
     gmsh.model.geo.synchronize()
     gmsh.option.setNumber("Mesh.MshFileVersion", 2.2)
@@ -137,7 +125,7 @@ def run(mesh: TwoPhaseMesh.KSiteMesh) -> None:
         gmsh.finalize()
 
 
-def generate_points_and_lines(
+def generate_points_and_lines(  # noqa: C901
     mesh: TwoPhaseMesh.KSiteMesh,
 ) -> tuple[dict[str, int], dict[str, int]]:
     """
@@ -145,30 +133,16 @@ def generate_points_and_lines(
     """
     tank = mesh.tank
     r_outlet = tank.outlet_radius
-    y_outlet = tank.y_outlet
-    y_interface = tank.y_interface
     revolve = mesh.revolve
     n_revolve = mesh.n_revolve
     wedge_angle = mesh.wedge_angle
     lc = mesh.wall_tan_cell_size
-    bc = mesh.bulk_cell_size
-    t_BL = mesh.t_BL
-
-    a, c = tank.cylinder_radius, tank.cylinder_height
-    b = tank.cap_height
-    y_cylinder = c
-
-    y_bl = y_interface + t_BL
     z0 = 0
 
-    tw = 2e-3
-
-    p = {}
-    lines = {}
+    p: dict[str, int] = {}
 
     # Liquid phase points:
     tank_profile: TankProfile = mesh.tank  # create_tank_profile(mesh)
-    n_segments: int = len(tank_profile.segments)
     point_coords: PointCoords = tank_profile.get_mesh_points()
 
     outer_points = point_coords.outer_points
@@ -191,13 +165,10 @@ def generate_points_and_lines(
     gmsh.model.geo.synchronize()
 
     curve_groups = tank_profile.get_curve_groups()
-    lines = {}
-    line_groups = {group: [] for group in list(curve_groups.keys()) + ["outlet", "internal_outlet"]}
-    normal_lines = []
+    lines: dict[str, int] = {}
+    line_groups = {group: [] for group in [*list(curve_groups.keys()), "outlet", "internal_outlet"]}
     wall_lines = []
     inner_lines = []
-
-    i = 0
 
     i = 0
     for point_group in [outer_points, inner_points, wall_points]:
@@ -267,7 +238,7 @@ def generate_points_and_lines(
     for i, key in [(-1, i_bl_lower), (0, i_bl), (1, i_bl_upper)]:
         p1 = find_point(axis_points[2 + i])
         p2 = find_point(inner_points[key])
-        l = add_line(p1, p2)
+        add_line(p1, p2)
 
     gmsh.model.geo.synchronize()
 
@@ -276,8 +247,8 @@ def generate_points_and_lines(
     gmsh.model.geo.mesh.setTransfiniteCurve(outlet_line, N_outlet)
     gmsh.model.geo.mesh.setTransfiniteCurve(wall_lines[-1], N_outlet)
 
-    for l in line_groups["internal_outlet"]:
-        result = gmsh.model.getBoundary([[1, l]], oriented=True)
+    for ln in line_groups["internal_outlet"]:
+        result = gmsh.model.getBoundary([[1, ln]], oriented=True)
         i1 = result[0][1]
         i2 = result[1][1]
         p1 = gmsh.model.getValue(0, i1, [])
@@ -285,11 +256,8 @@ def generate_points_and_lines(
 
         d = np.linalg.norm(np.array(p1) - np.array(p2))
 
-        if p1[1] == p2[1]:
-            N = N_outlet
-        else:
-            N = closest_odd(d / lc)
-        gmsh.model.geo.mesh.setTransfiniteCurve(l, N, "Progression", 1)
+        N = N_outlet if p1[1] == p2[1] else closest_odd(d / lc)
+        gmsh.model.geo.mesh.setTransfiniteCurve(ln, N, "Progression", 1)
 
     for curve in wall_normal_curves:
         gmsh.model.geo.mesh.setTransfiniteCurve(curve, mesh.n_wall_layers + 1)
@@ -298,9 +266,9 @@ def generate_points_and_lines(
     for i in range(len(outer_points)):
         p1 = outer_points[i]
         p2 = inner_points[i]
-        l = find_line(p1, p2)
-        sign = l / abs(l)  # Get the sign of the line, to determine direction
-        gmsh.model.geo.mesh.setTransfiniteCurve(l, tank_profile.N + 1, "Progression", sign * mesh.r_BL)
+        ln = find_line(p1, p2)
+        sign = ln / abs(ln)  # Get the sign of the line, to determine direction
+        gmsh.model.geo.mesh.setTransfiniteCurve(ln, tank_profile.N + 1, "Progression", sign * mesh.r_BL)
         # TODO: All of these lines are not defined actually!
 
     # Add wall tangential transfinite curves
@@ -358,7 +326,7 @@ def generate_points_and_lines(
     _lines = [find_line(_points[i], _points[(i + 1) % len(_points)]) for i in range(len(_points))]
     clLiquid = gmsh.model.geo.addCurveLoops(_lines)
     sLiquid = gmsh.model.geo.addPlaneSurface(clLiquid)
-    line_groups["liquid"] = [abs(l) for l in _lines]
+    line_groups["liquid"] = [abs(ln) for ln in _lines]
 
     ## GAS REGION
     _points = []
@@ -372,7 +340,7 @@ def generate_points_and_lines(
     _lines = [find_line(_points[i], _points[(i + 1) % len(_points)]) for i in range(len(_points))]
     clGas = int(gmsh.model.geo.addCurveLoops(_lines))
     sGas = add_surface(clGas)
-    line_groups["gas"] = [abs(l) for l in _lines]
+    line_groups["gas"] = [abs(ln) for ln in _lines]
 
     ## OUTER LIQUID BOUNDARY LAYER
     _points = []
@@ -562,7 +530,9 @@ def generate_points_and_lines(
         sInternalOutlet,
         sOutlet,
         sWall,
-    ] + [sGas, sLiquid]:
+        sGas,
+        sLiquid,
+    ]:
         gmsh.model.geo.mesh.setRecombine(2, s)
     gmsh.option.setNumber("Mesh.Algorithm", 8)  # 5 or 6
     gmsh.option.setNumber("Mesh.RecombinationAlgorithm", 2)  # 2 or 3
@@ -576,7 +546,7 @@ def generate_points_and_lines(
 
     gmsh.model.geo.synchronize()
     _points = []
-    for i, key in [(-1, i_bl_lower), (1, i_bl_upper)]:
+    for i in [-1, 1]:
         _points.append(find_point(axis_points[2 + i]))
 
     for p in inner_points:
@@ -589,7 +559,7 @@ def generate_points_and_lines(
     gmsh.model.mesh.field.add("Distance", 1)
     gmsh.model.mesh.field.setNumbers(1, "PointsList", _points)
     # gmsh.model.mesh.field.setNumbers(1, "CurvesList", line_groups["gas"] + line_groups["liquid"])
-    gmsh.model.mesh.field.setNumbers(1, "CurvesList", [abs(l) for l in inner_lines])
+    gmsh.model.mesh.field.setNumbers(1, "CurvesList", [abs(ln) for ln in inner_lines])
     gmsh.model.mesh.field.setNumbers(1, "SurfacesList", [])
     gmsh.model.mesh.field.setNumber(1, "Sampling", 100)
     gmsh.model.mesh.field.add("Threshold", 2)
