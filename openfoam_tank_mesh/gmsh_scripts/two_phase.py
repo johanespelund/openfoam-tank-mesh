@@ -255,12 +255,12 @@ def generate_points_and_lines(  # noqa: C901
         result = gmsh.model.getBoundary([[1, ln]], oriented=True)
         i1 = result[0][1]
         i2 = result[1][1]
-        p1 = gmsh.model.getValue(0, i1, [])
-        p2 = gmsh.model.getValue(0, i2, [])
+        _p1 = gmsh.model.getValue(0, i1, [])
+        _p2 = gmsh.model.getValue(0, i2, [])
 
         d = np.linalg.norm(np.array(p1) - np.array(p2))
 
-        N = N_outlet if p1[1] == p2[1] else closest_odd(float(d / lc))
+        N = N_outlet if _p1[1] == _p2[1] else closest_odd(float(d / lc))
         gmsh.model.geo.mesh.setTransfiniteCurve(ln, N, "Progression", 1)
 
     for curve in wall_normal_curves:
