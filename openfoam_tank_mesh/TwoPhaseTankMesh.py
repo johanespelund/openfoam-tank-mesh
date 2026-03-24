@@ -229,7 +229,7 @@ class TwoPhaseTankMesh(ABC):
             table = Table(title=f"Mesh Summary ({region})", show_header=False)
             output = run(
                 ["checkMesh", *region.split()], capture_output=True, text=True
-            )  # noqa: S603 S607
+            )
             if "FAILED" in output.stdout:
                 rprint(output.stdout)
                 raise CommandFailed("checkMesh")

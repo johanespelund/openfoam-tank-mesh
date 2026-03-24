@@ -1,14 +1,14 @@
-import numpy as np
+import copy
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from math import sqrt
+
+import matplotlib.pyplot as plt
+import numpy as np
 import scipy.integrate as spi  # type: ignore[import-untyped]
 import scipy.optimize as spo  # type: ignore[import-untyped]
-from openfoam_tank_mesh.exceptions import OutOfRange
-import matplotlib.pyplot as plt
-import copy
-from typing import Optional
-from dataclasses import dataclass
 
-from math import sqrt
+from openfoam_tank_mesh.exceptions import OutOfRange
 
 
 @dataclass

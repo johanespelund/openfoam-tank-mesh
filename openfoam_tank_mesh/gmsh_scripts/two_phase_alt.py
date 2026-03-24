@@ -2,23 +2,19 @@ from __future__ import annotations
 
 import gmsh  # type: ignore[import-untyped]
 import numpy as np
-import matplotlib.pyplot as plt
-
-from openfoam_tank_mesh.Profile import EllipseArc, LineSegment, TankProfile, Profile
 
 from openfoam_tank_mesh import KSiteMesh
 from openfoam_tank_mesh.gmsh_scripts.utilities import (
-    add_curve_loop,
     add_ellipse,
     add_line,
-    add_physical_surface,
     add_point,
     add_surface,
     closest_odd,
     get_N_outlet,
     gmsh_setup,
-    print_debug,
 )
+from openfoam_tank_mesh.Profile import EllipseArc, LineSegment
+
 
 def get_coords(pointID: int) -> tuple[float, float]:
     """

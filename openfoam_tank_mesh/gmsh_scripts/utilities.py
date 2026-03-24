@@ -18,7 +18,7 @@ def get_N_outlet(mesh: "TankMesh.TankMesh") -> int:
         return temp
         # residual = abs(mesh.wall_tan_cell_size - mesh.outlet_radius / temp)
         # print(f"{residual=}")
-        
+
         # # increase N by 2:
         # temp += 2
         # residual2 = abs(mesh.wall_tan_cell_size - mesh.outlet_radius / temp)

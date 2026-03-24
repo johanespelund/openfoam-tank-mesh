@@ -5,11 +5,8 @@ import numpy as np
 import scipy.integrate as spi  # type: ignore[import-untyped]
 import scipy.optimize as spo  # type: ignore[import-untyped]
 from matplotlib.axes import Axes
-import copy
-import matplotlib.pyplot as plt
 
 from openfoam_tank_mesh.exceptions import OutOfRange
-import gmsh  # type: ignore[import-untyped]
 
 
 class Tank(ABC):

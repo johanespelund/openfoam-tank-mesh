@@ -1,5 +1,4 @@
 from openfoam_tank_mesh.CylinderTank import CylinderTank
-from openfoam_tank_mesh.Profile import EllipseArc, LineSegment, TankProfile, Profile
 
 INCH = 0.0254
 
