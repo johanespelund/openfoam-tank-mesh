@@ -2,6 +2,7 @@ import copy
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from math import sqrt
+from typing import Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -435,7 +436,30 @@ class TankProfile(Profile):
         """
         return self.segments[-1].y_end
 
-    def split_profile(self, y_split: float, tol: float = 10e-3) -> tuple[Segment, Segment | None]:
+# The following error in the following function def line:
+# ==================================== ERRORS ====================================
+# ____________________ ERROR collecting tests/test_profile.py ____________________
+# tests/test_profile.py:4: in <module>
+#     from openfoam_tank_mesh.Profile import KSiteProfile, SphereProfile
+# openfoam_tank_mesh/Profile.py:318: in <module>
+#     class TankProfile(Profile):
+# openfoam_tank_mesh/Profile.py:438: in TankProfile
+#     def split_profile(self, y_split: float, tol: float = 10e-3) -> tuple[Segment, Segment | None]:
+# E   TypeError: unsupported operand type(s) for |: 'ABCMeta' and 'NoneType'
+#
+# ---------- coverage: platform linux, python 3.9.25-final-0 -----------
+# Coverage XML written to file coverage.xml
+#
+# =========================== short test summary info ============================
+# ERROR tests/test_profile.py - TypeError: unsupported operand type(s) for |: 'ABCMeta' and 'NoneType'
+# !!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+# =============================== 1 error in 4.69s ===============================
+
+#Q: How to fix??
+#A: The error is due to the use of the union type hint `Segment | None`, which is only supported in Python 3.10 and later. Since the error message indicates that you are using Python 3.9, you should replace `Segment | None` with `Optional[Segment]` and import `Optional` from the `typing` module.
+
+
+    def split_profile(self, y_split: float, tol: float = 10e-3) -> tuple[Segment, Optional[Segment]]:
         """
         Go through the segments and split the one where the interface is located.
         """
