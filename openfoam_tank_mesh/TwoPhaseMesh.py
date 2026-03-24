@@ -1,67 +1,110 @@
+# mypy: ignore-errors
 from __future__ import annotations
 
 import pathlib
 import shutil
+from typing import ClassVar
 
 import numpy as np
 
 from openfoam_tank_mesh.gmsh_scripts.stl import generate_3D_internal_outlet_stl, generate_3D_stl
 from openfoam_tank_mesh.gmsh_scripts.two_phase import run as run_gmsh
-from openfoam_tank_mesh.Profile import CylinderCapsTankProfile, KSiteProfile, SphereProfile
+from openfoam_tank_mesh.Profile import CylinderCapsTankProfile, KSiteProfile, SphereProfile, TankProfile
 from openfoam_tank_mesh.TwoPhaseTankMesh import TwoPhaseTankMesh
 
 
-class KSiteMesh(TwoPhaseTankMesh):
-    def __init__(self, input_parameters: dict) -> None:
+class TwoPhaseGmshMesh(TwoPhaseTankMesh):
+    """
+    Base class for two-phase tank meshes that use the ``two_phase.py`` Gmsh script.
 
-        self.modify_outlet = 1
+    Provides the standard mesh-generation pipeline
+    (gmsh → gmshToFoam → topoSet → createPatch → splitMeshRegions)
+    and eliminates boilerplate from the individual tank-mesh subclasses.
+
+    Subclasses **must** implement
+    --------------------------------
+    ``_create_profile(input_parameters)``
+        Create and return the :class:`~openfoam_tank_mesh.Profile.TankProfile`
+        that describes the tank geometry.
+
+    Subclasses **may** override
+    ----------------------------
+    ``_pre_init_setup()``
+        Called at the very start of ``__init__``, before the profile is
+        created.  Use for setup that must precede
+        :class:`TwoPhaseTankMesh.__init__` (e.g. copying dict templates to a
+        writable directory on disk).
+    ``_pre_split_setup()``
+        Called inside :meth:`generate` immediately before
+        ``splitMeshRegions``.  Use to inject tank-specific OpenFOAM
+        operations (e.g. lid / obstacle extrusion for the K-Site tank).
+    ``dict_path``
+        Override when the dict templates live outside the default package
+        location.
+    ``parameters_path``
+        Override when a custom parameters-file name is required.
+    """
+
+    REQUIRED_PARAMETERS: ClassVar[list[str]] = TwoPhaseTankMesh.REQUIRED_PARAMETERS + [
+        "r_BL",
+        "internal_outlet",
+        "n_wall_layers",
+    ]
+
+    def __init__(self, input_parameters: dict) -> None:
+        # Allow subclasses to do setup before profile creation (e.g. writable dicts).
+        self._pre_init_setup()
+
+        # Ensure the outlet opening is large enough to be meshed.
+        self.modify_outlet = False
         if input_parameters["outlet_radius"] <= input_parameters["wall_tan_cell_size"]:
             input_parameters["outlet_radius"] *= 2
             self.modify_outlet = True
 
-        self.tank: KSiteProfile = KSiteProfile(
-            fill_level=input_parameters["fill_level"],
-            outlet_radius=input_parameters["outlet_radius"],
-            bulk_cell_size=input_parameters["bulk_cell_size"],
-            wall_tan_cell_size=input_parameters["wall_tan_cell_size"],
-            wall_cell_size=input_parameters["wall_cell_size"],
-            r_BL=input_parameters["r_BL"],
-            internal_outlet=input_parameters["internal_outlet"],
-        )
-        self._work_dict_path = pathlib.Path.cwd() / "system" / "openfoam-tank-mesh" / "dicts"
-        self._setup_writable_dicts()
+        # Create the tank profile (subclass-specific geometry).
+        self.tank = self._create_profile(input_parameters)
+
         super().__init__(tank=self.tank, input_parameters=input_parameters)
         self.multi_region = True
         self.n_wall_layers = input_parameters["n_wall_layers"]
 
-        return None
+    # ------------------------------------------------------------------
+    # Hooks for subclasses
+    # ------------------------------------------------------------------
 
-    def _setup_writable_dicts(self) -> None:
-        """Copy template dicts to a writable location in the workdir."""
-        if not self._work_dict_path.exists():
-            self._work_dict_path.mkdir(parents=True, exist_ok=True)
+    def _pre_init_setup(self) -> None:
+        """Run before profile creation and :class:`TwoPhaseTankMesh` init.
 
-        # Copy files from package to workdir
-        pkg_dicts = pathlib.Path(__file__).parent / "dicts" / "two_phase_tanks"
-        shutil.copytree(pkg_dicts, self._work_dict_path, dirs_exist_ok=True)
+        Default implementation does nothing.
+        """
+
+    def _create_profile(self, input_parameters: dict) -> TankProfile:
+        """Create and return the tank profile.
+
+        Subclasses must implement this method.
+        """
+        raise NotImplementedError(f"{type(self).__name__} must implement _create_profile()")
+
+    def _pre_split_setup(self) -> None:
+        """Run just before ``splitMeshRegions`` inside :meth:`generate`.
+
+        Default implementation does nothing.
+        """
+
+    # ------------------------------------------------------------------
+    # Mesh-generation pipeline
+    # ------------------------------------------------------------------
 
     def gmsh(self) -> None:
-        """
-        Generate the mesh using Gmsh.
-        """
-
+        """Generate a Gmsh mesh and convert it to OpenFOAM format."""
         run_gmsh(self)
         if self.modify_outlet:
             self.outlet_radius /= 2
             self.write_mesh_parameters()
 
         self.run_command("gmshToFoam mesh.msh")
-        # self.run_command(f"transformPoints -rotate-y -{max(self.wedge_angle, self.revolve) / 2}")  # .org
-        self.run_command(f'transformPoints "Ry={-self.wedge_angle / 2}"')  # .com
-        self.run_openfoam_utility(
-            "topoSet",
-            "topoSetDict.gmsh",
-        )
+        self.run_command(f'transformPoints "Ry={-self.wedge_angle / 2}"')
+        self.run_openfoam_utility("topoSet", "topoSetDict.gmsh")
 
         if self.revolve and self.symmetry:
             self.run_openfoam_utility("createPatch -overwrite", "createPatchDict.gmsh_symmetry")
@@ -71,10 +114,11 @@ class KSiteMesh(TwoPhaseTankMesh):
             self.run_openfoam_utility("createPatch -overwrite", "createPatchDict.gmsh")
 
     def generate(self) -> None:
+        """Standard two-phase mesh-generation pipeline.
+
+        Calls :meth:`gmsh`, handles the outlet, invokes the
+        :meth:`_pre_split_setup` hook, then splits and checks the mesh.
         """
-        Generate the mesh.
-        """
-        self.check_openfoam_loaded(version="org")
         self.gmsh()
 
         if self.internal_outlet:
@@ -82,10 +126,78 @@ class KSiteMesh(TwoPhaseTankMesh):
         else:
             self.remove_wall_outlet()
         self.run_command("rm -rf 0/cellToRegion")
+        self._pre_split_setup()
+        self.run_command("splitMeshRegions -cellZonesOnly -overwrite")
+        self.run_command("rm -rf constant/polyMesh")
+        self.check_mesh(regions=self.regions)
+
+    def generate_stl(self) -> None:
+        """Generate an STL file for use with cfMesh."""
+        if self.internal_outlet:
+            generate_3D_internal_outlet_stl(self)
+        else:
+            generate_3D_stl(self)
+
+    # ------------------------------------------------------------------
+    # Paths (may be overridden by subclasses)
+    # ------------------------------------------------------------------
+
+    @property
+    def dict_path(self) -> str:
+        """Path to the OpenFOAM dict templates."""
+        return f"{pathlib.Path(__file__).parent}/dicts/two_phase_tanks/"
+
+    @property
+    def parameters_path(self) -> str:
+        """Path to the mesh-parameters file (named after the tank profile)."""
+        return f"{pathlib.Path.cwd()}/parameters.{self.name}"
+
+
+# ---------------------------------------------------------------------------
+# Concrete mesh classes
+# ---------------------------------------------------------------------------
+
+
+class KSiteMesh(TwoPhaseGmshMesh):
+    """Two-phase mesh for the NASA K-Site cryogenic tank (Stochl & Knoll, 1991).
+
+    The tank geometry is taken from
+    :class:`~openfoam_tank_mesh.Profile.KSiteProfile` (hard-coded K-Site
+    dimensions).  Dict templates are copied to a writable sub-directory of
+    the OpenFOAM case before any meshing is performed.
+
+    .. seealso:: :class:`CylinderCapsMesh` for the equivalent mesh with
+        user-specified geometry.
+    """
+
+    # -- hooks ----------------------------------------------------------
+
+    def _pre_init_setup(self) -> None:
+        """Copy package dict templates to a writable working-directory location."""
+        self._work_dict_path = pathlib.Path.cwd() / "system" / "openfoam-tank-mesh" / "dicts"
+        if not self._work_dict_path.exists():
+            self._work_dict_path.mkdir(parents=True, exist_ok=True)
+        pkg_dicts = pathlib.Path(__file__).parent / "dicts" / "two_phase_tanks"
+        shutil.copytree(pkg_dicts, self._work_dict_path, dirs_exist_ok=True)
+
+    def _create_profile(self, input_parameters: dict) -> KSiteProfile:
+        return KSiteProfile(
+            fill_level=input_parameters["fill_level"],
+            outlet_radius=input_parameters["outlet_radius"],
+            bulk_cell_size=input_parameters["bulk_cell_size"],
+            wall_tan_cell_size=input_parameters["wall_tan_cell_size"],
+            wall_cell_size=input_parameters["wall_cell_size"],
+            r_BL=input_parameters["r_BL"],
+            internal_outlet=input_parameters["internal_outlet"],
+        )
+
+    def _pre_split_setup(self) -> None:
+        """K-Site-specific obstacle and lid extrusion before ``splitMeshRegions``."""
         if self.obstacle:
             self.add_wall_thickness("region0", "walls", [(1.849, 1e6)], [2.12e-3])
             self.add_wall_thickness("region0", "walls", [(1.859, 1e6)], [10e-3 - 2.12e-3])
             self.add_wall_thickness("region0", "walls", [(0.9136, 0.9605)], [2.12e-3])
+
         if self.lid:
             self.regions.append("lid")
             self.write_mesh_parameters()
@@ -95,7 +207,6 @@ class KSiteMesh(TwoPhaseTankMesh):
             nx, ny = self.tank.get_normal(y)
             r1, y1 = r - nx / 4, y - ny / 4
             r2, y2 = r + nx, y + ny
-
             y_duct = y - ny * 2.08e-3
 
             topodict = self.dict("topoSetDict.splitMetalRegions")
@@ -109,143 +220,89 @@ class KSiteMesh(TwoPhaseTankMesh):
 
             self.run_openfoam_utility("topoSet", "topoSetDict.splitMetalRegions")
 
+        # Build the ring of y/r/w/h values used by the obstacle extrusion.
         ys = [self.tank.y_lid]
         rs = [self.tank.r_lid]
         ws, hs = [0.05], [0.02]
-
-        # Add y values corresponding to r=1.6 and above, but split into 5 separate entries:
         r0 = 0.16
-        _n = 10
-        for _i in range(_n - 0):
-            _w = (0.16 - self.outlet_radius) / _n
+        n_subdivisions = 10
+        for _i in range(n_subdivisions):
+            _w = (0.16 - self.outlet_radius) / n_subdivisions
             _r = r0 - _i * _w
             if _i > 1:
-                _r += 1 * self.wall_tan_cell_size
-                _w += 1 * self.wall_tan_cell_size
-            elif _i < _n - 1:
-                _w += 1 * self.wall_tan_cell_size
+                _r += self.wall_tan_cell_size
+                _w += self.wall_tan_cell_size
+            elif _i < n_subdivisions - 1:
+                _w += self.wall_tan_cell_size
             _y = self.tank.get_y(_r, 1.5, self.y_outlet)
-            _h = 0.008
             ys.append(_y)
             rs.append(_r)
             ws.append(_w)
-            hs.append(_h)
+            hs.append(0.008)
 
-        # self.obstacle = True
         if self.obstacle:
             for y, r, w, h in zip(ys, rs, ws, hs):
-                # y = self.tank.y_lid
-                # r = self.tank.r_lid
-                # w = 0.05
-                # h = 0.02
                 y_average = (y + self.tank.get_y(r - w, 1.5, self.y_outlet)) / 2
                 n = self.tank.get_normal(y_average)
                 n = np.array([n[0], n[1], 0])
-                # t = np.array([-n[1], n[0], 0])  # Tangential vector
                 tr, ty = n[1], -n[0]
                 topodict = self.dict("topoSetDict.obstacle")
                 region = "lid" if self.lid else "metal"
                 self.sed("^obstacleRegion .*;", f"obstacleRegion {region};", topodict)
 
-                # Do it another way, usign origin, i, j, and k.
-                origin = np.array([r, y, -1e6]) - n * 5 * h  # First point of box.
-                # Define i to be the vector that points in the tangential dir with length w:
+                origin = np.array([r, y, -1e6]) - n * 5 * h
                 iHat = [tr * w, ty * w, 0]
-                # Define j to be the vector that points in the normal dir with length h:
                 jHat = np.array([n[0] * h, n[1] * h, 0]) * 6
-                kHat = [0, 0, 2e6]  # Very long in z-dir.
+                kHat = [0, 0, 2e6]
 
                 self.sed("origin .*;", f"origin ({origin[0]:.6f} {origin[1]:.6f} {origin[2]:.6f});", topodict)
                 self.sed("i .*(.*;", f"i ({iHat[0]:.6f} {iHat[1]:.6f} {iHat[2]:.6f});", topodict)
                 self.sed("j .*(.*;", f"j ({jHat[0]:.6f} {jHat[1]:.6f} {jHat[2]:.6f});", topodict)
                 self.sed("k .*(.*);", f"k ({kHat[0]:.6f} {kHat[1]:.6f} {kHat[2]:.6f});", topodict)
 
-                # self.sed("n1 .*;", "n1 (-1 0 0);", topodict)
-                # self.sed("n2 .*;", f"n2 ({tr} {ty} 0);", topodict)
-                # self.sed("centre .*;", f"centre ({r} {y} 0);", topodict)
-                # self.sed("box .*;", f"box ({r-w} {y-h} -1e6) ({r} {y} 1e6);", topodict)
-                # input(f"{region=}, {origin=}, {iHat=}, {jHat=}, {kHat=}")
                 self.run_openfoam_utility("topoSet", "topoSetDict.obstacle")
-                # input("Done")
 
-        self.run_command("splitMeshRegions -cellZonesOnly -overwrite")
-        self.run_command("rm -rf constant/polyMesh")
-        self.check_mesh(regions=self.regions)
+    # -- overrides ------------------------------------------------------
 
-        # Need to run this to convert mapped patches from .com to .org format
-        # self.run_command(
-        #     "find constant/ -type f -name boundary -exec "
-        #     + "sed -i 's/nearestPatchFace/matching/' {} \;"
-        # )
-
-        return None
+    def generate(self) -> None:
+        """K-Site generation: verify OpenFOAM is loaded, then run the standard pipeline."""
+        self.check_openfoam_loaded(version="org")
+        super().generate()
 
     def generate_leak_boundaries(self, region: str) -> None:
-        """
-        On the metal region, create a boundary for the flange.
-        """
+        """Create flange boundaries on the given metal region."""
         self.run_openfoam_utility(f"topoSet -region {region}", "topoSetDict.metal_patches")
         self.run_openfoam_utility(f"createPatch -overwrite -region {region}", "createPatchDict.metal_patches")
 
-    def generate_stl(self) -> None:
-        """
-        Generate a stl file with named surfaces for use in cfMesh.
-        """
-        if self.internal_outlet:
-            generate_3D_internal_outlet_stl(self)
-        else:
-            generate_3D_stl(self)
-
     @property
     def dict_path(self) -> str:
-        """
-        The path to the OpenFOAM dict folder.
-        """
-
-        # return f"{pathlib.Path(__file__).parent}/dicts/two_phase_tanks/"
         return str(self._work_dict_path)
 
     @property
     def parameters_path(self) -> str:
-        """
-        The path to the mesh parameters.
-        """
-
         return f"{pathlib.Path.cwd()}/parameters.KSiteMesh"
 
-    """
-    The following values use Table 1 from:
-    DOI: 10.2514/6.2016-4674
-    """
+    # -- K-Site heat-transfer helpers -----------------------------------
+    # Values from Table 1 in DOI: 10.2514/6.2016-4674
 
     def q_insulation(self) -> float:
-        """
-        Return the heat flux for the MLI/insulation for T_amb = 350 K.
-        """
+        """Heat flux for the MLI/insulation at T_amb = 350 K."""
         return 2.952
 
     def Q_insulation(self) -> float:
-        """
-        Return the total heat loss from the insulation + support
-        """
+        """Total heat loss from insulation + support."""
         return 41.352 + 2.813 + 3.194 + 0.879
 
     def Q_ducts(self) -> float:
-        """
-        Return  heat loss from ducting and wires.
-        """
-        return 0  # 3.194 + 0.879
+        """Heat loss from ducting and wires."""
+        return 0
 
 
-class SphereMesh(TwoPhaseTankMesh):
-    def __init__(self, input_parameters: dict) -> None:
+class SphereMesh(TwoPhaseGmshMesh):
+    """Two-phase mesh for a spherical tank."""
 
-        self.modify_outlet = 1
-        if input_parameters["outlet_radius"] <= input_parameters["wall_tan_cell_size"]:
-            input_parameters["outlet_radius"] *= 2
-            self.modify_outlet = True
-
-        self.tank: SphereProfile = SphereProfile(
+    def _create_profile(self, input_parameters: dict) -> SphereProfile:
+        return SphereProfile(
             radius=input_parameters["radius"],
             fill_level=input_parameters["fill_level"],
             outlet_radius=input_parameters["outlet_radius"],
@@ -255,145 +312,42 @@ class SphereMesh(TwoPhaseTankMesh):
             r_BL=input_parameters["r_BL"],
             internal_outlet=input_parameters["internal_outlet"],
         )
-        super().__init__(tank=self.tank, input_parameters=input_parameters)
-        self.multi_region = True
-        self.n_wall_layers = input_parameters["n_wall_layers"]
-
-        return None
-
-    def gmsh(self) -> None:
-        """
-        Generate the mesh using Gmsh.
-        """
-
-        run_gmsh(self)
-        if self.modify_outlet:
-            self.outlet_radius /= 2
-            self.write_mesh_parameters()
-
-        self.run_command("gmshToFoam mesh.msh")
-        # self.run_command(f"transformPoints -rotate-y -{max(self.wedge_angle, self.revolve) / 2}")  # .org
-        self.run_command(f'transformPoints "Ry={-self.wedge_angle / 2}"')  # .com
-        self.run_openfoam_utility(
-            "topoSet",
-            "topoSetDict.gmsh",
-        )
-
-        if self.revolve:
-            self.run_openfoam_utility("createPatch -overwrite", "createPatchDict.gmsh_symmetry")
-        else:
-            self.run_openfoam_utility("createPatch -overwrite", "createPatchDict.gmsh")
-
-    def generate(self) -> None:
-        """
-        Generate the mesh.
-        """
-        self.gmsh()
-
-        if self.internal_outlet:
-            self.create_internal_outlet()
-        else:
-            self.remove_wall_outlet()
-        self.run_command("rm -rf 0/cellToRegion")
-        self.run_command("splitMeshRegions -cellZonesOnly -overwrite")
-        self.run_command("rm -rf constant/polyMesh")
-        # self.generate_leak_boundaries()
-        self.check_mesh(regions=["gas", "liquid", "metal"])
-
-        # Need to run this to convert mapped patches from .com to .org format
-        # self.run_command(
-        #     "find constant/ -type f -name boundary -exec "
-        #     + "sed -i 's/nearestPatchFace/matching/' {} \;"
-        # )
-
-        return None
 
     def generate_leak_boundaries(self) -> None:
-        """
-        On the metal region, create a boundary for the flange.
-        """
+        """Create leak boundaries on metal and lid regions."""
         for region in ["metal", "lid"]:
             self.run_openfoam_utility(f"topoSet -region {region}", "topoSetDict.metal_patches")
             self.run_openfoam_utility(f"createPatch -overwrite -region {region}", "createPatchDict.metal_patches")
 
-    def generate_stl(self) -> None:
-        """
-        Generate a stl file with named surfaces for use in cfMesh.
-        """
-        if self.internal_outlet:
-            generate_3D_internal_outlet_stl(self)
-        else:
-            generate_3D_stl(self)
-
-    @property
-    def dict_path(self) -> str:
-        """
-        The path to the OpenFOAM dict folder.
-        """
-
-        return f"{pathlib.Path(__file__).parent}/dicts/two_phase_tanks/"
-
     @property
     def parameters_path(self) -> str:
-        """
-        The path to the mesh parameters.
-        """
-
-        return f"{pathlib.Path.cwd()}/parameters.KSiteMesh"
-
-    """
-    The following values use Table 1 from:
-    DOI: 10.2514/6.2016-4674
-    """
-
-    def q_insulation(self) -> float:
-        """
-        Return the heat flux for the MLI/insulation for T_amb = 350 K.
-        """
-        return 2.952
-
-    def Q_insulation(self) -> float:
-        """
-        Return the total heat loss from the insulation + support
-        """
-        return 41.352 + 2.813 + 3.194 + 0.879
-
-    def Q_ducts(self) -> float:
-        """
-        Return  heat loss from ducting and wires.
-        """
-        return 0  # 3.194 + 0.879
+        return f"{pathlib.Path.cwd()}/parameters.SphereMesh"
 
 
-class CylinderCapsMesh(TwoPhaseTankMesh):
-    """
-    Mesh class for a general tank with a cylindrical midsection and
-    ellipsoidal caps, using the :class:`CylinderCapsTankProfile` geometry
-    and the ``two_phase.py`` Gmsh script.
+class CylinderCapsMesh(TwoPhaseGmshMesh):
+    """Two-phase mesh for a general tank with a cylindrical midsection and ellipsoidal caps.
+
+    This is the general-purpose mesh class.  Supplying the K-Site dimensions
+    (see :class:`~openfoam_tank_mesh.Profile.KSiteProfile`) produces a mesh
+    that is geometrically equivalent to :class:`KSiteMesh`.
 
     Required keys in ``input_parameters``
     --------------------------------------
-    In addition to the base-class requirements (``bulk_cell_size``,
-    ``wall_cell_size``, ``outlet_radius``, ``fill_level``, ``debug``):
+    In addition to the base-class requirements:
 
-    * ``cylinder_radius`` *or* ``cylinder_diameter`` – radius / diameter of
+    * ``cylinder_radius`` *or* ``cylinder_diameter`` — radius / diameter of
       the cylindrical section.
-    * ``cylinder_height`` – axial height of the cylindrical section.
-    * ``cap_height`` – axial height of each ellipsoidal cap.
-    * ``wall_tan_cell_size`` – tangential cell size along the wall.
-    * ``r_BL`` – boundary-layer growth ratio.
-    * ``internal_outlet`` – depth of the internal outlet pipe (0 = flush).
-    * ``n_wall_layers`` – number of layers in the wall region.
+    * ``cylinder_height`` — axial height of the cylindrical section.
+    * ``cap_height`` — axial height of each ellipsoidal cap.
     """
 
-    def __init__(self, input_parameters: dict) -> None:
-
-        self.modify_outlet = False
-        if input_parameters["outlet_radius"] <= input_parameters["wall_tan_cell_size"]:
-            input_parameters["outlet_radius"] *= 2
-            self.modify_outlet = True
-
-        self.tank: CylinderCapsTankProfile = CylinderCapsTankProfile(
+    def _create_profile(self, input_parameters: dict) -> CylinderCapsTankProfile:
+        if "cylinder_radius" not in input_parameters and "cylinder_diameter" not in input_parameters:
+            raise ValueError(
+                "CylinderCapsMesh requires either 'cylinder_radius' or 'cylinder_diameter' "
+                "in input_parameters."
+            )
+        return CylinderCapsTankProfile(
             cylinder_radius=input_parameters.get("cylinder_radius", 0),
             cylinder_height=input_parameters["cylinder_height"],
             cap_height=input_parameters["cap_height"],
@@ -406,192 +360,7 @@ class CylinderCapsMesh(TwoPhaseTankMesh):
             internal_outlet=input_parameters["internal_outlet"],
             cylinder_diameter=input_parameters.get("cylinder_diameter"),
         )
-        super().__init__(tank=self.tank, input_parameters=input_parameters)
-        self.multi_region = True
-        self.n_wall_layers = input_parameters["n_wall_layers"]
-
-        return None
-
-    def gmsh(self) -> None:
-        """
-        Generate the mesh using Gmsh.
-        """
-
-        run_gmsh(self)
-        if self.modify_outlet:
-            self.outlet_radius /= 2
-            self.write_mesh_parameters()
-
-        self.run_command("gmshToFoam mesh.msh")
-        self.run_command(f'transformPoints "Ry={-self.wedge_angle / 2}"')
-        self.run_openfoam_utility(
-            "topoSet",
-            "topoSetDict.gmsh",
-        )
-
-        if self.revolve and self.symmetry:
-            self.run_openfoam_utility("createPatch -overwrite", "createPatchDict.gmsh_symmetry")
-        elif self.revolve and self.cyclic:
-            self.run_openfoam_utility("createPatch -overwrite", "createPatchDict.gmsh_cyclic")
-        else:
-            self.run_openfoam_utility("createPatch -overwrite", "createPatchDict.gmsh")
-
-    def generate(self) -> None:
-        """
-        Generate the mesh.
-        """
-        self.gmsh()
-
-        if self.internal_outlet:
-            self.create_internal_outlet()
-        else:
-            self.remove_wall_outlet()
-        self.run_command("rm -rf 0/cellToRegion")
-        self.run_command("splitMeshRegions -cellZonesOnly -overwrite")
-        self.run_command("rm -rf constant/polyMesh")
-        self.check_mesh(regions=["gas", "liquid", "metal"])
-
-        return None
-
-    def generate_stl(self) -> None:
-        """
-        Generate a stl file with named surfaces for use in cfMesh.
-        """
-        if self.internal_outlet:
-            generate_3D_internal_outlet_stl(self)
-        else:
-            generate_3D_stl(self)
-
-    @property
-    def dict_path(self) -> str:
-        """
-        The path to the OpenFOAM dict folder.
-        """
-
-        return f"{pathlib.Path(__file__).parent}/dicts/two_phase_tanks/"
 
     @property
     def parameters_path(self) -> str:
-        """
-        The path to the mesh parameters.
-        """
-
         return f"{pathlib.Path.cwd()}/parameters.CylinderCapsMesh"
-#     def __init__(self, input_parameters: dict) -> None:
-#         self.tank = KSiteProfile(
-#             fill_level=input_parameters["fill_level"],
-#             outlet_radius=input_parameters["outlet_radius"],
-#             bulk_cell_size=input_parameters["bulk_cell_size"],
-#             wall_tan_cell_size=input_parameters["wall_tan_cell_size"],
-#             wall_cell_size=input_parameters["wall_cell_size"],
-#             r_BL=input_parameters["r_BL"],
-#             internal_outlet=input_parameters["internal_outlet"],
-#         )
-#         super().__init__(tank=self.tank, input_parameters=input_parameters)
-#         self.multi_region = True
-
-#         return None
-
-#     def gmsh(self) -> None:
-#         """
-#         Generate the mesh using Gmsh.
-#         """
-
-#         run_gmsh(self)
-#         self.run_command("gmshToFoam mesh.msh")
-#         angle = max(self.wedge_angle, self.revolve)/2
-#         self.run_command(f"transformPoints -rotate-y -{angle}")  # .org
-#         # self.run_command(f"transformPoints \"Ry={-self.wedge_angle / 2}\"") #.com
-#         self.run_openfoam_utility(
-#             "topoSet",
-#             "topoSetDict.gmsh",
-#         )
-
-#         if self.revolve:
-#             self.run_openfoam_utility("createPatch -overwrite", "createPatchDict.gmsh_symmetry")
-#         else:
-#             self.run_openfoam_utility("createPatch -overwrite", "createPatchDict.gmsh")
-
-#     def generate(self) -> None:
-#         """
-#         Generate the mesh.
-#         """
-#         self.gmsh()
-
-#         if self.internal_outlet:
-#             self.create_internal_outlet()
-#         # self.run_openfoam_utility("topoSet", "topoSetDict.createFinalFaceSets")
-#         self.run_command("rm -rf 0/cellToRegion")
-#         # self.run_command("collapseEdges -overwrite")
-#         self.run_command("splitMeshRegions -cellZonesOnly -overwrite")
-#         self.run_command("rm -rf constant/polyMesh")
-#         # self.sed("metal_outlet", "outlet", "constant/metal/polyMesh/boundary")
-#         # self.generate_flange_boundary()
-#         self.generate_leak_boundaries()
-#         self.check_mesh(regions=["gas", "liquid", "metal"])
-#         self.run_command(
-#             "find constant/ -type f -name boundary -exec "
-#             + "sed -i 's/nearestPatchFace/matching/' {} \;"
-#         )
-
-#         return None
-
-
-#     def generate_leak_boundaries(self) -> None:
-#         """
-#         On the metal region, create a boundary for the flange.
-#         """
-#         self.run_openfoam_utility("topoSet -region metal", "topoSetDict.metal_patches")
-#         self.run_openfoam_utility(
-#             "createPatch -overwrite -region metal", "createPatchDict.metal_patches"
-#         )
-
-#     def generate_stl(self) -> None:
-#         """
-#         Generate a stl file with named surfaces for use in cfMesh.
-#         """
-#         if self.internal_outlet:
-#             generate_3D_internal_outlet_stl(self)
-#         else:
-#             generate_3D_stl(self)
-
-#     @property
-#     def dict_path(self) -> str:
-#         """
-#         The path to the OpenFOAM dict folder.
-#         """
-
-#         return f"{pathlib.Path(__file__).parent}/dicts/two_phase_tanks/"
-
-#     @property
-#     def parameters_path(self) -> str:
-#         """
-#         The path to the mesh parameters.
-#         """
-
-#         return f"{pathlib.Path.cwd()}/parameters.KSiteMesh"
-
-
-#     """
-#     The following values use Table 1 from:
-#     DOI: 10.2514/6.2016-4674
-#     """
-
-#     def q_insulation(self) -> float:
-#         """
-#         Return the heat flux for the MLI/insulation for T_amb = 350 K.
-#         """
-#         return 2.952
-
-#     def Q_insulation(self) -> float:
-#         """
-#         Return the total heat loss from the insulation + support
-#         """
-#         return 41.352 + 2.813
-
-
-#     def Q_ducts(self) -> float:
-#         """
-#         Return  heat loss from ducting and wires.
-#         """
-#         return 3.194 + 0.879
