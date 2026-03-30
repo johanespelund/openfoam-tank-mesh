@@ -1,9 +1,15 @@
-from rich import print as rprint
+import logging
+
+from rich.console import Console
+
+console = Console()
+logger = logging.getLogger(__name__)
 
 
 class OutOfRange(Exception):
     def __init__(self, value: float) -> None:
-        rprint(f"[bold red]y = {value} is out of range.[/bold red]")
+        logger.error("y = %s is out of range", value)
+        console.print(f"[bold red]y = {value} is out of range.[/bold red]")
 
 
 class SegmentNotInitialized(RuntimeError):
@@ -18,22 +24,23 @@ class SegmentsNotConnected(ValueError):
 
 class MissingParameter(Exception):
     def __init__(self, missing_parameter: str) -> None:
-        rprint(f"[bold red]Missing parameter: {missing_parameter}[/bold red]")
+        logger.error("Missing parameter: %s", missing_parameter)
+        console.print(f"[bold red]Missing parameter: {missing_parameter}[/bold red]")
 
 
 class OpenFoamNotLoaded(Exception):
     def __init__(self) -> None:
-        rprint("[bold red]OpenFOAM has not been loaded.[/bold red]")
+        logger.error("OpenFOAM has not been loaded")
+        console.print("[bold red]OpenFOAM has not been loaded.[/bold red]")
 
 
 class CommandFailed(Exception):
     def __init__(self, command: str, output: str = "") -> None:
         self.command = command
-        rprint(f"[bold red]Command {command} failed.[/bold red]")
-        rprint(f"[bold red]Output: {output}[/bold red]")
-        print(output)
+        logger.error("Command failed: %s", command)
+        if output.strip():
+            logger.error("Output: %s", output)
         super().__init__()
-        # Q: How can I achieve the f
 
     def __rich__(self) -> str:
         return f"[bold red]Command {self.command} failed.[/bold red]"

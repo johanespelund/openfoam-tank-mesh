@@ -1,13 +1,14 @@
 from __future__ import annotations
 
+import logging
 import time
 from abc import ABC, abstractmethod
 from subprocess import run
 from typing import ClassVar
 
 import numpy as np
-from rich import print as rprint
 from rich.console import Console
+from rich.progress import Progress, TaskID
 from rich.table import Table
 
 from openfoam_tank_mesh.exceptions import (
@@ -16,6 +17,33 @@ from openfoam_tank_mesh.exceptions import (
     OpenFoamNotLoaded,
 )
 from openfoam_tank_mesh.Profile import TankProfile
+
+console = Console()
+logger = logging.getLogger(__name__)
+
+
+def _setup_file_logging(log_path: str = "mesh_generation.log") -> None:
+    """Configure file-based logging for the *openfoam_tank_mesh* package.
+
+    Log records accumulate across runs within the same process (append mode).
+    This is intentional so that a session with multiple mesh objects produces a
+    single, continuous log file.  Delete or rotate ``mesh_generation.log``
+    between invocations if a clean log per run is preferred.
+    """
+    pkg_logger = logging.getLogger("openfoam_tank_mesh")
+    if any(isinstance(h, logging.FileHandler) for h in pkg_logger.handlers):
+        return  # already configured
+    pkg_logger.setLevel(logging.DEBUG)
+    handler = logging.FileHandler(log_path, mode="a", encoding="utf-8")
+    handler.setLevel(logging.DEBUG)
+    handler.setFormatter(
+        logging.Formatter(
+            "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
+            datefmt="%H:%M:%S",
+        )
+    )
+    pkg_logger.addHandler(handler)
+    pkg_logger.propagate = False
 
 
 class TwoPhaseTankMesh(ABC):
@@ -32,6 +60,13 @@ class TwoPhaseTankMesh(ABC):
     ]
 
     def __init__(self, tank: TankProfile, input_parameters: dict) -> None:
+        _setup_file_logging()
+
+        # Rich Progress context set by generate() so that run_command() can
+        # update the active task description instead of creating a nested Live.
+        self._progress: Progress | None = None
+        self._progress_task: TaskID | None = None
+
         self.tank: TankProfile = tank
 
         self.name = tank.name
@@ -143,35 +178,59 @@ class TwoPhaseTankMesh(ABC):
         self.run_command(f"cp {self.parameters_path} system/meshdata")
 
     def run_command(self, command: str, no_output: bool = False, return_exception: bool = False) -> None | Exception:
+        """Run a shell command with uv-style console feedback and file logging.
+
+        While the command executes the terminal shows a transient spinner (or
+        the active :class:`~rich.progress.Progress` task description is
+        updated).  On success the spinner disappears cleanly; on failure a red
+        error block is printed and a :exc:`~openfoam_tank_mesh.exceptions.CommandFailed`
+        exception is raised (or returned when *return_exception* is ``True``).
+
+        All commands, timings and output are written to the log file regardless
+        of *no_output* or *debug*.
         """
-        Method to run shell commands. The result should always be captured,
-        and an error should be raised if the command fails (even if no_output is True).
-        """
+        display_cmd = " ".join(
+            word.replace(self.dict_path, f"<{self.name}.dict_path>")
+            for word in command.split()
+        )
+        logger.info("$ %s", display_cmd)
+
         t = time.time()
-
-        command_words = command.split()
-        for i, word in enumerate(command_words):
-            command_words[i] = word.replace(self.dict_path, f"<{self.name}.dict_path>")
-        rprint(" ".join(command_words), end="")
-
-        capture_output = True
-        result = run(command, shell=True, capture_output=capture_output)  # noqa: S602
+        if self._progress is not None and self._progress_task is not None:
+            # Inside a Progress context - update description in place, no
+            # nested Live display.
+            self._progress.update(self._progress_task, description=f"[dim cyan]{display_cmd}[/dim cyan]")
+            result = run(command, shell=True, capture_output=True)  # noqa: S602
+        else:
+            # Standalone call - transient spinner that disappears on success.
+            with console.status(f"[cyan]{display_cmd}[/cyan]"):
+                result = run(command, shell=True, capture_output=True)  # noqa: S602
         dt = time.time() - t
-        if not no_output:
-            color = "green" if result.returncode == 0 else "red"
-            rprint(f"[{color}] ({dt:.6f} s)[/{color}]")
-        if result.returncode != 0:
-            exception = CommandFailed(command)
+
+        if result.returncode == 0:
+            logger.info("  ✓ %.3f s", dt)
+            if self.debug:
+                stdout = result.stdout.decode()
+                if stdout.strip():
+                    logger.debug(stdout)
+        else:
+            stderr = result.stderr.decode()
+            stdout = result.stdout.decode()
+            logger.error("  ✗ FAILED (%.3f s)  cmd=%s", dt, display_cmd)
+            if stderr.strip():
+                logger.error("stderr: %s", stderr)
+            if stdout.strip():
+                logger.error("stdout: %s", stdout)
+
+            exception = CommandFailed(command, stderr)
             if return_exception:
                 return exception
-            rprint(exception)
-            rprint(result.stderr.decode())
-            if self.debug:
-                rprint(result.stdout.decode())
-            raise CommandFailed(command, result.stderr.decode())
 
-        if self.debug:
-            rprint(result.stdout.decode())
+            out = self._progress.console if self._progress is not None else console
+            out.print(f"[bold red]✗ {display_cmd}[/bold red] [red]failed ({dt:.3f} s)[/red]")
+            if not no_output and stderr.strip():
+                out.print(f"[red]{stderr}[/red]")
+            raise exception
 
         return None
 
@@ -222,13 +281,14 @@ class TwoPhaseTankMesh(ABC):
         return n, t, x / self.wall_cell_size
 
     def check_mesh(self, regions: None | list = None) -> None:
-        console = Console()
         regions = [""] if not regions else [f"-region {region}" for region in regions]
         for region in regions:
             table = Table(title=f"Mesh Summary ({region})", show_header=False)
             output = run(["checkMesh", *region.split()], capture_output=True, text=True)  # noqa: S603, S607
+            logger.info("checkMesh %s → returncode=%d", region, output.returncode)
+            logger.debug(output.stdout)
             if "FAILED" in output.stdout:
-                rprint(output.stdout)
+                console.print(output.stdout)
                 raise CommandFailed("checkMesh")
             for line in output.stdout.split("\n"):
                 if "Mesh non-orthogonality Max" in line:
@@ -303,7 +363,7 @@ class TwoPhaseTankMesh(ABC):
         for p in [topo_dict_path, create_dict_path, extrude_dict_path]:
             self.sed("^patchName .*;", f"patchName {patchName};", p)
         for r, t in zip(ranges, thicknesses):
-            print("Adding wall thickness", t, "in range", r)
+            logger.info("Adding wall thickness %s in range %s", t, r)
             ys, ye = r
             n = max(3, int(self.n_wall_layers * (t / 2.08e-3)))
             self.sed("(-1e6 .* 1e6)", f"(-1e6 {ys} -1e6) (1e6 {ye} 1e6)", topo_dict_path)
@@ -372,10 +432,11 @@ class TwoPhaseTankMesh(ABC):
         return f"{self.dict_path}/{name}"
 
     def non_coupled_info(self) -> None:
-        rprint("\n[bold yellow]Non-coupled cyclic boundary conditions detected[/bold yellow]")
-        rprint("    [yellow]Adding createNonConformalCouplesDict to system/[/yellow]")
-        rprint("    [yellow]Load OpenFOAM 11 and run the following command:[/yellow]")
-        rprint("    [bold yellow]createNonConformalCouples -overwrite[/yellow bold]\n")
+        logger.warning("Non-coupled cyclic boundary conditions detected")
+        console.print("\n[bold yellow]Non-coupled cyclic boundary conditions detected[/bold yellow]")
+        console.print("    [yellow]Adding createNonConformalCouplesDict to system/[/yellow]")
+        console.print("    [yellow]Load OpenFOAM 11 and run the following command:[/yellow]")
+        console.print("    [bold yellow]createNonConformalCouples -overwrite[/bold yellow]\n")
 
     def calc_wedge_normal(self) -> None:
         """

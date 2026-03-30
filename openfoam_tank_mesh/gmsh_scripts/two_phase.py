@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 import gmsh  # type: ignore[import-untyped]
@@ -16,6 +17,8 @@ from openfoam_tank_mesh.gmsh_scripts.utilities import (
 )
 from openfoam_tank_mesh.Profile import EllipseArc, LineSegment, PointCoords, TankProfile
 from openfoam_tank_mesh.TwoPhaseTankMesh import TwoPhaseTankMesh
+
+logger = logging.getLogger(__name__)
 
 
 def get_coords(pointID: int) -> tuple[float, float]:
@@ -77,7 +80,7 @@ def find_line(start: Any, end: Any, tol: float = 1e-6) -> int:
             return int(line[1])
         elif np.allclose([p2, p1], [start_3d, end_3d], atol=tol):
             return -int(line[1])
-    print(f"Line not found: ({start_3d}, {end_3d})")
+    logger.debug("Line not found: (%s, %s)", start_3d, end_3d)
     return -1
 
 
