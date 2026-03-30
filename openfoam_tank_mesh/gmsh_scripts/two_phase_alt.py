@@ -1,6 +1,8 @@
 # mypy: ignore-errors
 from __future__ import annotations
 
+import logging
+
 import gmsh  # type: ignore[import-untyped]
 import numpy as np
 
@@ -15,6 +17,8 @@ from openfoam_tank_mesh.gmsh_scripts.utilities import (
     gmsh_setup,
 )
 from openfoam_tank_mesh.Profile import EllipseArc, LineSegment
+
+logger = logging.getLogger(__name__)
 
 
 def get_coords(pointID: int) -> tuple[float, float]:
@@ -76,7 +80,7 @@ def find_line(start, end, tol=1e-6):
             return line[1]
         elif np.allclose([p2, p1], [start, end], atol=tol):
             return -line[1]
-    print(f"Line not found: ({start}, {end})")
+    logger.debug("Line not found: (%s, %s)", start, end)
     return -1
     # raise ValueError("Line not found")
 

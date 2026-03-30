@@ -1,17 +1,19 @@
 # mypy: ignore-errors
 from __future__ import annotations
 
+import logging
 import pathlib
 import shutil
 from typing import ClassVar
 
 import numpy as np
+from rich.panel import Panel
 from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
 
 from openfoam_tank_mesh.gmsh_scripts.stl import generate_3D_internal_outlet_stl, generate_3D_stl
 from openfoam_tank_mesh.gmsh_scripts.two_phase import run as run_gmsh
 from openfoam_tank_mesh.Profile import CylinderCapsTankProfile, KSiteProfile, SphereProfile, TankProfile
-from openfoam_tank_mesh.TwoPhaseTankMesh import TwoPhaseTankMesh
+from openfoam_tank_mesh.TwoPhaseTankMesh import TwoPhaseTankMesh, console
 
 
 def _make_progress() -> Progress:
@@ -174,6 +176,16 @@ class TwoPhaseGmshMesh(TwoPhaseTankMesh):
 
         # Render the quality table after the progress bar has finished.
         self.check_mesh(regions=self.regions)
+
+        log_path = pathlib.Path.cwd() / "mesh_generation.log"
+        logging.getLogger(__name__).info("Mesh generation complete")
+        console.print(
+            Panel(
+                f"[bold green]Mesh generation complete[/bold green]\n"
+                f"[dim]Full log written to [underline]{log_path}[/underline][/dim]",
+                expand=False,
+            )
+        )
 
     def generate_stl(self) -> None:
         """Generate an STL file for use with cfMesh."""
