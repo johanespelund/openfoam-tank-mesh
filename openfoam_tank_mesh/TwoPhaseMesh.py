@@ -6,12 +6,23 @@ import shutil
 from typing import ClassVar
 
 import numpy as np
+from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
 
 from openfoam_tank_mesh.gmsh_scripts.stl import generate_3D_internal_outlet_stl, generate_3D_stl
 from openfoam_tank_mesh.gmsh_scripts.two_phase import run as run_gmsh
 from openfoam_tank_mesh.Profile import CylinderCapsTankProfile, KSiteProfile, SphereProfile, TankProfile
 from openfoam_tank_mesh.TwoPhaseTankMesh import TwoPhaseTankMesh
 
+
+def _make_progress() -> Progress:
+    """Return a :class:`~rich.progress.Progress` bar styled for mesh generation."""
+    return Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+        TimeElapsedColumn(),
+    )
 
 class TwoPhaseGmshMesh(TwoPhaseTankMesh):
     """
@@ -118,17 +129,50 @@ class TwoPhaseGmshMesh(TwoPhaseTankMesh):
 
         Calls :meth:`gmsh`, handles the outlet, invokes the
         :meth:`_pre_split_setup` hook, then splits and checks the mesh.
-        """
-        self.gmsh()
 
-        if self.internal_outlet:
-            self.create_internal_outlet()
-        else:
-            self.remove_wall_outlet()
-        self.run_command("rm -rf 0/cellToRegion")
-        self._pre_split_setup()
-        self.run_command("splitMeshRegions -cellZonesOnly -overwrite")
-        self.run_command("rm -rf constant/polyMesh")
+        A :class:`~rich.progress.Progress` bar tracks the five high-level
+        pipeline stages.  While each stage runs, the active sub-command is
+        shown as the task description so the terminal never looks idle.
+        """
+        _STAGES = 5
+        with _make_progress() as progress:
+            task = progress.add_task("Mesh generation pipeline", total=_STAGES)
+            self._progress = progress
+            self._progress_task = task
+
+            # ── Stage 1 ──────────────────────────────────────────────
+            progress.update(task, description="[bold]Stage 1/5[/bold] Gmsh mesh generation")
+            self.gmsh()
+            progress.advance(task)
+
+            # ── Stage 2 ──────────────────────────────────────────────
+            progress.update(task, description="[bold]Stage 2/5[/bold] Outlet configuration")
+            if self.internal_outlet:
+                self.create_internal_outlet()
+            else:
+                self.remove_wall_outlet()
+            self.run_command("rm -rf 0/cellToRegion")
+            progress.advance(task)
+
+            # ── Stage 3 ──────────────────────────────────────────────
+            progress.update(task, description="[bold]Stage 3/5[/bold] Pre-split setup")
+            self._pre_split_setup()
+            progress.advance(task)
+
+            # ── Stage 4 ──────────────────────────────────────────────
+            progress.update(task, description="[bold]Stage 4/5[/bold] Splitting mesh regions")
+            self.run_command("splitMeshRegions -cellZonesOnly -overwrite")
+            self.run_command("rm -rf constant/polyMesh")
+            progress.advance(task)
+
+            # ── Stage 5 ──────────────────────────────────────────────
+            progress.update(task, description="[bold]Stage 5/5[/bold] Checking mesh quality")
+            progress.advance(task)
+
+            self._progress = None
+            self._progress_task = None
+
+        # Render the quality table after the progress bar has finished.
         self.check_mesh(regions=self.regions)
 
     def generate_stl(self) -> None:

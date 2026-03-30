@@ -1,4 +1,5 @@
 import copy
+import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from math import sqrt
@@ -11,6 +12,7 @@ import scipy.optimize as spo  # type: ignore[import-untyped]
 
 from openfoam_tank_mesh.exceptions import OutOfRange, SegmentNotInitialized, SegmentsNotConnected
 
+logger = logging.getLogger(__name__)
 
 @dataclass
 class PointCoords:
@@ -249,13 +251,17 @@ class Profile:
         """
         for i in range(len(self.segments) - 1):
             if self.segments[i].y_end != self.segments[i + 1].y_start:
-                print(self.segments[i].y_end, self.segments[i + 1].y_start)
-
+                logger.debug(
+                    "Segment connectivity mismatch: %s y_end=%s, %s y_start=%s",
+                    self.segments[i].name,
+                    self.segments[i].y_end,
+                    self.segments[i + 1].name,
+                    self.segments[i + 1].y_start,
+                )
                 raise SegmentsNotConnected(self.segments[i].name, self.segments[i + 1].name)
             if self.segments[i].r_end != self.segments[i + 1].r_start:
-                print(self.segments[i])
-                print(self.segments[i + 1])
-
+                logger.debug("Segment r mismatch: %s", self.segments[i])
+                logger.debug("Next segment: %s", self.segments[i + 1])
                 raise SegmentsNotConnected(self.segments[i].name, self.segments[i + 1].name)
 
     def get_radius(self, y: float) -> float:
