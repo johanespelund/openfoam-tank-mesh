@@ -8,7 +8,7 @@ from typing import ClassVar
 
 import numpy as np
 from rich.console import Console
-from rich.progress import Progress
+from rich.progress import Progress, TaskID
 from rich.table import Table
 
 from openfoam_tank_mesh.exceptions import (
@@ -65,7 +65,7 @@ class TwoPhaseTankMesh(ABC):
         # Rich Progress context set by generate() so that run_command() can
         # update the active task description instead of creating a nested Live.
         self._progress: Progress | None = None
-        self._progress_task: int | None = None
+        self._progress_task: TaskID | None = None
 
         self.tank: TankProfile = tank
 
