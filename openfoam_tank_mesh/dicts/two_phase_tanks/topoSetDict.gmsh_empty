@@ -25,7 +25,7 @@ FoamFile
 // $wedge_pos_normal, $wedge_neg_normal, and $symmetry_normal are read from the
 // included parameters file (written by write_mesh_parameters()).
 
-#include "/home/johan/Documents/PhD/openfoam-tank-mesh/tests/parameters.CylinderCapsMesh"
+#include "meshdata"
 
 actions
 (

@@ -15,7 +15,7 @@ FoamFile
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-#include "/home/johan/Documents/PhD/openfoam-tank-mesh/tests/parameters.CylinderCapsMesh"
+#include "meshdata"
 
 actions
 (
