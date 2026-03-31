@@ -105,6 +105,9 @@ class TwoPhaseTankMesh(ABC):
         self.obstacle = False
         self.regions = ["gas", "liquid", "metal"]
         self.VoF = False
+        self.empty_2d: bool = False  # Use 2D planar (empty BC) instead of wedge
+        self.empty_2d_thickness: float = 0.0  # z-extrusion thickness; defaults to bulk_cell_size
+        self.symmetry_normal: list = [0, 0, 0]  # Normal for symmetry plane (set when empty_2d=True)
 
         if self.VoF:
             self.regions.remove("liquid")
@@ -114,6 +117,8 @@ class TwoPhaseTankMesh(ABC):
         self.set_parameters(input_parameters)
         self.n_BL, self.t_BL, self.e_BL = self.calculate_boundary_layer()
         self.wedge_angle = self.revolve if self.revolve else self.wedge_angle
+        if self.empty_2d and not self.empty_2d_thickness:
+            self.empty_2d_thickness = self.bulk_cell_size
         self.calc_wedge_normal()
         super().__init__()
         self.cyclic = not self.symmetry
@@ -440,11 +445,27 @@ class TwoPhaseTankMesh(ABC):
 
     def calc_wedge_normal(self) -> None:
         """
-        Calculate normal based on wedge angle (y-axis).
+        Calculate normals for the lateral boundary faces.
+
+        For the axisymmetric wedge case the normals are derived from the wedge
+        half-angle (rotation around y-axis).
+
+        For the 2D planar case (``empty_2d=True``) the mesh is extruded one
+        cell in the z-direction instead of being revolved.  The front/back
+        faces therefore have normals along ±z, and the axis boundary at x=0
+        becomes a symmetry plane with normal along -x.  The patch names are
+        updated accordingly.
         """
-        angle = max(self.revolve, self.wedge_angle) / 2
-        alpha = np.radians(angle)
-        dx = np.cos(alpha)
-        dz = np.sin(alpha)
-        self.wedge_pos_normal = [-dz, 0, dx]
-        self.wedge_neg_normal = [-dz, 0, -dx]
+        if self.empty_2d:
+            self.wedge_pos_normal = [0, 0, 1]
+            self.wedge_neg_normal = [0, 0, -1]
+            self.symmetry_normal = [-1, 0, 0]
+            self.patch_name_pos = "empty_pos"
+            self.patch_name_neg = "empty_neg"
+        else:
+            angle = max(self.revolve, self.wedge_angle) / 2
+            alpha = np.radians(angle)
+            dx = np.cos(alpha)
+            dz = np.sin(alpha)
+            self.wedge_pos_normal = [-dz, 0, dx]
+            self.wedge_neg_normal = [-dz, 0, -dx]

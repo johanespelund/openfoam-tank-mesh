@@ -612,12 +612,6 @@ def generate_points_and_lines(  # noqa: C901
         gmsh.finalize()
         raise
 
-    angle = 2 * np.pi * revolve / 360 if revolve else wedge_angle * np.pi / 180
-
-    n_angle = closest_odd(2 * np.pi * revolve / (360 * lc)) if revolve else 1
-    if n_revolve == 0:
-        n_revolve = n_angle
-
     regionSurfaces = {
         "gas": [sGas, sOuterGasBL, sInnerGasBL, sGasWall, sOutlet, sInternalOutlet],
         "liquid": [sLiquid, sOuterLiquidBL, sInnerLiquidBL, sLiquidWall],
@@ -631,11 +625,25 @@ def generate_points_and_lines(  # noqa: C901
 
     regionVolumes = {}
 
-    for region in regionSurfaces:
-        surfaces = [(2, s) for s in regionSurfaces[region]]
-        result = gmsh.model.geo.revolve(surfaces, 0, 0, 0, 0, 1, 0, angle, numElements=[n_revolve], recombine=True)
-        gmsh.model.geo.synchronize()
-        regionVolumes[region] = [res[1] for res in result if res[0] == 3]
+    if mesh.empty_2d:
+        # 2D planar case: extrude one cell in the z-direction instead of revolving.
+        dz = mesh.empty_2d_thickness or mesh.bulk_cell_size
+        for region in regionSurfaces:
+            surfaces = [(2, s) for s in regionSurfaces[region]]
+            result = gmsh.model.geo.extrude(surfaces, 0, 0, dz, numElements=[1], recombine=True)
+            gmsh.model.geo.synchronize()
+            regionVolumes[region] = [res[1] for res in result if res[0] == 3]
+    else:
+        # Axisymmetric case: revolve around the y-axis.
+        angle = 2 * np.pi * revolve / 360 if revolve else wedge_angle * np.pi / 180
+        n_angle = closest_odd(2 * np.pi * revolve / (360 * lc)) if revolve else 1
+        if n_revolve == 0:
+            n_revolve = n_angle
+        for region in regionSurfaces:
+            surfaces = [(2, s) for s in regionSurfaces[region]]
+            result = gmsh.model.geo.revolve(surfaces, 0, 0, 0, 0, 1, 0, angle, numElements=[n_revolve], recombine=True)
+            gmsh.model.geo.synchronize()
+            regionVolumes[region] = [res[1] for res in result if res[0] == 3]
 
     gas = gmsh.model.addPhysicalGroup(3, regionVolumes["gas"])
     liquid = gmsh.model.addPhysicalGroup(3, regionVolumes["liquid"])
