@@ -16,6 +16,7 @@ class NASA1m3Mesh(TankMesh):
             insulation_type=input_parameters["insulation_type"],
             cargo=input_parameters["cargo"],
         )
+        self._setup_writable_dicts("cylindrical_tanks")
         super().__init__(tank=self.tank, input_parameters=input_parameters)
 
         return None
@@ -72,7 +73,7 @@ class NASA1m3Mesh(TankMesh):
         The path to the OpenFOAM dict folder.
         """
 
-        return f"{pathlib.Path(__file__).parent}/dicts/cylindrical_tanks/"
+        return str(self._work_dict_path)
 
     @property
     def parameters_path(self) -> str:

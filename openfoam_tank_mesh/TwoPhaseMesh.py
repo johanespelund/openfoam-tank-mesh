@@ -86,10 +86,16 @@ class TwoPhaseGmshMesh(TwoPhaseTankMesh):
     # ------------------------------------------------------------------
 
     def _pre_init_setup(self) -> None:
-        """Run before profile creation and :class:`TwoPhaseTankMesh` init.
+        """Copy package dict templates to a writable working-directory location.
 
-        Default implementation does nothing.
+        This ensures the dict files can be modified in-place by
+        :meth:`run_openfoam_utility` even when the package is installed
+        read-only (e.g. in a site-packages directory).
         """
+        self._work_dict_path = pathlib.Path.cwd() / "system" / "openfoam-tank-mesh" / "dicts"
+        self._work_dict_path.mkdir(parents=True, exist_ok=True)
+        pkg_dicts = pathlib.Path(__file__).parent / "dicts" / "two_phase_tanks"
+        shutil.copytree(pkg_dicts, self._work_dict_path, dirs_exist_ok=True)
 
     def _create_profile(self, input_parameters: dict) -> TankProfile:
         """Create and return the tank profile.
@@ -208,8 +214,8 @@ class TwoPhaseGmshMesh(TwoPhaseTankMesh):
 
     @property
     def dict_path(self) -> str:
-        """Path to the OpenFOAM dict templates."""
-        return f"{pathlib.Path(__file__).parent}/dicts/two_phase_tanks/"
+        """Path to the writable copy of the OpenFOAM dict templates."""
+        return str(self._work_dict_path)
 
     @property
     def parameters_path(self) -> str:
@@ -235,14 +241,6 @@ class KSiteMesh(TwoPhaseGmshMesh):
     """
 
     # -- hooks ----------------------------------------------------------
-
-    def _pre_init_setup(self) -> None:
-        """Copy package dict templates to a writable working-directory location."""
-        self._work_dict_path = pathlib.Path.cwd() / "system" / "openfoam-tank-mesh" / "dicts"
-        if not self._work_dict_path.exists():
-            self._work_dict_path.mkdir(parents=True, exist_ok=True)
-        pkg_dicts = pathlib.Path(__file__).parent / "dicts" / "two_phase_tanks"
-        shutil.copytree(pkg_dicts, self._work_dict_path, dirs_exist_ok=True)
 
     def _create_profile(self, input_parameters: dict) -> KSiteProfile:
         return KSiteProfile(
@@ -337,10 +335,6 @@ class KSiteMesh(TwoPhaseGmshMesh):
         """Create flange boundaries on the given metal region."""
         self.run_openfoam_utility(f"topoSet -region {region}", "topoSetDict.metal_patches")
         self.run_openfoam_utility(f"createPatch -overwrite -region {region}", "createPatchDict.metal_patches")
-
-    @property
-    def dict_path(self) -> str:
-        return str(self._work_dict_path)
 
     @property
     def parameters_path(self) -> str:

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pathlib
+import shutil
 import time
 from subprocess import run
 from typing import ClassVar
@@ -90,6 +92,18 @@ class TankMesh(ABC):
         Generate an STL file of the tank geometry for use with cfMesh.
         """
 
+    def _setup_writable_dicts(self, source_subdir: str) -> None:
+        """Copy package dict templates to a writable working-directory location.
+
+        This ensures the dict files can be modified in-place by
+        :meth:`run_openfoam_utility` even when the package is installed
+        read-only (e.g. in a site-packages directory).
+        """
+        self._work_dict_path = pathlib.Path.cwd() / "system" / "openfoam-tank-mesh" / "dicts"
+        self._work_dict_path.mkdir(parents=True, exist_ok=True)
+        pkg_dicts = pathlib.Path(__file__).parent / "dicts" / source_subdir
+        shutil.copytree(pkg_dicts, self._work_dict_path, dirs_exist_ok=True)
+
     def validate_parameters(self, input_parameters: dict) -> None:
         for param in self.REQUIRED_PARAMETERS:
             if param not in input_parameters:
@@ -115,7 +129,6 @@ class TankMesh(ABC):
             for key, value in self.tank.__dict__.items():
                 if key not in self.__dict__ and type(value) in [int, float, str]:
                     f.write(f"{key} {value};\n")
-        self.run_command(f"cp {self.parameters_path} system/meshdata")
 
     def run_command(self, command: str, no_output: bool = False, return_exception: bool = False) -> None | Exception:
         """
@@ -265,6 +278,7 @@ class TankMesh(ABC):
         self.run_command("rm -rf constant/polyMesh constant/metal/polyMesh constant/gas/polyMesh")
         self.run_command(f"cp {self.dict_path}/meshDict system/meshDict")
         self.sed("nLayers.*;", f"nLayers {nLayers};", "system/meshDict")
+        self.sed("include .*", f'include "{self.parameters_path}"', "system/meshDict")
         self.run_command("cartesianMesh")
         result = self.run_openfoam_utility("createPatch -overwrite", "createPatchDict.cfMesh", return_exception=True)
         if result:

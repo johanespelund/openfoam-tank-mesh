@@ -16,6 +16,7 @@ class KSiteMesh(TankMesh):
             fill_level=input_parameters["fill_level"],
             outlet_radius=input_parameters["outlet_radius"],
         )
+        self._setup_writable_dicts("cylindrical_tanks")
         super().__init__(tank=self.tank, input_parameters=input_parameters)
         self.multi_region = True
 
@@ -85,7 +86,7 @@ class KSiteMesh(TankMesh):
         The path to the OpenFOAM dict folder.
         """
 
-        return f"{pathlib.Path(__file__).parent}/dicts/cylindrical_tanks/"
+        return str(self._work_dict_path)
 
     @property
     def parameters_path(self) -> str:

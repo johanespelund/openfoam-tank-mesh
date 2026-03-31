@@ -180,7 +180,6 @@ class TwoPhaseTankMesh(ABC):
             for key, value in self.tank.__dict__.items():
                 if key not in self.__dict__ and type(value) in [int, float, str]:
                     f.write(f"{key} {value};\n")
-        self.run_command(f"cp {self.parameters_path} system/meshdata")
 
     def run_command(self, command: str, no_output: bool = False, return_exception: bool = False) -> None | Exception:
         """Run a shell command with uv-style console feedback and file logging.
@@ -400,6 +399,7 @@ class TwoPhaseTankMesh(ABC):
         self.run_command("rm -rf constant/polyMesh constant/metal/polyMesh constant/gas/polyMesh")
         self.run_command(f"cp {self.dict_path}/meshDict system/meshDict")
         self.sed("nLayers.*;", f"nLayers {nLayers};", "system/meshDict")
+        self.sed("include .*", f'include "{self.parameters_path}"', "system/meshDict")
         self.run_command("cartesianMesh")
         result = self.run_openfoam_utility("createPatch -overwrite", "createPatchDict.cfMesh", return_exception=True)
         if result:
