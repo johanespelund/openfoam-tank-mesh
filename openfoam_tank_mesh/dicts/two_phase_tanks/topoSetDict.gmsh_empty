@@ -1,0 +1,138 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  2.1.0                                 |
+|   \\  /    A nd           | Web:      www.OpenFOAM.org                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      topoSetDict;
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+// Face sets for a 2D planar mesh (empty BC).
+//
+// The 2D profile is extruded one cell in the z-direction, so:
+//   emptyPos  – front face (z = dz), outward normal (0 0  1)  -> wedge_pos_normal
+//   emptyNeg  – back  face (z =  0), outward normal (0 0 -1)  -> wedge_neg_normal
+//   symmetryPlane – axis at x = 0,   outward normal (-1 0 0)  -> symmetry_normal
+//
+// $wedge_pos_normal, $wedge_neg_normal, and $symmetry_normal are read from the
+// included parameters file (written by write_mesh_parameters()).
+
+#include "/home/johan/Documents/PhD/openfoam-tank-mesh/tests/parameters.KSiteMesh"
+
+actions
+(
+  // ── Outlet ─────────────────────────────────────────────────────────────────
+  {
+    action new;
+    name outlet;
+    type faceSet;
+    source boundaryToFace;
+  }
+  {
+    action subset;
+    name outlet;
+    type faceSet;
+    source cylinderToFace;
+    sourceInfo
+    {
+      axis (0 1 0);
+      point1 (0 #calc "$y_outlet - 1e-9" 0);
+      point2 (0 #calc "$y_outlet + 1e-9" 0);
+      radius #calc "$outlet_radius + 1e-6";
+    }
+  }
+
+  // ── Front empty face (z = dz, normal ≈ (0 0 1)) ───────────────────────────
+  {
+    action new;
+    name emptyPos;
+    type faceSet;
+    source boundaryToFace;
+  }
+  {
+    action subset;
+    name emptyPos;
+    type faceSet;
+    source normalToFace;
+    normal $wedge_pos_normal;
+    cos 0.9;
+  }
+
+  // ── Back empty face (z = 0, normal ≈ (0 0 -1)) ────────────────────────────
+  {
+    action new;
+    name emptyNeg;
+    type faceSet;
+    source boundaryToFace;
+  }
+  {
+    action subset;
+    name emptyNeg;
+    type faceSet;
+    source normalToFace;
+    normal $wedge_neg_normal;
+    cos 0.9;
+  }
+
+  // ── Symmetry plane at x = 0 (normal = (-1 0 0)) ───────────────────────────
+  {
+    action new;
+    name symmetryPlane;
+    type faceSet;
+    source boundaryToFace;
+  }
+  {
+    action subset;
+    name symmetryPlane;
+    type faceSet;
+    source normalToFace;
+    normal $symmetry_normal;
+    cos 0.9;
+  }
+
+  // ── Walls = all boundary faces minus the above ─────────────────────────────
+  {
+    action new;
+    name walls;
+    type faceSet;
+    source boundaryToFace;
+  }
+  {
+    action delete;
+    name walls;
+    type faceSet;
+    source faceToFace;
+    set emptyNeg;
+  }
+  {
+    action delete;
+    name walls;
+    type faceSet;
+    source faceToFace;
+    set emptyPos;
+  }
+  {
+    action delete;
+    name walls;
+    type faceSet;
+    source faceToFace;
+    set symmetryPlane;
+  }
+  {
+    action delete;
+    name walls;
+    type faceSet;
+    source faceToFace;
+    set outlet;
+  }
+);
+
+// ************************************************************************* //

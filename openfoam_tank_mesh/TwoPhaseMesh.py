@@ -116,14 +116,22 @@ class TwoPhaseGmshMesh(TwoPhaseTankMesh):
             self.write_mesh_parameters()
 
         self.run_command("gmshToFoam mesh.msh")
-        self.run_command(f'transformPoints "Ry={-self.wedge_angle / 2}"')
-        self.run_openfoam_utility("topoSet", "topoSetDict.gmsh")
 
-        if self.revolve and self.symmetry:
+        if self.empty_2d:
+            # 2D planar mesh: no rotation needed; use dedicated topoSet / createPatch dicts.
+            self.run_openfoam_utility("topoSet", "topoSetDict.gmsh_empty")
+            self.run_openfoam_utility("createPatch -overwrite", "createPatchDict.gmsh_empty")
+        elif self.revolve and self.symmetry:
+            self.run_command(f'transformPoints "Ry={-self.wedge_angle / 2}"')
+            self.run_openfoam_utility("topoSet", "topoSetDict.gmsh")
             self.run_openfoam_utility("createPatch -overwrite", "createPatchDict.gmsh_symmetry")
         elif self.revolve and self.cyclic:
+            self.run_command(f'transformPoints "Ry={-self.wedge_angle / 2}"')
+            self.run_openfoam_utility("topoSet", "topoSetDict.gmsh")
             self.run_openfoam_utility("createPatch -overwrite", "createPatchDict.gmsh_cyclic")
         else:
+            self.run_command(f'transformPoints "Ry={-self.wedge_angle / 2}"')
+            self.run_openfoam_utility("topoSet", "topoSetDict.gmsh")
             self.run_openfoam_utility("createPatch -overwrite", "createPatchDict.gmsh")
 
     def generate(self) -> None:
