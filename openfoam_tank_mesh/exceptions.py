@@ -34,6 +34,14 @@ class OpenFoamNotLoaded(Exception):
         console.print("[bold red]OpenFOAM has not been loaded.[/bold red]")
 
 
+class MirrorRequiresEmpty2D(ValueError):
+    def __init__(self) -> None:
+        msg = "mirror=True requires empty_2d=True"
+        logger.error(msg)
+        console.print(f"[bold red]{msg}[/bold red]")
+        super().__init__(msg)
+
+
 class CommandFailed(Exception):
     def __init__(self, command: str, output: str = "") -> None:
         self.command = command

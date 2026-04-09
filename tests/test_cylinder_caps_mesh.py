@@ -117,6 +117,18 @@ def test_cylinder_caps_mesh_missing_radius_raises():
         CylinderCapsMesh(input_parameters=bad_params)
 
 
+@pytest.mark.skipif("CI" in os.environ, reason="OpenFOAM is not available in CI")
+def test_mirror_without_empty_2d_raises():
+    """mirror=True without empty_2d=True should raise MirrorRequiresEmpty2D (a ValueError)."""
+    from openfoam_tank_mesh.exceptions import MirrorRequiresEmpty2D
+    from openfoam_tank_mesh.TwoPhaseMesh import CylinderCapsMesh
+
+    params = dict(CAPS_KSITE_PARAMS, mirror=True)  # empty_2d defaults to False
+
+    with pytest.raises(MirrorRequiresEmpty2D):
+        CylinderCapsMesh(input_parameters=params)
+
+
 # ---------------------------------------------------------------------------
 # Full mesh-generation tests (skipped in CI – require OpenFOAM)
 # ---------------------------------------------------------------------------
