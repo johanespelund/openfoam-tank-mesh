@@ -118,7 +118,7 @@ class TwoPhaseTankMesh(ABC):
         self.validate_parameters(input_parameters)
         self.set_parameters(input_parameters)
         if self.mirror and not self.empty_2d:
-            raise MirrorRequiresEmpty2D
+            raise MirrorRequiresEmpty2D()
         self.n_BL, self.t_BL, self.e_BL = self.calculate_boundary_layer()
         self.wedge_angle = self.revolve if self.revolve else self.wedge_angle
         if self.empty_2d and not self.empty_2d_thickness:
@@ -406,7 +406,7 @@ class TwoPhaseTankMesh(ABC):
         for region in self.regions:
             self.run_command(f"mirrorMesh -dict {mirror_dict} -region {region} -overwrite")
 
-
+    def cfMesh(self, nLayers: int = 0) -> None:
         """
         Use cfMesh to create a 3D mesh.
         """
