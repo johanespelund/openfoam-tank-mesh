@@ -198,8 +198,8 @@ class TwoPhaseGmshMesh(TwoPhaseTankMesh):
 
             # ── Stage 5 (optional) ────────────────────────────────────
             if self.mirror:
-                _s = 6 if self.extrude_cylinder else 5
-                progress.update(task, description=f"[bold]Stage {_s}/{_n}[/bold] Mirroring mesh")
+                mirror_stage = 6 if self.extrude_cylinder else 5
+                progress.update(task, description=f"[bold]Stage {mirror_stage}/{_n}[/bold] Mirroring mesh")
                 self.mirror_mesh()
                 progress.advance(task)
 
