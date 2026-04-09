@@ -13,6 +13,7 @@ from rich.table import Table
 
 from openfoam_tank_mesh.exceptions import (
     CommandFailed,
+    MirrorRequiresEmpty2D,
     MissingParameter,
     OpenFoamNotLoaded,
 )
@@ -108,6 +109,7 @@ class TwoPhaseTankMesh(ABC):
         self.empty_2d: bool = False  # Use 2D planar (empty BC) instead of wedge
         self.empty_2d_thickness: float = 0.0  # z-extrusion thickness; defaults to bulk_cell_size
         self.symmetry_normal: list = [0, 0, 0]  # Normal for symmetry plane (set when empty_2d=True)
+        self.mirror: bool = False  # Mirror the mesh about the symmetry axis (requires empty_2d=True)
 
         if self.VoF:
             self.regions.remove("liquid")
@@ -115,6 +117,8 @@ class TwoPhaseTankMesh(ABC):
         # self.check_openfoam_loaded(version="org")
         self.validate_parameters(input_parameters)
         self.set_parameters(input_parameters)
+        if self.mirror and not self.empty_2d:
+            raise MirrorRequiresEmpty2D()
         self.n_BL, self.t_BL, self.e_BL = self.calculate_boundary_layer()
         self.wedge_angle = self.revolve if self.revolve else self.wedge_angle
         if self.empty_2d and not self.empty_2d_thickness:
@@ -389,6 +393,18 @@ class TwoPhaseTankMesh(ABC):
         self.run_openfoam_utility(f"extrudeMesh -region {region}", "extrudeMeshDict.outlet")
         self.y_outlet += length
         self.write_mesh_parameters()
+
+    def mirror_mesh(self) -> None:
+        """Mirror the mesh about the symmetry plane (x = 0).
+
+        Requires ``empty_2d=True``.  Runs ``mirrorMesh`` for each mesh region
+        so that the full (un-halved) geometry is obtained.  The symmetry
+        boundary at x = 0 is merged into the interior and disappears from the
+        boundary list after this step.
+        """
+        mirror_dict = self.dict("mirrorMeshDict")
+        for region in self.regions:
+            self.run_command(f"mirrorMesh -dict {mirror_dict} -region {region} -overwrite")
 
     def cfMesh(self, nLayers: int = 0) -> None:
         """

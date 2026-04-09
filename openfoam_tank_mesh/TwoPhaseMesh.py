@@ -146,23 +146,27 @@ class TwoPhaseGmshMesh(TwoPhaseTankMesh):
         Calls :meth:`gmsh`, handles the outlet, invokes the
         :meth:`_pre_split_setup` hook, then splits and checks the mesh.
 
-        A :class:`~rich.progress.Progress` bar tracks the five high-level
-        pipeline stages.  While each stage runs, the active sub-command is
-        shown as the task description so the terminal never looks idle.
+        When ``mirror=True`` an extra stage mirrors each mesh region about the
+        x = 0 symmetry plane using :meth:`mirror_mesh`.
+
+        A :class:`~rich.progress.Progress` bar tracks the high-level pipeline
+        stages.  While each stage runs, the active sub-command is shown as the
+        task description so the terminal never looks idle.
         """
-        _STAGES = 5
+        _STAGES = 5 + (1 if self.mirror else 0)
+        _n = str(_STAGES)
         with _make_progress() as progress:
             task = progress.add_task("Mesh generation pipeline", total=_STAGES)
             self._progress = progress
             self._progress_task = task
 
             # ── Stage 1 ──────────────────────────────────────────────
-            progress.update(task, description="[bold]Stage 1/5[/bold] Gmsh mesh generation")
+            progress.update(task, description=f"[bold]Stage 1/{_n}[/bold] Gmsh mesh generation")
             self.gmsh()
             progress.advance(task)
 
             # ── Stage 2 ──────────────────────────────────────────────
-            progress.update(task, description="[bold]Stage 2/5[/bold] Outlet configuration")
+            progress.update(task, description=f"[bold]Stage 2/{_n}[/bold] Outlet configuration")
             if self.internal_outlet:
                 self.create_internal_outlet()
             else:
@@ -171,18 +175,24 @@ class TwoPhaseGmshMesh(TwoPhaseTankMesh):
             progress.advance(task)
 
             # ── Stage 3 ──────────────────────────────────────────────
-            progress.update(task, description="[bold]Stage 3/5[/bold] Pre-split setup")
+            progress.update(task, description=f"[bold]Stage 3/{_n}[/bold] Pre-split setup")
             self._pre_split_setup()
             progress.advance(task)
 
             # ── Stage 4 ──────────────────────────────────────────────
-            progress.update(task, description="[bold]Stage 4/5[/bold] Splitting mesh regions")
+            progress.update(task, description=f"[bold]Stage 4/{_n}[/bold] Splitting mesh regions")
             self.run_command("splitMeshRegions -cellZonesOnly -overwrite")
             self.run_command("rm -rf constant/polyMesh")
             progress.advance(task)
 
-            # ── Stage 5 ──────────────────────────────────────────────
-            progress.update(task, description="[bold]Stage 5/5[/bold] Checking mesh quality")
+            # ── Stage 5 (optional) ────────────────────────────────────
+            if self.mirror:
+                progress.update(task, description=f"[bold]Stage 5/{_n}[/bold] Mirroring mesh")
+                self.mirror_mesh()
+                progress.advance(task)
+
+            # ── Stage 5 or 6 ─────────────────────────────────────────
+            progress.update(task, description=f"[bold]Stage {_n}/{_n}[/bold] Checking mesh quality")
             progress.advance(task)
 
             self._progress = None
