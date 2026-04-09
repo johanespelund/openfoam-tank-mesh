@@ -1,0 +1,49 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2006                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      extrudeMeshDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+// Extrude the 2D planar (empty_2d) mesh in the +z direction to produce a
+// 3D cylinder mesh.  nLayers and thickness are overwritten at run-time.
+
+constructFrom mesh;
+
+// If construct from patch/mesh:
+sourceCase    "$FOAM_CASE";
+sourcePatches (empty_pos);
+
+// New patch at the far end of the extrusion (z = thickness).
+exposedPatchName front;
+
+// Flip surface normals before usage. Valid only for extrude from surface or
+// patch.
+flipNormals false;
+
+//- Linear extrusion in point-normal direction
+extrudeModel        linearNormal;
+
+nLayers 10;
+thickness 0.1;
+
+expansionRatio 1;
+
+// Do front and back need to be merged? Usually only makes sense for 360
+// degree wedges.
+mergeFaces false;
+
+// Merge small edges. Fraction of bounding box.
+mergeTol 0;
+
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
