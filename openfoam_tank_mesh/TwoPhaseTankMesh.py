@@ -419,7 +419,8 @@ class TwoPhaseTankMesh(ABC):
         is chosen so that each cell matches ``bulk_cell_size``.
 
         After extrusion:
-        * The new far-end boundary is named ``front`` (type ``wall``).
+        * The original ``empty_pos`` boundary (front face, z = dz) is renamed
+          to ``front`` and its type is changed from ``empty`` to ``wall``.
         * The original ``empty_neg`` boundary (back face, z = 0) is renamed to
           ``back`` and its type is changed from ``empty`` to ``wall``.
 
@@ -432,12 +433,11 @@ class TwoPhaseTankMesh(ABC):
         for region in self.regions:
             self.run_openfoam_utility(f"extrudeMesh -region {region}", "extrudeMeshDict.cylinder")
             boundary_file = f"constant/{region}/polyMesh/boundary"
-            # Rename empty_neg → back
+            # Rename empty_neg → back, empty_pos → front
             self.sed("empty_neg", "back", boundary_file)
-            # Change the (formerly empty_neg) type from empty to wall
+            self.sed("empty_pos", "front", boundary_file)
+            # Change both (formerly empty) patch types to wall
             self.sed("type.*empty;", "type wall;", boundary_file)
-            # Change the new front patch type from patch to wall
-            self.run_command(f"sed -i '/front/{{n;s|type.*patch|type wall|}}' {boundary_file}")
 
     def cfMesh(self, nLayers: int = 0) -> None:
         """
