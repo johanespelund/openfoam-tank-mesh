@@ -13,7 +13,7 @@ Before installing, [OpenFOAM 12](https://openfoam.org/version/12/) should be ins
 Install using `pip` directly
 ```sh
 python -m venv .venv # If creating new venv
-source .venv/environment/bin/activate
+source .venv/bin/activate
 pip install git+https://github.com/johanespelund/openfoam-tank-mesh.git
 ```
 or if you are using `uv`
