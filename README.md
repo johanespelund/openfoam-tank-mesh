@@ -12,11 +12,13 @@ This is a python package for creating meshes to use in CFD simulations with Open
 Before installing, [OpenFOAM 12](https://openfoam.org/version/12/) should be installed and sourced.
 Install using `pip` directly
 ```sh
-pip install git@github.com:johanespelund/openfoam-tank-mesh.git
+python -m venv .venv # If creating new venv
+source .venv/environment/bin/activate
+pip install git+https://github.com/johanespelund/openfoam-tank-mesh.git
 ```
 or if you are using `uv`
 ```sh
-uv pip install git@github.com:johanespelund/openfoam-tank-mesh.git
+uv pip install git+https://github.com/johanespelund/openfoam-tank-mesh.git
 ```
 
 ## Usage
