@@ -9,5 +9,83 @@ This is a python package for creating meshes to use in CFD simulations with Open
 |*3D cylinder mesh.*|
 
 ## Installation
+Before installing, [OpenFOAM 12](https://openfoam.org/version/12/) should be installed and sourced.
+Install using `pip` directly
+```sh
+pip install git@github.com:johanespelund/openfoam-tank-mesh.git
+```
+or if you are using `uv`
+```sh
+uv pip install git@github.com:johanespelund/openfoam-tank-mesh.git
+```
 
 ## Usage
+
+An axisymmetrical, vertical cylinder tank can be generated using this script (includes walls):
+```python
+from openfoam_tank_mesh.TwoPhaseMesh import CylinderCapsMesh
+
+input_parameters = dict(
+    cylinder_radius=1, # Radius of vertical cylinder
+    cylinder_height=1, # Height of cylinder (0 gives a spherical/ellipsoid)
+    cap_height=0.5,      # Height of ellipse caps (=cylinder radius gives sphere)
+    fill_level=0.35,
+    wall_cell_size=15.0e-3,
+    wall_tan_cell_size=15.0e-3,
+    bulk_cell_size=50e-3,
+    r_BL=1.05,
+    tri_bulk=False,
+    outlet_radius=0.0127,
+    internal_outlet=0.0127 * 4,
+    debug=True,
+    revolve=0,
+    n_revolve=0,
+    n_wall_layers=6,
+    VoF=False,
+)
+
+mesh = CylinderCapsMesh(input_parameters)
+
+mesh.generate()
+
+```
+
+A 3D horizontal cylinder tank can be generated using this script (flat ends, now walls for now).
+Yields mesh shown in figure above.
+```python
+from openfoam_tank_mesh.TwoPhaseMesh import CylinderCapsMesh
+
+input_parameters = dict(
+    cylinder_radius=1, # Radius of vertical cylinder
+    cylinder_height=0, # Height of cylinder (0 gives a spherical/ellipsoid)
+    cap_height=1,      # Height of ellipse caps (=cylinder radius gives sphere)
+    fill_level=0.25,
+    wall_cell_size=15.0e-3,
+    wall_tan_cell_size=15.0e-3,
+    bulk_cell_size=50e-3,
+    r_BL=1.05,
+    tri_bulk=False,
+    outlet_radius=0.0127,
+    internal_outlet=0.0127 * 4,
+    debug=True,
+    revolve=0,
+    n_revolve=0,
+    n_wall_layers=6,
+    VoF=False,
+    empty_2d=True,
+    extrude_cylinder=2.5,
+    mirror=True,
+)
+
+mesh = CylinderCapsMesh(input_parameters)
+
+mesh.generate()
+
+```
+
+## TODO
+- [ ] Add option for wall thickness (hardcoded for K-Site tank now!)
+- [ ] Make more robust (breaks for certain cell size and fill level combos).
+- [ ] Add support for walls with extrude_cylinder.
+- [ ] Add Laplacian smoother to reduce non-orthogonality.
+- [ ] Add support for ESI version of OpenFOAM.
