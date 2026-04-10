@@ -149,11 +149,15 @@ class TwoPhaseGmshMesh(TwoPhaseTankMesh):
         When ``mirror=True`` an extra stage mirrors each mesh region about the
         x = 0 symmetry plane using :meth:`mirror_mesh`.
 
+        When ``extrude_cylinder > 0`` an extra stage removes the wall region
+        and extrudes each remaining region in the z-direction to produce a 3D
+        cylinder mesh (requires ``empty_2d=True``).
+
         A :class:`~rich.progress.Progress` bar tracks the high-level pipeline
         stages.  While each stage runs, the active sub-command is shown as the
         task description so the terminal never looks idle.
         """
-        _STAGES = 5 + (1 if self.mirror else 0)
+        _STAGES = 5 + (1 if self.mirror else 0) + (1 if self.extrude_cylinder else 0)
         _n = str(_STAGES)
         with _make_progress() as progress:
             task = progress.add_task("Mesh generation pipeline", total=_STAGES)
@@ -186,12 +190,20 @@ class TwoPhaseGmshMesh(TwoPhaseTankMesh):
             progress.advance(task)
 
             # ── Stage 5 (optional) ────────────────────────────────────
+            if self.extrude_cylinder:
+                progress.update(task, description=f"[bold]Stage 5/{_n}[/bold] Cylinder extrusion")
+                self.remove_wall()
+                self.do_extrude_cylinder()
+                progress.advance(task)
+
+            # ── Stage 5 (optional) ────────────────────────────────────
             if self.mirror:
-                progress.update(task, description=f"[bold]Stage 5/{_n}[/bold] Mirroring mesh")
+                mirror_stage = 6 if self.extrude_cylinder else 5
+                progress.update(task, description=f"[bold]Stage {mirror_stage}/{_n}[/bold] Mirroring mesh")
                 self.mirror_mesh()
                 progress.advance(task)
 
-            # ── Stage 5 or 6 ─────────────────────────────────────────
+            # ── Final stage ───────────────────────────────────────────
             progress.update(task, description=f"[bold]Stage {_n}/{_n}[/bold] Checking mesh quality")
             progress.advance(task)
 

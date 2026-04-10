@@ -129,6 +129,32 @@ def test_mirror_without_empty_2d_raises():
         CylinderCapsMesh(input_parameters=params)
 
 
+@pytest.mark.skipif("CI" in os.environ, reason="OpenFOAM is not available in CI")
+def test_extrude_cylinder_without_empty_2d_raises():
+    """extrude_cylinder > 0 without empty_2d=True should raise ExtrudeCylinderRequiresEmpty2D."""
+    from openfoam_tank_mesh.exceptions import ExtrudeCylinderRequiresEmpty2D
+    from openfoam_tank_mesh.TwoPhaseMesh import CylinderCapsMesh
+
+    params = dict(CAPS_KSITE_PARAMS, extrude_cylinder=0.5)  # empty_2d defaults to False
+
+    with pytest.raises(ExtrudeCylinderRequiresEmpty2D):
+        CylinderCapsMesh(input_parameters=params)
+
+
+@pytest.mark.skipif("CI" in os.environ, reason="OpenFOAM is not available in CI")
+def test_extrude_cylinder_n_layers():
+    """extrude_cylinder with empty_2d=True should compute n_layers = round(flow/bulk_cell_size)."""
+    from openfoam_tank_mesh.TwoPhaseMesh import CylinderCapsMesh
+
+    bulk = _MESH_PARAMS["bulk_cell_size"]  # 0.025 m
+    flow = bulk * 10  # 10 layers expected
+    params = dict(CAPS_KSITE_PARAMS, empty_2d=True, extrude_cylinder=flow)
+
+    mesh = CylinderCapsMesh(input_parameters=params)
+    n_layers = max(1, round(mesh.extrude_cylinder / mesh.bulk_cell_size))
+    assert n_layers == 10
+
+
 # ---------------------------------------------------------------------------
 # Full mesh-generation tests (skipped in CI – require OpenFOAM)
 # ---------------------------------------------------------------------------

@@ -13,6 +13,7 @@ from rich.table import Table
 
 from openfoam_tank_mesh.exceptions import (
     CommandFailed,
+    ExtrudeCylinderRequiresEmpty2D,
     MirrorRequiresEmpty2D,
     MissingParameter,
     OpenFoamNotLoaded,
@@ -110,6 +111,7 @@ class TwoPhaseTankMesh(ABC):
         self.empty_2d_thickness: float = 0.0  # z-extrusion thickness; defaults to bulk_cell_size
         self.symmetry_normal: list = [0, 0, 0]  # Normal for symmetry plane (set when empty_2d=True)
         self.mirror: bool = False  # Mirror the mesh about the symmetry axis (requires empty_2d=True)
+        self.extrude_cylinder: float = 0  # Extrude in z to create 3D cylinder (requires empty_2d=True)
 
         if self.VoF:
             self.regions.remove("liquid")
@@ -119,6 +121,8 @@ class TwoPhaseTankMesh(ABC):
         self.set_parameters(input_parameters)
         if self.mirror and not self.empty_2d:
             raise MirrorRequiresEmpty2D()
+        if self.extrude_cylinder and not self.empty_2d:
+            raise ExtrudeCylinderRequiresEmpty2D()
         self.n_BL, self.t_BL, self.e_BL = self.calculate_boundary_layer()
         self.wedge_angle = self.revolve if self.revolve else self.wedge_angle
         if self.empty_2d and not self.empty_2d_thickness:
@@ -405,6 +409,35 @@ class TwoPhaseTankMesh(ABC):
         mirror_dict = self.dict("mirrorMeshDict")
         for region in self.regions:
             self.run_command(f"mirrorMesh -dict {mirror_dict} -region {region} -overwrite")
+
+    def do_extrude_cylinder(self) -> None:
+        """Extrude the 2D planar mesh in the z-direction to create a 3D cylinder mesh.
+
+        Requires ``empty_2d=True`` and ``extrude_cylinder > 0``.  For each
+        mesh region the ``empty_pos`` patch (front face, outward normal +z) is
+        extruded linearly by ``extrude_cylinder`` metres.  The number of layers
+        is chosen so that each cell matches ``bulk_cell_size``.
+
+        After extrusion:
+        * The original ``empty_pos`` boundary (front face, z = dz) is renamed
+          to ``front`` and its type is changed from ``empty`` to ``wall``.
+        * The original ``empty_neg`` boundary (back face, z = 0) is renamed to
+          ``back`` and its type is changed from ``empty`` to ``wall``.
+
+        Call :meth:`remove_wall` before this method to delete the metal region.
+        """
+        n_layers = max(1, round(self.extrude_cylinder / self.bulk_cell_size))
+        dict_path = self.dict("extrudeMeshDict.cylinder")
+        self.sed("nLayers.*;", f"nLayers {n_layers};", dict_path)
+        self.sed("thickness.*;", f"thickness {self.extrude_cylinder};", dict_path)
+        for region in self.regions:
+            self.run_openfoam_utility(f"extrudeMesh -region {region}", "extrudeMeshDict.cylinder")
+            boundary_file = f"constant/{region}/polyMesh/boundary"
+            # Rename empty_neg → back, empty_pos → front
+            self.sed("empty_neg", "back", boundary_file)
+            self.sed("empty_pos", "front", boundary_file)
+            # Change both (formerly empty) patch types to wall
+            self.sed("type.*empty;", "type wall;", boundary_file)
 
     def cfMesh(self, nLayers: int = 0) -> None:
         """
