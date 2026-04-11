@@ -57,7 +57,7 @@ mesh.generate()
 
 ```
 
-A 3D horizontal cylinder tank can be generated using this script (flat ends, now walls for now).
+A 3D horizontal cylinder tank can be generated using this script (flat ends, no walls for now).
 Yields mesh shown in figure above.
 
 ```python
