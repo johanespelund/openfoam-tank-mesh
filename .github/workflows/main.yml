@@ -37,7 +37,14 @@ jobs:
       - name: Run tests with OpenFOAM.org v12
         shell: bash
         run: |
+          set -x   # enable debug temporarily
+
+          echo "Before sourcing"
+
           . /opt/openfoam12/etc/bashrc
+
+          echo "After sourcing"
+          # . /opt/openfoam12/etc/bashrc
       
           # Quick sanity checks that OpenFOAM is actually configured
           echo "WM_PROJECT=$WM_PROJECT"
