@@ -161,7 +161,7 @@ def test_cylinder_caps_profile_radius_at_poles(cylinder_caps_profile):
 
 
 def test_cylinder_caps_profile_radius_at_equator(cylinder_caps_profile):
-    """Radius at cap–cylinder junction must equal cylinder_radius."""
+    """Radius at cap-cylinder junction must equal cylinder_radius."""
     y_junction = CAP_HEIGHT
     assert cylinder_caps_profile.get_radius(y_junction) == pytest.approx(CYL_RADIUS, rel=1e-6)
 
@@ -194,3 +194,23 @@ def test_cylinder_caps_profile_zero_cylinder_height(cylinder_caps_profile_zero_c
     p = cylinder_caps_profile_zero_cylinder
     assert p.cylinder_height == pytest.approx(0.0)
     assert p.volume_liquid + p.volume_gas == pytest.approx(p.volume, rel=1e-3)
+
+
+def test_cylinder_caps_profile_wall_thickness_parameter():
+    """Wall-point offset should match the configured wall thickness."""
+    wall_thickness = 4.0e-3
+    p = CylinderCapsTankProfile(
+        cylinder_radius=CYL_RADIUS,
+        cylinder_height=CYL_HEIGHT,
+        cap_height=CAP_HEIGHT,
+        fill_level=0.5,
+        outlet_radius=0.03,
+        bulk_cell_size=0.05,
+        wall_tan_cell_size=0.01,
+        wall_cell_size=0.005,
+        r_BL=1.1,
+        wall_thickness=wall_thickness,
+    )
+    pts = p.get_mesh_points()
+    offset = np.linalg.norm(pts.outer_points[0] - pts.wall_points[0])
+    assert offset == pytest.approx(wall_thickness, rel=1e-6)

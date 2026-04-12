@@ -90,6 +90,7 @@ class TwoPhaseTankMesh(ABC):
         self.tri_bulk: bool = False  # Use triangle cells for bulk mesh
         self.multi_region: bool = False  # Use multiple regions
         self.n_wall_layers: int = 0  # Number of wall layers
+        self.wall_thickness: float = 2.08e-3  # Default tank wall thickness
 
         # Default parameters (can be overwritten by input_parameters)
         self.r_BL: float = 1.1  # Boundary layer growth rate
@@ -113,7 +114,7 @@ class TwoPhaseTankMesh(ABC):
         self.symmetry_normal: list = [0, 0, 0]  # Normal for symmetry plane (set when empty_2d=True)
         self.mirror: bool = False  # Mirror the mesh about the symmetry axis (requires empty_2d=True)
         self.extrude_cylinder: float = 0  # Extrude in z to create 3D cylinder (requires empty_2d=True)
-        self.smoothing: bool = False  # Run laplacianMeshSmoother after gmsh/createPatch
+        self.smoothing: bool = False  # Run laplacianMeshSmoother after splitMeshRegions
 
         if self.VoF:
             self.regions.remove("liquid")
@@ -293,7 +294,12 @@ class TwoPhaseTankMesh(ABC):
             return
         if not self.check_smoothing_utility():
             return
-        self.run_openfoam_utility("laplacianMeshSmoother", "laplacianSmoothDict")
+        for region in ("gas", "liquid"):
+            if region in self.regions:
+                self.run_openfoam_utility(
+                    f"laplacianMeshSmoother -overwrite -region {region}",
+                    "laplacianSmoothDict",
+                )
 
     def calculate_boundary_layer(self) -> tuple[int, float, float]:
         """
@@ -402,7 +408,7 @@ class TwoPhaseTankMesh(ABC):
         for r, t in zip(ranges, thicknesses):
             logger.info("Adding wall thickness %s in range %s", t, r)
             ys, ye = r
-            n = max(3, int(self.n_wall_layers * (t / 2.08e-3)))
+            n = max(3, int(self.n_wall_layers * (t / self.wall_thickness)))
             self.sed("(-1e6 .* 1e6)", f"(-1e6 {ys} -1e6) (1e6 {ye} 1e6)", topo_dict_path)
             self.run_openfoam_utility(f"topoSet -region {region}", "topoSetDict.add_wall_thickness")
             self.sed("^extrude .*;", "extrude true;", create_dict_path)

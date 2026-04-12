@@ -197,13 +197,6 @@ class TwoPhaseGmshMesh(TwoPhaseTankMesh):
             progress.advance(task)
 
             stage += 1
-            # ── Optional smoothing stage ─────────────────────────────
-            if self.smoothing:
-                progress.update(task, description=f"[bold]Stage {stage}/{_n}[/bold] Laplacian smoothing")
-                self.smooth_mesh()
-                progress.advance(task)
-                stage += 1
-
             # ── Stage 4/5 ────────────────────────────────────────────
             progress.update(task, description=f"[bold]Stage {stage}/{_n}[/bold] Splitting mesh regions")
             self.run_command("splitMeshRegions -cellZonesOnly -overwrite")
@@ -211,6 +204,13 @@ class TwoPhaseGmshMesh(TwoPhaseTankMesh):
             progress.advance(task)
 
             stage += 1
+            # ── Optional smoothing stage ─────────────────────────────
+            if self.smoothing:
+                progress.update(task, description=f"[bold]Stage {stage}/{_n}[/bold] Laplacian smoothing")
+                self.smooth_mesh()
+                progress.advance(task)
+                stage += 1
+
             # ── Optional extrusion stage ─────────────────────────────
             if self.extrude_cylinder:
                 progress.update(task, description=f"[bold]Stage {stage}/{_n}[/bold] Cylinder extrusion")
@@ -296,14 +296,15 @@ class KSiteMesh(TwoPhaseGmshMesh):
             wall_cell_size=input_parameters["wall_cell_size"],
             r_BL=input_parameters["r_BL"],
             internal_outlet=input_parameters["internal_outlet"],
+            wall_thickness=input_parameters.get("wall_thickness", 2.08e-3),
         )
 
     def _pre_split_setup(self) -> None:
         """K-Site-specific obstacle and lid extrusion before ``splitMeshRegions``."""
         if self.obstacle:
-            self.add_wall_thickness("region0", "walls", [(1.849, 1e6)], [2.12e-3])
-            self.add_wall_thickness("region0", "walls", [(1.859, 1e6)], [10e-3 - 2.12e-3])
-            self.add_wall_thickness("region0", "walls", [(0.9136, 0.9605)], [2.12e-3])
+            self.add_wall_thickness("region0", "walls", [(1.849, 1e6)], [self.wall_thickness])
+            self.add_wall_thickness("region0", "walls", [(1.859, 1e6)], [10e-3 - self.wall_thickness])
+            self.add_wall_thickness("region0", "walls", [(0.9136, 0.9605)], [self.wall_thickness])
 
         if self.lid:
             self.regions.append("lid")
@@ -314,7 +315,7 @@ class KSiteMesh(TwoPhaseGmshMesh):
             nx, ny = self.tank.get_normal(y)
             r1, y1 = r - nx / 4, y - ny / 4
             r2, y2 = r + nx, y + ny
-            y_duct = y - ny * 2.08e-3
+            y_duct = y - ny * self.wall_thickness
 
             topodict = self.dict("topoSetDict.splitMetalRegions")
             self.sed("radius1 .*;", f"radius1 {r1:.4f};", topodict)
@@ -414,6 +415,7 @@ class SphereMesh(TwoPhaseGmshMesh):
             wall_cell_size=input_parameters["wall_cell_size"],
             r_BL=input_parameters["r_BL"],
             internal_outlet=input_parameters["internal_outlet"],
+            wall_thickness=input_parameters.get("wall_thickness", 2.08e-3),
         )
 
     def generate_leak_boundaries(self) -> None:
@@ -462,6 +464,7 @@ class CylinderCapsMesh(TwoPhaseGmshMesh):
             r_BL=input_parameters["r_BL"],
             internal_outlet=input_parameters["internal_outlet"],
             cylinder_diameter=input_parameters.get("cylinder_diameter"),
+            wall_thickness=input_parameters.get("wall_thickness", 2.08e-3),
         )
 
     @property
