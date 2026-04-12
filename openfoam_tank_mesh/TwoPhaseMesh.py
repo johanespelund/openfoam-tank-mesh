@@ -182,13 +182,6 @@ class TwoPhaseGmshMesh(TwoPhaseTankMesh):
 
             # ── Stage 2 ──────────────────────────────────────────────
             stage = 2
-            if self.smoothing:
-                progress.update(task, description=f"[bold]Stage 2/{_n}[/bold] Laplacian smoothing")
-                self.smooth_mesh()
-                progress.advance(task)
-                stage += 1
-
-            # ── Stage 2/3 ────────────────────────────────────────────
             progress.update(task, description=f"[bold]Stage {stage}/{_n}[/bold] Outlet configuration")
             if self.internal_outlet:
                 self.create_internal_outlet()
@@ -204,6 +197,13 @@ class TwoPhaseGmshMesh(TwoPhaseTankMesh):
             progress.advance(task)
 
             stage += 1
+            # ── Optional smoothing stage ─────────────────────────────
+            if self.smoothing:
+                progress.update(task, description=f"[bold]Stage {stage}/{_n}[/bold] Laplacian smoothing")
+                self.smooth_mesh()
+                progress.advance(task)
+                stage += 1
+
             # ── Stage 4/5 ────────────────────────────────────────────
             progress.update(task, description=f"[bold]Stage {stage}/{_n}[/bold] Splitting mesh regions")
             self.run_command("splitMeshRegions -cellZonesOnly -overwrite")
@@ -227,7 +227,7 @@ class TwoPhaseGmshMesh(TwoPhaseTankMesh):
                 stage += 1
 
             # ── Final stage ───────────────────────────────────────────
-            progress.update(task, description=f"[bold]Stage {stage}/{_n}[/bold] Checking mesh quality")
+            progress.update(task, description=f"[bold]Stage {_n}/{_n}[/bold] Checking mesh quality")
             progress.advance(task)
 
             self._progress = None
