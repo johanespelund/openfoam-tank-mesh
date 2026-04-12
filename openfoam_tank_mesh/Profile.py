@@ -3,7 +3,6 @@ import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from math import sqrt
-from typing import Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -13,6 +12,7 @@ import scipy.optimize as spo  # type: ignore[import-untyped]
 from openfoam_tank_mesh.exceptions import OutOfRange, SegmentNotInitialized, SegmentsNotConnected
 
 logger = logging.getLogger(__name__)
+
 
 @dataclass
 class PointCoords:
@@ -314,7 +314,6 @@ class Profile:
         return float(spi.quad(integrand, y1, y2)[0])
 
     def get_y(self, radius: float, ymin: float, ymax: float) -> float:
-
         def objective(y: float) -> float:
             current_radius = self.get_radius(y)
             return current_radius - radius
@@ -444,7 +443,7 @@ class TankProfile(Profile):
         """
         return self.segments[-1].y_end
 
-    def split_profile(self, y_split: float, tol: float = 10e-3) -> tuple[Segment, Optional[Segment]]:
+    def split_profile(self, y_split: float, tol: float = 10e-3) -> tuple[Segment, Segment | None]:
         """
         Go through the segments and split the one where the interface is located.
         """
@@ -642,7 +641,7 @@ class TankProfile(Profile):
         profile_normals[0] = np.array([0, 1])
         profile_normals[-2] = np.array([0, -1])
 
-        inner_points = [p + n * self.t_BL for p, n in zip(profile_points, profile_normals)]
+        inner_points = [p + n * self.t_BL for p, n in zip(profile_points, profile_normals, strict=False)]
 
         # Interface needs to be horizontal and held the same t_BL
         b = self.t_BL / profile_normals[i_interface][0]
@@ -889,7 +888,7 @@ class CylinderCapsTankProfile(TankProfile):
         wall_cell_size: float,
         r_BL: float = 1.2,
         internal_outlet: float = 0,
-        cylinder_diameter: Optional[float] = None,
+        cylinder_diameter: float | None = None,
         wall_thickness: float = 2.08e-3,
     ) -> None:
         if cylinder_diameter is not None:

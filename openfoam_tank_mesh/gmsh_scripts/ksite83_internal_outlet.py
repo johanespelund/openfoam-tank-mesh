@@ -1,10 +1,10 @@
 import gmsh  # type: ignore[import-untyped]
 import numpy as np
 
-from openfoam_tank_mesh import TankMesh
+from openfoam_tank_mesh.TankMesh import TankMesh
 
 
-def run(mesh: "TankMesh.TankMesh") -> None:
+def run(mesh: TankMesh) -> None:
     tank = mesh.tank
     r_outlet = tank.outlet_radius
     y_outlet = tank.y_outlet
@@ -301,7 +301,7 @@ def closest_odd(n: float) -> int:
     return int(n) // 2 * 2 + 1
 
 
-def get_N_outlet(mesh: "TankMesh.TankMesh") -> int:
+def get_N_outlet(mesh: TankMesh) -> int:
     if mesh.wall_tan_cell_size >= mesh.outlet_radius:
         return 2
     else:
@@ -338,7 +338,7 @@ def add_surface(loop: int) -> int:
     return int(gmsh.model.geo.addPlaneSurface([loop]))
 
 
-def get_corner_coords(mesh: "TankMesh.TankMesh") -> tuple[float, float]:
+def get_corner_coords(mesh: TankMesh) -> tuple[float, float]:
     """
     Get the corner coords of the boundary layer.
     """
@@ -357,7 +357,7 @@ def get_corner_coords(mesh: "TankMesh.TankMesh") -> tuple[float, float]:
             return float(A * np.sqrt(1 - (y - C / 2) ** 2 / B**2))
         elif y > -C / 2:
             print(f"2 {y=}, {C=}")
-            return A
+            return float(A)
         else:
             print(f"3 {y=}, {C=}")
             return float(A * np.sqrt(1 - (y + C / 2) ** 2 / B**2))
@@ -369,6 +369,6 @@ def get_corner_coords(mesh: "TankMesh.TankMesh") -> tuple[float, float]:
     return r_ellipse(y), y
 
 
-def print_debug(mesh: "TankMesh.TankMesh", msg: str) -> None:
+def print_debug(mesh: TankMesh, msg: str) -> None:
     if mesh.debug:
         print(msg)

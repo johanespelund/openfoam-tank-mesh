@@ -1,4 +1,3 @@
-# mypy: ignore-errors
 from __future__ import annotations
 
 import logging
@@ -25,6 +24,7 @@ def _make_progress() -> Progress:
         TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
         TimeElapsedColumn(),
     )
+
 
 class TwoPhaseGmshMesh(TwoPhaseTankMesh):
     """
@@ -58,7 +58,8 @@ class TwoPhaseGmshMesh(TwoPhaseTankMesh):
         Override when a custom parameters-file name is required.
     """
 
-    REQUIRED_PARAMETERS: ClassVar[list[str]] = TwoPhaseTankMesh.REQUIRED_PARAMETERS + [
+    REQUIRED_PARAMETERS: ClassVar[list[str]] = [
+        *TwoPhaseTankMesh.REQUIRED_PARAMETERS,
         "r_BL",
         "internal_outlet",
         "n_wall_layers",
@@ -310,8 +311,8 @@ class KSiteMesh(TwoPhaseGmshMesh):
             self.regions.append("lid")
             self.write_mesh_parameters()
 
-            y = self.tank.y_lid
-            r = self.tank.r_lid
+            y = self.tank.y_lid  # type: ignore[attr-defined]
+            r = self.tank.r_lid  # type: ignore[attr-defined]
             nx, ny = self.tank.get_normal(y)
             r1, y1 = r - nx / 4, y - ny / 4
             r2, y2 = r + nx, y + ny
@@ -329,8 +330,8 @@ class KSiteMesh(TwoPhaseGmshMesh):
             self.run_openfoam_utility("topoSet", "topoSetDict.splitMetalRegions")
 
         # Build the ring of y/r/w/h values used by the obstacle extrusion.
-        ys = [self.tank.y_lid]
-        rs = [self.tank.r_lid]
+        ys = [self.tank.y_lid]  # type: ignore[attr-defined]
+        rs = [self.tank.r_lid]  # type: ignore[attr-defined]
         ws, hs = [0.05], [0.02]
         r0 = 0.16
         n_subdivisions = 10
@@ -349,7 +350,7 @@ class KSiteMesh(TwoPhaseGmshMesh):
             hs.append(0.008)
 
         if self.obstacle:
-            for y, r, w, h in zip(ys, rs, ws, hs):
+            for y, r, w, h in zip(ys, rs, ws, hs, strict=False):
                 y_average = (y + self.tank.get_y(r - w, 1.5, self.y_outlet)) / 2
                 n = self.tank.get_normal(y_average)
                 n = np.array([n[0], n[1], 0])
@@ -448,9 +449,8 @@ class CylinderCapsMesh(TwoPhaseGmshMesh):
 
     def _create_profile(self, input_parameters: dict) -> CylinderCapsTankProfile:
         if "cylinder_radius" not in input_parameters and "cylinder_diameter" not in input_parameters:
-            raise ValueError(
-                "CylinderCapsMesh requires either 'cylinder_radius' or 'cylinder_diameter' "
-                "in input_parameters."
+            raise ValueError(  # noqa: TRY003
+                "CylinderCapsMesh requires either 'cylinder_radius' or 'cylinder_diameter' in input_parameters."
             )
         return CylinderCapsTankProfile(
             cylinder_radius=input_parameters.get("cylinder_radius", 0),

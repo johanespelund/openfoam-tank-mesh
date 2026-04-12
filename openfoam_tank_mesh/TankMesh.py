@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import pathlib
+import shlex
 import shutil
 import time
-from subprocess import run
+from subprocess import CompletedProcess, run
 from typing import ClassVar
 
 from rich import print as rprint
@@ -143,7 +144,7 @@ class TankMesh(ABC):
         rprint(" ".join(command_words), end="")
 
         capture_output = True
-        result = run(command, shell=True, capture_output=capture_output)  # noqa: S602
+        result = self._run_subprocess(command, capture_output=capture_output)
         dt = time.time() - t
         if not no_output:
             color = "green" if result.returncode == 0 else "red"
@@ -168,10 +169,12 @@ class TankMesh(ABC):
         Check if OpenFOAM is loaded.
         version: str ("org" or "com")
         """
-        command = "simpleFoam -help"
-        result = run(command, shell=True, capture_output=True)  # noqa: S602
+        result = self._run_subprocess("simpleFoam -help", capture_output=True)
         if f"openfoam.{version}" not in result.stdout.decode():
             raise OpenFoamNotLoaded
+
+    def _run_subprocess(self, command: str, capture_output: bool = True) -> CompletedProcess[bytes]:
+        return run(shlex.split(command), capture_output=capture_output)  # noqa: S603
 
     def run_openfoam_utility(
         self, utility: str, foam_dict: str = "", return_exception: bool = False
@@ -253,7 +256,8 @@ class TankMesh(ABC):
         self.run_openfoam_utility("topoSet", "topoSetDict.subsetMesh")
         self.run_command("cp -r 0 0.temp")
         self.run_command("subsetMesh cellsToKeep -overwrite -patch pipe_temp")
-        self.run_command("rm -r 0; mv 0.temp 0")
+        self.run_command("rm -r 0")
+        self.run_command("mv 0.temp 0")
         self.run_openfoam_utility("topoSet", "topoSetDict.pipe2outlet")
         self.run_openfoam_utility("createPatch -overwrite", "createPatchDict.pipe2outlet")
         self.y_outlet = self.tank.y2 - self.internal_outlet

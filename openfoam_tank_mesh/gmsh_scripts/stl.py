@@ -1,7 +1,8 @@
+from typing import Any
+
 import gmsh  # type: ignore[import-untyped]
 import numpy as np
 
-from openfoam_tank_mesh import TwoPhaseTankMesh as TwoPhaseTankMeshModule
 from openfoam_tank_mesh.gmsh_scripts.utilities import (
     add_curve_loop,
     add_ellipse,
@@ -14,7 +15,7 @@ from openfoam_tank_mesh.gmsh_scripts.utilities import (
 )
 
 
-def generate_3D_stl(mesh: "TwoPhaseTankMeshModule.TwoPhaseTankMesh") -> None:
+def generate_3D_stl(mesh: Any) -> None:
     """
     Generate a stl file with named surfaces for use in cfMesh.
     """
@@ -99,7 +100,7 @@ def generate_3D_stl(mesh: "TwoPhaseTankMeshModule.TwoPhaseTankMesh") -> None:
         gmsh.finalize()
 
 
-def generate_2D_stl(mesh: "TwoPhaseTankMeshModule.TwoPhaseTankMesh") -> None:
+def generate_2D_stl(mesh: Any) -> None:
     """
     Generate a stl file with named surfaces for use in cfMesh.
     """
@@ -183,7 +184,7 @@ def generate_2D_stl(mesh: "TwoPhaseTankMeshModule.TwoPhaseTankMesh") -> None:
         gmsh.finalize()
 
 
-def generate_2D_internal_outlet_stl(mesh: "TwoPhaseTankMeshModule.TwoPhaseTankMesh") -> None:
+def generate_2D_internal_outlet_stl(mesh: Any) -> None:
     """
     Generate a stl file with named surfaces for use in cfMesh.
     """
@@ -270,7 +271,7 @@ def generate_2D_internal_outlet_stl(mesh: "TwoPhaseTankMeshModule.TwoPhaseTankMe
         gmsh.finalize()
 
 
-def generate_3D_internal_outlet_stl(mesh: "TwoPhaseTankMeshModule.TwoPhaseTankMesh") -> None:
+def generate_3D_internal_outlet_stl(mesh: Any) -> None:
     """
     Generate a stl file with named surfaces for use in cfMesh.
     """

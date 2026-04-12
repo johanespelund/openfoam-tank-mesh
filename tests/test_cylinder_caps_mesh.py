@@ -14,26 +14,26 @@ from openfoam_tank_mesh.Profile import CylinderCapsTankProfile, KSiteProfile
 
 # K-Site dimensions (Stochl & Knoll, 1991)
 INCH = 0.0254
-KSITE_A = 0.5 * 73 * INCH    # cap height
+KSITE_A = 0.5 * 73 * INCH  # cap height
 KSITE_B = 0.5 * 87.6 * INCH  # cylinder radius
-KSITE_C = 1.5 * INCH          # cylinder height
+KSITE_C = 1.5 * INCH  # cylinder height
 
 # Common mesh parameters shared by both tests below.
-_MESH_PARAMS = dict(
-    fill_level=0.49,
-    wall_cell_size=5.0e-3,
-    wall_tan_cell_size=5.0e-3,
-    bulk_cell_size=25e-3,
-    r_BL=1.05,
-    tri_bulk=False,
-    outlet_radius=0.0127,
-    internal_outlet=0.0127 * 4,
-    debug=True,
-    revolve=0,
-    n_revolve=0,
-    n_wall_layers=6,
-    VoF=False,
-)
+_MESH_PARAMS = {
+    "fill_level": 0.49,
+    "wall_cell_size": 5.0e-3,
+    "wall_tan_cell_size": 5.0e-3,
+    "bulk_cell_size": 25e-3,
+    "r_BL": 1.05,
+    "tri_bulk": False,
+    "outlet_radius": 0.0127,
+    "internal_outlet": 0.0127 * 4,
+    "debug": True,
+    "revolve": 0,
+    "n_revolve": 0,
+    "n_wall_layers": 6,
+    "VoF": False,
+}
 
 # CylinderCapsMesh additionally needs the geometry parameters.
 CAPS_KSITE_PARAMS = dict(
@@ -156,7 +156,7 @@ def test_extrude_cylinder_n_layers():
 
 
 # ---------------------------------------------------------------------------
-# Full mesh-generation tests (skipped in CI – require OpenFOAM)
+# Full mesh-generation tests (skipped in CI - require OpenFOAM)
 # ---------------------------------------------------------------------------
 
 
