@@ -1,6 +1,6 @@
 # openfoam-tank-mesh
 
-This is a python package for creating meshes to use in CFD simulations with OpenFOAM. WIP!
+This is a python package for creating meshes to use in CFD simulations with OpenFOAM.
 
 ## Example meshes
 
@@ -30,7 +30,7 @@ uv pip install git+https://github.com/johanespelund/openfoam-tank-mesh.git
 An axisymmetrical, vertical cylinder tank can be generated using this script (includes walls):
 
 ```python
-from openfoam_tank_mesh.TwoPhaseMesh import CylinderCapsMesh
+from openfoam_tank_mesh.mesh_builders import CylinderCapsMesh
 
 input_parameters = dict(
     cylinder_radius=1, # Radius of vertical cylinder
@@ -61,7 +61,7 @@ A 3D horizontal cylinder tank can be generated using this script (flat ends, no 
 Yields mesh shown in figure above.
 
 ```python
-from openfoam_tank_mesh.TwoPhaseMesh import CylinderCapsMesh
+from openfoam_tank_mesh.mesh_builders import CylinderCapsMesh
 
 input_parameters = dict(
     cylinder_radius=1, # Radius of vertical cylinder

@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import logging
+import shlex
 import shutil
 import time
 from abc import ABC, abstractmethod
-from subprocess import run
+from subprocess import CompletedProcess, run
 from typing import ClassVar
 
 import numpy as np
@@ -49,7 +50,7 @@ def _setup_file_logging(log_path: str = "mesh_generation.log") -> None:
     pkg_logger.propagate = False
 
 
-class TwoPhaseTankMesh(ABC):
+class OpenFoamMeshPipeline(ABC):
     """
     Base class for OpenFOAM tank meshes.
     """
@@ -61,6 +62,24 @@ class TwoPhaseTankMesh(ABC):
         "fill_level",
         "debug",
     ]
+    _ALLOWED_COMMANDS: ClassVar[set[str]] = {
+        "cartesianMesh",
+        "checkMesh",
+        "cp",
+        "createPatch",
+        "extrudeMesh",
+        "gmshToFoam",
+        "laplacianMeshSmoother",
+        "mirrorMesh",
+        "mv",
+        "rm",
+        "sed",
+        "simpleFoam",
+        "splitMeshRegions",
+        "subsetMesh",
+        "topoSet",
+        "transformPoints",
+    }
 
     def __init__(self, tank: TankProfile, input_parameters: dict) -> None:
         _setup_file_logging()
@@ -204,10 +223,7 @@ class TwoPhaseTankMesh(ABC):
         All commands, timings and output are written to the log file regardless
         of *no_output* or *debug*.
         """
-        display_cmd = " ".join(
-            word.replace(self.dict_path, f"<{self.name}.dict_path>")
-            for word in command.split()
-        )
+        display_cmd = " ".join(word.replace(self.dict_path, f"<{self.name}.dict_path>") for word in command.split())
         logger.info("$ %s", display_cmd)
 
         t = time.time()
@@ -215,11 +231,11 @@ class TwoPhaseTankMesh(ABC):
             # Inside a Progress context - update description in place, no
             # nested Live display.
             self._progress.update(self._progress_task, description=f"[dim cyan]{display_cmd}[/dim cyan]")
-            result = run(command, shell=True, capture_output=True)  # noqa: S602
+            result = self._run_subprocess(command, capture_output=True)
         else:
             # Standalone call - transient spinner that disappears on success.
             with console.status(f"[cyan]{display_cmd}[/cyan]"):
-                result = run(command, shell=True, capture_output=True)  # noqa: S602
+                result = self._run_subprocess(command, capture_output=True)
         dt = time.time() - t
 
         if result.returncode == 0:
@@ -254,10 +270,17 @@ class TwoPhaseTankMesh(ABC):
         Check if OpenFOAM is loaded.
         version: str ("org" or "com")
         """
-        command = "simpleFoam -help"
-        result = run(command, shell=True, capture_output=True)  # noqa: S602
+        result = self._run_subprocess("simpleFoam -help", capture_output=True)
         if f"openfoam.{version}" not in result.stdout.decode():
             raise OpenFoamNotLoaded
+
+    def _run_subprocess(self, command: str, capture_output: bool = True) -> CompletedProcess[bytes]:
+        command_parts = shlex.split(command)
+        if not command_parts:
+            raise CommandFailed(command, "Empty command")
+        if command_parts[0] not in self._ALLOWED_COMMANDS:
+            raise CommandFailed(command, f"Disallowed command: {command_parts[0]}")
+        return run(command_parts, capture_output=capture_output)  # noqa: S603
 
     def run_openfoam_utility(
         self, utility: str, foam_dict: str = "", return_exception: bool = False
@@ -374,7 +397,8 @@ class TwoPhaseTankMesh(ABC):
         self.run_openfoam_utility("topoSet", "topoSetDict.subsetMesh")
         self.run_command("cp -r 0 0.temp")
         self.run_command("subsetMesh cellsToKeep -overwrite -patch outlet")
-        self.run_command("rm -r 0; mv 0.temp 0")
+        self.run_command("rm -r 0")
+        self.run_command("mv 0.temp 0")
         self.run_openfoam_utility("topoSet", "topoSetDict.pipe2outlet")
         self.run_openfoam_utility("createPatch -overwrite", "createPatchDict.pipe2outlet")
         # self.y_outlet = self.tank.y2 - self.internal_outlet
@@ -385,7 +409,8 @@ class TwoPhaseTankMesh(ABC):
         self.run_openfoam_utility("topoSet", "topoSetDict.removeWallOutlet")
         self.run_command("cp -r 0 0.temp")
         self.run_command("subsetMesh cellsToKeep -overwrite -patch outlet")
-        self.run_command("rm -r 0; mv 0.temp 0")
+        self.run_command("rm -r 0")
+        self.run_command("mv 0.temp 0")
         self.run_openfoam_utility("topoSet", "topoSetDict.pipe2outlet")
         self.run_openfoam_utility("createPatch -overwrite", "createPatchDict.pipe2outlet")
         # self.y_outlet = self.tank.y2 - self.internal_outlet
@@ -405,7 +430,7 @@ class TwoPhaseTankMesh(ABC):
 
         for p in [topo_dict_path, create_dict_path, extrude_dict_path]:
             self.sed("^patchName .*;", f"patchName {patchName};", p)
-        for r, t in zip(ranges, thicknesses):
+        for r, t in zip(ranges, thicknesses, strict=True):
             logger.info("Adding wall thickness %s in range %s", t, r)
             ys, ye = r
             n = max(3, int(self.n_wall_layers * (t / self.wall_thickness)))
@@ -549,3 +574,7 @@ class TwoPhaseTankMesh(ABC):
             dz = np.sin(alpha)
             self.wedge_pos_normal = [-dz, 0, dx]
             self.wedge_neg_normal = [-dz, 0, -dx]
+
+
+# Backward-compatible alias
+TwoPhaseTankMesh = OpenFoamMeshPipeline

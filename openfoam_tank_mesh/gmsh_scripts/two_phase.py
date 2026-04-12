@@ -16,7 +16,7 @@ from openfoam_tank_mesh.gmsh_scripts.utilities import (
     gmsh_setup,
 )
 from openfoam_tank_mesh.Profile import EllipseArc, LineSegment, PointCoords, TankProfile
-from openfoam_tank_mesh.TwoPhaseTankMesh import TwoPhaseTankMesh
+from openfoam_tank_mesh.TwoPhaseTankMesh import OpenFoamMeshPipeline
 
 logger = logging.getLogger(__name__)
 
@@ -108,12 +108,12 @@ def sort_xy(points: list[Any]) -> list[Any]:
     _x = np.concatenate((x_sorted[i0:], x_sorted[:i0]))
     _y = np.concatenate((y_sorted[i0:], y_sorted[:i0]))
 
-    _points = [(x, y, 0) for x, y in zip(_x, _y)]
+    _points = [(x, y, 0) for x, y in zip(_x, _y, strict=True)]
 
     return _points
 
 
-def run(mesh: TwoPhaseTankMesh) -> None:
+def run(mesh: OpenFoamMeshPipeline) -> None:
     debug = mesh.debug
 
     gmsh_setup()
@@ -131,7 +131,7 @@ def run(mesh: TwoPhaseTankMesh) -> None:
 
 
 def generate_points_and_lines(  # noqa: C901
-    mesh: TwoPhaseTankMesh,
+    mesh: OpenFoamMeshPipeline,
 ) -> tuple[dict[str, int], dict[str, int]]:
     """
     Generate points and lines.
