@@ -12,7 +12,7 @@ from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn, TimeEl
 from openfoam_tank_mesh.gmsh_scripts.stl import generate_3D_internal_outlet_stl, generate_3D_stl
 from openfoam_tank_mesh.gmsh_scripts.two_phase import run as run_gmsh
 from openfoam_tank_mesh.Profile import CylinderCapsTankProfile, KSiteProfile, SphereProfile, TankProfile
-from openfoam_tank_mesh.TwoPhaseTankMesh import TwoPhaseTankMesh, console
+from openfoam_tank_mesh.TwoPhaseTankMesh import OpenFoamMeshPipeline, console
 
 
 def _make_progress() -> Progress:
@@ -26,7 +26,7 @@ def _make_progress() -> Progress:
     )
 
 
-class TwoPhaseGmshMesh(TwoPhaseTankMesh):
+class GmshMeshPipeline(OpenFoamMeshPipeline):
     """
     Base class for two-phase tank meshes that use the ``two_phase.py`` Gmsh script.
 
@@ -59,7 +59,7 @@ class TwoPhaseGmshMesh(TwoPhaseTankMesh):
     """
 
     REQUIRED_PARAMETERS: ClassVar[list[str]] = [
-        *TwoPhaseTankMesh.REQUIRED_PARAMETERS,
+        *OpenFoamMeshPipeline.REQUIRED_PARAMETERS,
         "r_BL",
         "internal_outlet",
         "n_wall_layers",
@@ -274,7 +274,7 @@ class TwoPhaseGmshMesh(TwoPhaseTankMesh):
 # ---------------------------------------------------------------------------
 
 
-class KSiteMesh(TwoPhaseGmshMesh):
+class KSiteMesh(GmshMeshPipeline):
     """Two-phase mesh for the NASA K-Site cryogenic tank (Stochl & Knoll, 1991).
 
     The tank geometry is taken from
@@ -403,7 +403,7 @@ class KSiteMesh(TwoPhaseGmshMesh):
         return 0
 
 
-class SphereMesh(TwoPhaseGmshMesh):
+class SphereMesh(GmshMeshPipeline):
     """Two-phase mesh for a spherical tank."""
 
     def _create_profile(self, input_parameters: dict) -> SphereProfile:
@@ -430,7 +430,7 @@ class SphereMesh(TwoPhaseGmshMesh):
         return f"{pathlib.Path.cwd()}/parameters.SphereMesh"
 
 
-class CylinderCapsMesh(TwoPhaseGmshMesh):
+class CylinderCapsMesh(GmshMeshPipeline):
     """Two-phase mesh for a general tank with a cylindrical midsection and ellipsoidal caps.
 
     This is the general-purpose mesh class.  Supplying the K-Site dimensions
@@ -470,3 +470,7 @@ class CylinderCapsMesh(TwoPhaseGmshMesh):
     @property
     def parameters_path(self) -> str:
         return f"{pathlib.Path.cwd()}/parameters.CylinderCapsMesh"
+
+
+# Backward-compatible alias
+TwoPhaseGmshMesh = GmshMeshPipeline

@@ -5,7 +5,7 @@ import pytest
 
 @pytest.mark.skipif("CI" in os.environ, reason="OpenFOAM is not available in CI")
 def test_ksite_mesh():
-    from openfoam_tank_mesh.TwoPhaseMesh import KSiteMesh
+    from openfoam_tank_mesh.mesh_builders import KSiteMesh
 
     mesh = KSiteMesh(
         input_parameters={

@@ -1,9 +1,9 @@
 import pytest
 
-from openfoam_tank_mesh.TwoPhaseTankMesh import TwoPhaseTankMesh
+from openfoam_tank_mesh.mesh_pipeline import OpenFoamMeshPipeline
 
 
-class _DummyMesh(TwoPhaseTankMesh):
+class _DummyMesh(OpenFoamMeshPipeline):
     @property
     def dict_path(self) -> str:
         return ""

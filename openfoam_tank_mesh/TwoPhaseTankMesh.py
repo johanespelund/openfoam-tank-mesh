@@ -50,7 +50,7 @@ def _setup_file_logging(log_path: str = "mesh_generation.log") -> None:
     pkg_logger.propagate = False
 
 
-class TwoPhaseTankMesh(ABC):
+class OpenFoamMeshPipeline(ABC):
     """
     Base class for OpenFOAM tank meshes.
     """
@@ -574,3 +574,7 @@ class TwoPhaseTankMesh(ABC):
             dz = np.sin(alpha)
             self.wedge_pos_normal = [-dz, 0, dx]
             self.wedge_neg_normal = [-dz, 0, -dx]
+
+
+# Backward-compatible alias
+TwoPhaseTankMesh = OpenFoamMeshPipeline

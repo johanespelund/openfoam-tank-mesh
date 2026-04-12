@@ -5,10 +5,10 @@ from types import SimpleNamespace
 import pytest
 
 from openfoam_tank_mesh.exceptions import CommandFailed, MissingParameter
-from openfoam_tank_mesh.TankMesh import TankMesh
+from openfoam_tank_mesh.mesh_pipeline import OpenFoamMeshPipeline
 
 
-class _DummyTankMesh(TankMesh):
+class _DummyPipeline(OpenFoamMeshPipeline):
     def __init__(self, input_parameters: dict, parameters_path: str, dict_path: str):
         self._parameters_path = parameters_path
         self._dict_path = dict_path
@@ -21,6 +21,7 @@ class _DummyTankMesh(TankMesh):
             interface_radius=0.2,
             area_liquid=1.0,
             area_gas=1.0,
+            ymax=lambda: 1.0,
         )
         super().__init__(tank=tank, input_parameters=input_parameters)
 
@@ -38,9 +39,6 @@ class _DummyTankMesh(TankMesh):
     def generate_stl(self) -> None:
         return None
 
-    def check_openfoam_loaded(self, version: str = "com") -> None:
-        return None
-
 
 def _valid_parameters() -> dict:
     return {
@@ -56,11 +54,11 @@ def test_validate_parameters_missing_required_key(tmp_path):
     params = _valid_parameters()
     del params["fill_level"]
     with pytest.raises(MissingParameter):
-        _DummyTankMesh(params, str(tmp_path / "parameters"), str(tmp_path / "dicts"))
+        _DummyPipeline(params, str(tmp_path / "parameters"), str(tmp_path / "dicts"))
 
 
 def test_run_openfoam_utility_builds_command_and_updates_include(monkeypatch: pytest.MonkeyPatch, tmp_path):
-    mesh = _DummyTankMesh(_valid_parameters(), str(tmp_path / "parameters"), str(tmp_path / "dicts"))
+    mesh = _DummyPipeline(_valid_parameters(), str(tmp_path / "parameters"), str(tmp_path / "dicts"))
     sed_calls: list[tuple[str, str, str]] = []
     commands: list[str] = []
 
@@ -80,7 +78,7 @@ def test_run_openfoam_utility_builds_command_and_updates_include(monkeypatch: py
 
 
 def test_run_command_raises_command_failed(monkeypatch: pytest.MonkeyPatch, tmp_path):
-    mesh = _DummyTankMesh(_valid_parameters(), str(tmp_path / "parameters"), str(tmp_path / "dicts"))
+    mesh = _DummyPipeline(_valid_parameters(), str(tmp_path / "parameters"), str(tmp_path / "dicts"))
     fake_result = SimpleNamespace(returncode=1, stderr=b"boom", stdout=b"")
 
     monkeypatch.setattr(mesh, "_run_subprocess", lambda *args, **kwargs: fake_result)

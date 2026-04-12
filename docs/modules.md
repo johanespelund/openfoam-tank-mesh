@@ -1,22 +1,16 @@
 # API reference
 
-## High-level meshes
+## Canonical mesh builders
 
-::: openfoam_tank_mesh.TwoPhaseMesh
+::: openfoam_tank_mesh.mesh_builders
 
 ## Geometry profiles
 
 ::: openfoam_tank_mesh.Profile
 
-## Mesh base classes
+## Mesh pipeline base classes
 
-::: openfoam_tank_mesh.TankMesh
-
-::: openfoam_tank_mesh.TwoPhaseTankMesh
-
-## Geometry base class
-
-::: openfoam_tank_mesh.Tank
+::: openfoam_tank_mesh.mesh_pipeline
 
 ## Runtime requirements and limitations
 

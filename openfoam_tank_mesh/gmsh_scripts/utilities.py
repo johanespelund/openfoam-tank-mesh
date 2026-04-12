@@ -3,14 +3,14 @@
 import gmsh  # type: ignore[import-untyped]
 import numpy as np
 
-from openfoam_tank_mesh.TwoPhaseTankMesh import TwoPhaseTankMesh
+from openfoam_tank_mesh.TwoPhaseTankMesh import OpenFoamMeshPipeline
 
 
 def closest_odd(n: float) -> int:
     return max(3, int(np.ceil(n)) // 2 * 2 + 1)
 
 
-def get_N_outlet(mesh: TwoPhaseTankMesh) -> int:
+def get_N_outlet(mesh: OpenFoamMeshPipeline) -> int:
     if mesh.wall_tan_cell_size >= mesh.outlet_radius:
         return 3
     else:
@@ -56,12 +56,12 @@ def add_surface(loop: int) -> int:
     return int(gmsh.model.geo.addPlaneSurface([loop]))
 
 
-def print_debug(mesh: TwoPhaseTankMesh, msg: str) -> None:
+def print_debug(mesh: OpenFoamMeshPipeline, msg: str) -> None:
     if mesh.debug:
         print(msg)
 
 
-def generate_stl2(mesh: TwoPhaseTankMesh) -> None:
+def generate_stl2(mesh: OpenFoamMeshPipeline) -> None:
     """
     Generate a stl file with named surfaces for use in cfMesh.
     """
