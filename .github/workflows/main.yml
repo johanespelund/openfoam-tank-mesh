@@ -85,7 +85,7 @@ jobs:
       - name: Run tests with OpenFOAM.org v12
         run: |
           source /opt/openfoam12/etc/bashrc
-          env -u CI uv run python -m pytest tests/test_ksite_mesh.py tests/test_cylinder_caps_mesh.py
+          uv run python -m pytest tests/test_ksite_mesh.py tests/test_cylinder_caps_mesh.py
 
   check-docs:
     runs-on: ubuntu-latest

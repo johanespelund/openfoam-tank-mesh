@@ -6,11 +6,13 @@ The full generate() test is skipped in CI because it requires an OpenFOAM
 installation and a valid case directory.
 """
 
-import os
+import shutil
 
 import pytest
 
 from openfoam_tank_mesh.Profile import CylinderCapsTankProfile, KSiteProfile
+
+HAS_OPENFOAM = shutil.which("simpleFoam") is not None
 
 # K-Site dimensions (Stochl & Knoll, 1991)
 INCH = 0.0254
@@ -105,7 +107,7 @@ def test_cylinder_caps_matches_ksite_cylinder_radius(caps_ksite_profile, ksite_p
     assert caps_ksite_profile.cylinder_radius == pytest.approx(ksite_profile.cylinder_radius, rel=1e-6)
 
 
-@pytest.mark.skipif("CI" in os.environ, reason="OpenFOAM is not available in CI")
+@pytest.mark.skipif(not HAS_OPENFOAM, reason="OpenFOAM is not available")
 def test_cylinder_caps_mesh_missing_radius_raises():
     """CylinderCapsMesh should raise ValueError when neither cylinder_radius nor cylinder_diameter is given."""
     from openfoam_tank_mesh.mesh_builders import CylinderCapsMesh
@@ -117,7 +119,7 @@ def test_cylinder_caps_mesh_missing_radius_raises():
         CylinderCapsMesh(input_parameters=bad_params)
 
 
-@pytest.mark.skipif("CI" in os.environ, reason="OpenFOAM is not available in CI")
+@pytest.mark.skipif(not HAS_OPENFOAM, reason="OpenFOAM is not available")
 def test_mirror_without_empty_2d_raises():
     """mirror=True without empty_2d=True should raise MirrorRequiresEmpty2D (a ValueError)."""
     from openfoam_tank_mesh.exceptions import MirrorRequiresEmpty2D
@@ -129,7 +131,7 @@ def test_mirror_without_empty_2d_raises():
         CylinderCapsMesh(input_parameters=params)
 
 
-@pytest.mark.skipif("CI" in os.environ, reason="OpenFOAM is not available in CI")
+@pytest.mark.skipif(not HAS_OPENFOAM, reason="OpenFOAM is not available")
 def test_extrude_cylinder_without_empty_2d_raises():
     """extrude_cylinder > 0 without empty_2d=True should raise ExtrudeCylinderRequiresEmpty2D."""
     from openfoam_tank_mesh.exceptions import ExtrudeCylinderRequiresEmpty2D
@@ -141,7 +143,7 @@ def test_extrude_cylinder_without_empty_2d_raises():
         CylinderCapsMesh(input_parameters=params)
 
 
-@pytest.mark.skipif("CI" in os.environ, reason="OpenFOAM is not available in CI")
+@pytest.mark.skipif(not HAS_OPENFOAM, reason="OpenFOAM is not available")
 def test_extrude_cylinder_n_layers():
     """extrude_cylinder with empty_2d=True should compute n_layers = round(flow/bulk_cell_size)."""
     from openfoam_tank_mesh.mesh_builders import CylinderCapsMesh
@@ -160,7 +162,7 @@ def test_extrude_cylinder_n_layers():
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.skipif("CI" in os.environ, reason="OpenFOAM is not available in CI")
+@pytest.mark.skipif(not HAS_OPENFOAM, reason="OpenFOAM is not available")
 def test_cylinder_caps_mesh():
     """CylinderCapsMesh with K-Site dimensions should generate a valid mesh."""
     from openfoam_tank_mesh.mesh_builders import CylinderCapsMesh
@@ -171,7 +173,7 @@ def test_cylinder_caps_mesh():
     assert mesh.tank.cylinder_radius == pytest.approx(KSITE_B)
 
 
-@pytest.mark.skipif("CI" in os.environ, reason="OpenFOAM is not available in CI")
+@pytest.mark.skipif(not HAS_OPENFOAM, reason="OpenFOAM is not available")
 def test_cylinder_caps_mesh_matches_ksite_mesh():
     """CylinderCapsMesh with K-Site dims should produce the same mesh as KSiteMesh."""
     from openfoam_tank_mesh.mesh_builders import CylinderCapsMesh, KSiteMesh
