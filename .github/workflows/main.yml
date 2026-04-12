@@ -47,7 +47,8 @@ jobs:
       
           # Run tests with full output
           cd tests
-          uv run python -m pytest -vv -ra tests/test_ksite_mesh.py tests/test_cylinder_caps_mesh.py
+          # uv run python -m pytest -vv -ra tests/test_ksite_mesh.py tests/test_cylinder_caps_mesh.py
+          uv run python -m pytest -vv -ra test_ksite_mesh.py test_cylinder_caps_mesh.py
           cd -
 
       - name: Check if documentation can be built
