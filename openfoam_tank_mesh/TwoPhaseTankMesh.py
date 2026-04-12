@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import shutil
 import time
 from abc import ABC, abstractmethod
 from subprocess import run
@@ -89,6 +90,7 @@ class TwoPhaseTankMesh(ABC):
         self.tri_bulk: bool = False  # Use triangle cells for bulk mesh
         self.multi_region: bool = False  # Use multiple regions
         self.n_wall_layers: int = 0  # Number of wall layers
+        self.wall_thickness: float = 2.08e-3  # Default tank wall thickness
 
         # Default parameters (can be overwritten by input_parameters)
         self.r_BL: float = 1.1  # Boundary layer growth rate
@@ -100,8 +102,8 @@ class TwoPhaseTankMesh(ABC):
         self.wedge_neg_normal: list = [0, 0, 0]
         self.surface_file = f"{self.name}.stl"
         self.non_coupled_cyclic = False
-        self.patch_name_pos = "wedge_pos"
-        self.patch_name_neg = "wedge_neg"
+        self.patch_name_pos = "wedgePos"
+        self.patch_name_neg = "wedgeNeg"
         self.ymax = tank.ymax()
         self.lid = False
         self.obstacle = False
@@ -112,6 +114,7 @@ class TwoPhaseTankMesh(ABC):
         self.symmetry_normal: list = [0, 0, 0]  # Normal for symmetry plane (set when empty_2d=True)
         self.mirror: bool = False  # Mirror the mesh about the symmetry axis (requires empty_2d=True)
         self.extrude_cylinder: float = 0  # Extrude in z to create 3D cylinder (requires empty_2d=True)
+        self.smoothing: bool = False  # Run laplacianMeshSmoother after splitMeshRegions
 
         if self.VoF:
             self.regions.remove("liquid")
@@ -270,6 +273,34 @@ class TwoPhaseTankMesh(ABC):
         )
         return self.run_command(command, return_exception=return_exception)
 
+    def check_smoothing_utility(self) -> bool:
+        """
+        Check that ``laplacianMeshSmoother`` is available in ``PATH``.
+        """
+        if shutil.which("laplacianMeshSmoother"):
+            return True
+
+        msg = "laplacianMeshSmoother not found in PATH. Disabling smoothing."
+        logger.error(msg)
+        console.print(f"[bold red]ERROR:[/bold red] {msg}")
+        self.smoothing = False
+        return False
+
+    def smooth_mesh(self) -> None:
+        """
+        Run Laplacian mesh smoothing when enabled and available.
+        """
+        if not self.smoothing:
+            return
+        if not self.check_smoothing_utility():
+            return
+        for region in ("gas", "liquid"):
+            if region in self.regions:
+                self.run_openfoam_utility(
+                    f"laplacianMeshSmoother -overwrite -region {region}",
+                    "laplacianSmoothDict",
+                )
+
     def calculate_boundary_layer(self) -> tuple[int, float, float]:
         """
         Calculate boundary layer parameters.
@@ -377,7 +408,7 @@ class TwoPhaseTankMesh(ABC):
         for r, t in zip(ranges, thicknesses):
             logger.info("Adding wall thickness %s in range %s", t, r)
             ys, ye = r
-            n = max(3, int(self.n_wall_layers * (t / 2.08e-3)))
+            n = max(3, int(self.n_wall_layers * (t / self.wall_thickness)))
             self.sed("(-1e6 .* 1e6)", f"(-1e6 {ys} -1e6) (1e6 {ye} 1e6)", topo_dict_path)
             self.run_openfoam_utility(f"topoSet -region {region}", "topoSetDict.add_wall_thickness")
             self.sed("^extrude .*;", "extrude true;", create_dict_path)

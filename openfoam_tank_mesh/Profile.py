@@ -334,12 +334,14 @@ class TankProfile(Profile):
         fill_level: float,
         outlet_radius: float,
         internal_outlet: float = 0,
+        wall_thickness: float = 2.08e-3,
     ) -> None:
         super().__init__(segments=segments)
         self.name: str = ""
         self.fill_level: float = fill_level
         self.outlet_radius: float = outlet_radius
         self.internal_outlet: float = internal_outlet
+        self.wall_thickness: float = wall_thickness
         self.t_BL: float = 0
         self.N: int = 0
         self.cylinder_radius: float = 0.0
@@ -441,29 +443,6 @@ class TankProfile(Profile):
         Get the maximum y value of the profile.
         """
         return self.segments[-1].y_end
-
-# The following error in the following function def line:
-# ==================================== ERRORS ====================================
-# ____________________ ERROR collecting tests/test_profile.py ____________________
-# tests/test_profile.py:4: in <module>
-#     from openfoam_tank_mesh.Profile import KSiteProfile, SphereProfile
-# openfoam_tank_mesh/Profile.py:318: in <module>
-#     class TankProfile(Profile):
-# openfoam_tank_mesh/Profile.py:438: in TankProfile
-#     def split_profile(self, y_split: float, tol: float = 10e-3) -> tuple[Segment, Segment | None]:
-# E   TypeError: unsupported operand type(s) for |: 'ABCMeta' and 'NoneType'
-#
-# ---------- coverage: platform linux, python 3.9.25-final-0 -----------
-# Coverage XML written to file coverage.xml
-#
-# =========================== short test summary info ============================
-# ERROR tests/test_profile.py - TypeError: unsupported operand type(s) for |: 'ABCMeta' and 'NoneType'
-# !!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
-# =============================== 1 error in 4.69s ===============================
-
-#Q: How to fix??
-#A: The error is due to the use of the union type hint `Segment | None`, which is only supported in Python 3.10 and later. Since the error message indicates that you are using Python 3.9, you should replace `Segment | None` with `Optional[Segment]` and import `Optional` from the `typing` module.
-
 
     def split_profile(self, y_split: float, tol: float = 10e-3) -> tuple[Segment, Optional[Segment]]:
         """
@@ -681,10 +660,9 @@ class TankProfile(Profile):
         points += profile_points
         points += inner_points
 
-        tw = 2.08e-3
         wall_points = []  # Points for the optional wall region, outer - n*tw
         for i, point in enumerate(profile_points):
-            wall_points.append(point - tw * profile_normals[i])
+            wall_points.append(point - self.wall_thickness * profile_normals[i])
 
         points.append(np.array([0, self.y_interface - self.t_BL]))
         points.append(np.array([0, self.y_interface]))
@@ -777,6 +755,7 @@ class KSiteProfile(TankProfile):
         wall_cell_size: float,
         r_BL: float = 1.2,
         internal_outlet: float = 0,
+        wall_thickness: float = 2.08e-3,
     ) -> None:
         super().__init__(
             segments=[
@@ -795,6 +774,7 @@ class KSiteProfile(TankProfile):
             fill_level=fill_level,
             outlet_radius=outlet_radius,
             internal_outlet=internal_outlet,
+            wall_thickness=wall_thickness,
         )
         self.name = "KSite"
         self.add_boundary_layers(x_wall=wall_cell_size, r_BL=r_BL)
@@ -818,6 +798,7 @@ class SphereProfile(TankProfile):
         wall_cell_size: float,
         r_BL: float = 1.2,
         internal_outlet: float = 0,
+        wall_thickness: float = 2.08e-3,
     ) -> None:
         super().__init__(
             segments=[
@@ -834,6 +815,7 @@ class SphereProfile(TankProfile):
             fill_level=fill_level,
             outlet_radius=outlet_radius,
             internal_outlet=internal_outlet,
+            wall_thickness=wall_thickness,
         )
         self.name = "Sphere"
         self.add_boundary_layers(x_wall=wall_cell_size, r_BL=r_BL)
@@ -848,12 +830,12 @@ class CylinderCapsTankProfile(TankProfile):
 
     The tank geometry consists of three sections stacked along the y-axis:
 
-    1. **Bottom cap** – an ellipsoidal cap of height ``cap_height`` and
+    1. **Bottom cap** - an ellipsoidal cap of height ``cap_height`` and
        equatorial radius ``cylinder_radius`` (semi-minor axis = ``cap_height``,
        semi-major axis = ``cylinder_radius``).
-    2. **Cylinder** – a straight cylindrical section of height
+    2. **Cylinder** - a straight cylindrical section of height
        ``cylinder_height`` and radius ``cylinder_radius``.
-    3. **Top cap** – a mirror of the bottom cap.
+    3. **Top cap** - a mirror of the bottom cap.
 
     Total tank height = ``2 * cap_height + cylinder_height``.
 
@@ -908,6 +890,7 @@ class CylinderCapsTankProfile(TankProfile):
         r_BL: float = 1.2,
         internal_outlet: float = 0,
         cylinder_diameter: Optional[float] = None,
+        wall_thickness: float = 2.08e-3,
     ) -> None:
         if cylinder_diameter is not None:
             cylinder_radius = cylinder_diameter / 2.0
@@ -950,6 +933,7 @@ class CylinderCapsTankProfile(TankProfile):
             fill_level=fill_level,
             outlet_radius=outlet_radius,
             internal_outlet=internal_outlet,
+            wall_thickness=wall_thickness,
         )
         self.name = "CylinderCaps"
         self.add_boundary_layers(x_wall=wall_cell_size, r_BL=r_BL)

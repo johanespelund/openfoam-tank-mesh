@@ -127,18 +127,27 @@ class TwoPhaseGmshMesh(TwoPhaseTankMesh):
             # 2D planar mesh: no rotation needed; use dedicated topoSet / createPatch dicts.
             self.run_openfoam_utility("topoSet", "topoSetDict.gmsh_empty")
             self.run_openfoam_utility("createPatch -overwrite", "createPatchDict.gmsh_empty")
+            self.patch_name_pos = "empty_pos"
+            self.patch_name_neg = "empty_neg"
         elif self.revolve and self.symmetry:
             self.run_command(f'transformPoints "Ry={-self.wedge_angle / 2}"')
             self.run_openfoam_utility("topoSet", "topoSetDict.gmsh")
             self.run_openfoam_utility("createPatch -overwrite", "createPatchDict.gmsh_symmetry")
+            self.patch_name_pos = "symmetryPos"
+            self.patch_name_neg = "symmetryNeg"
         elif self.revolve and self.cyclic:
             self.run_command(f'transformPoints "Ry={-self.wedge_angle / 2}"')
             self.run_openfoam_utility("topoSet", "topoSetDict.gmsh")
             self.run_openfoam_utility("createPatch -overwrite", "createPatchDict.gmsh_cyclic")
+            self.patch_name_pos = "cyclic_pos"
+            self.patch_name_neg = "cyclic_neg"
         else:
             self.run_command(f'transformPoints "Ry={-self.wedge_angle / 2}"')
             self.run_openfoam_utility("topoSet", "topoSetDict.gmsh")
             self.run_openfoam_utility("createPatch -overwrite", "createPatchDict.gmsh")
+            self.patch_name_pos = "wedgePos"
+            self.patch_name_neg = "wedgeNeg"
+        self.write_mesh_parameters()
 
     def generate(self) -> None:
         """Standard two-phase mesh-generation pipeline.
@@ -157,7 +166,9 @@ class TwoPhaseGmshMesh(TwoPhaseTankMesh):
         stages.  While each stage runs, the active sub-command is shown as the
         task description so the terminal never looks idle.
         """
-        _STAGES = 5 + (1 if self.mirror else 0) + (1 if self.extrude_cylinder else 0)
+        if self.smoothing:
+            self.check_smoothing_utility()
+        _STAGES = 5 + (1 if self.smoothing else 0) + (1 if self.mirror else 0) + (1 if self.extrude_cylinder else 0)
         _n = str(_STAGES)
         with _make_progress() as progress:
             task = progress.add_task("Mesh generation pipeline", total=_STAGES)
@@ -170,7 +181,8 @@ class TwoPhaseGmshMesh(TwoPhaseTankMesh):
             progress.advance(task)
 
             # ── Stage 2 ──────────────────────────────────────────────
-            progress.update(task, description=f"[bold]Stage 2/{_n}[/bold] Outlet configuration")
+            stage = 2
+            progress.update(task, description=f"[bold]Stage {stage}/{_n}[/bold] Outlet configuration")
             if self.internal_outlet:
                 self.create_internal_outlet()
             else:
@@ -178,30 +190,41 @@ class TwoPhaseGmshMesh(TwoPhaseTankMesh):
             self.run_command("rm -rf 0/cellToRegion")
             progress.advance(task)
 
-            # ── Stage 3 ──────────────────────────────────────────────
-            progress.update(task, description=f"[bold]Stage 3/{_n}[/bold] Pre-split setup")
+            stage += 1
+            # ── Stage 3/4 ────────────────────────────────────────────
+            progress.update(task, description=f"[bold]Stage {stage}/{_n}[/bold] Pre-split setup")
             self._pre_split_setup()
             progress.advance(task)
 
-            # ── Stage 4 ──────────────────────────────────────────────
-            progress.update(task, description=f"[bold]Stage 4/{_n}[/bold] Splitting mesh regions")
+            stage += 1
+            # ── Stage 4/5 ────────────────────────────────────────────
+            progress.update(task, description=f"[bold]Stage {stage}/{_n}[/bold] Splitting mesh regions")
             self.run_command("splitMeshRegions -cellZonesOnly -overwrite")
             self.run_command("rm -rf constant/polyMesh")
             progress.advance(task)
 
-            # ── Stage 5 (optional) ────────────────────────────────────
+            stage += 1
+            # ── Optional smoothing stage ─────────────────────────────
+            if self.smoothing:
+                progress.update(task, description=f"[bold]Stage {stage}/{_n}[/bold] Laplacian smoothing")
+                self.smooth_mesh()
+                progress.advance(task)
+                stage += 1
+
+            # ── Optional extrusion stage ─────────────────────────────
             if self.extrude_cylinder:
-                progress.update(task, description=f"[bold]Stage 5/{_n}[/bold] Cylinder extrusion")
+                progress.update(task, description=f"[bold]Stage {stage}/{_n}[/bold] Cylinder extrusion")
                 self.remove_wall()
                 self.do_extrude_cylinder()
                 progress.advance(task)
+                stage += 1
 
-            # ── Stage 5 (optional) ────────────────────────────────────
+            # ── Optional mirror stage ────────────────────────────────
             if self.mirror:
-                mirror_stage = 6 if self.extrude_cylinder else 5
-                progress.update(task, description=f"[bold]Stage {mirror_stage}/{_n}[/bold] Mirroring mesh")
+                progress.update(task, description=f"[bold]Stage {stage}/{_n}[/bold] Mirroring mesh")
                 self.mirror_mesh()
                 progress.advance(task)
+                stage += 1
 
             # ── Final stage ───────────────────────────────────────────
             progress.update(task, description=f"[bold]Stage {_n}/{_n}[/bold] Checking mesh quality")
@@ -273,14 +296,15 @@ class KSiteMesh(TwoPhaseGmshMesh):
             wall_cell_size=input_parameters["wall_cell_size"],
             r_BL=input_parameters["r_BL"],
             internal_outlet=input_parameters["internal_outlet"],
+            wall_thickness=input_parameters.get("wall_thickness", 2.08e-3),
         )
 
     def _pre_split_setup(self) -> None:
         """K-Site-specific obstacle and lid extrusion before ``splitMeshRegions``."""
         if self.obstacle:
-            self.add_wall_thickness("region0", "walls", [(1.849, 1e6)], [2.12e-3])
-            self.add_wall_thickness("region0", "walls", [(1.859, 1e6)], [10e-3 - 2.12e-3])
-            self.add_wall_thickness("region0", "walls", [(0.9136, 0.9605)], [2.12e-3])
+            self.add_wall_thickness("region0", "walls", [(1.849, 1e6)], [self.wall_thickness])
+            self.add_wall_thickness("region0", "walls", [(1.859, 1e6)], [10e-3 - self.wall_thickness])
+            self.add_wall_thickness("region0", "walls", [(0.9136, 0.9605)], [self.wall_thickness])
 
         if self.lid:
             self.regions.append("lid")
@@ -291,7 +315,7 @@ class KSiteMesh(TwoPhaseGmshMesh):
             nx, ny = self.tank.get_normal(y)
             r1, y1 = r - nx / 4, y - ny / 4
             r2, y2 = r + nx, y + ny
-            y_duct = y - ny * 2.08e-3
+            y_duct = y - ny * self.wall_thickness
 
             topodict = self.dict("topoSetDict.splitMetalRegions")
             self.sed("radius1 .*;", f"radius1 {r1:.4f};", topodict)
@@ -391,6 +415,7 @@ class SphereMesh(TwoPhaseGmshMesh):
             wall_cell_size=input_parameters["wall_cell_size"],
             r_BL=input_parameters["r_BL"],
             internal_outlet=input_parameters["internal_outlet"],
+            wall_thickness=input_parameters.get("wall_thickness", 2.08e-3),
         )
 
     def generate_leak_boundaries(self) -> None:
@@ -439,6 +464,7 @@ class CylinderCapsMesh(TwoPhaseGmshMesh):
             r_BL=input_parameters["r_BL"],
             internal_outlet=input_parameters["internal_outlet"],
             cylinder_diameter=input_parameters.get("cylinder_diameter"),
+            wall_thickness=input_parameters.get("wall_thickness", 2.08e-3),
         )
 
     @property
