@@ -19,7 +19,7 @@ def test_ksite_mesh():
             "tri_bulk": False,
             "outlet_radius": 0.0127,
             "internal_outlet": 0.0127 * 4,
-            "debug": True,
+            "debug": False,
             "revolve": 0,
             "n_revolve": 0,
             "n_wall_layers": 6,
