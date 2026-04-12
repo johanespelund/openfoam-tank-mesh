@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import shutil
 import time
 from abc import ABC, abstractmethod
 from subprocess import run
@@ -100,8 +101,8 @@ class TwoPhaseTankMesh(ABC):
         self.wedge_neg_normal: list = [0, 0, 0]
         self.surface_file = f"{self.name}.stl"
         self.non_coupled_cyclic = False
-        self.patch_name_pos = "wedge_pos"
-        self.patch_name_neg = "wedge_neg"
+        self.patch_name_pos = "wedgePos"
+        self.patch_name_neg = "wedgeNeg"
         self.ymax = tank.ymax()
         self.lid = False
         self.obstacle = False
@@ -112,6 +113,7 @@ class TwoPhaseTankMesh(ABC):
         self.symmetry_normal: list = [0, 0, 0]  # Normal for symmetry plane (set when empty_2d=True)
         self.mirror: bool = False  # Mirror the mesh about the symmetry axis (requires empty_2d=True)
         self.extrude_cylinder: float = 0  # Extrude in z to create 3D cylinder (requires empty_2d=True)
+        self.smoothing: bool = False  # Run laplacianMeshSmoother after gmsh/createPatch
 
         if self.VoF:
             self.regions.remove("liquid")
@@ -269,6 +271,29 @@ class TwoPhaseTankMesh(ABC):
             f"{self.dict_path}/{foam_dict}",
         )
         return self.run_command(command, return_exception=return_exception)
+
+    def check_smoothing_utility(self) -> bool:
+        """
+        Check that ``laplacianMeshSmoother`` is available in ``PATH``.
+        """
+        if shutil.which("laplacianMeshSmoother"):
+            return True
+
+        msg = "laplacianMeshSmoother not found in PATH. Disabling smoothing."
+        logger.error(msg)
+        console.print(f"[bold red]ERROR:[/bold red] {msg}")
+        self.smoothing = False
+        return False
+
+    def smooth_mesh(self) -> None:
+        """
+        Run Laplacian mesh smoothing when enabled and available.
+        """
+        if not self.smoothing:
+            return
+        if not self.check_smoothing_utility():
+            return
+        self.run_openfoam_utility("laplacianMeshSmoother", "laplacianSmoothDict")
 
     def calculate_boundary_layer(self) -> tuple[int, float, float]:
         """

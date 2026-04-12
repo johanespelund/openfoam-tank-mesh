@@ -33,41 +33,60 @@ constrainedPoints
     }
 
     {
-      type set;
-      set yconst;
-      constraintType constY;
-    }
-
-    {
-      type set;
-      set rconst;
-      constraintType constRadiusXY;
-    }
-
-    {
       type patch;
-      patch wedge;
-      constraintType constZ;
-    }
-
-    {
-      type patch;
-      patch bottom;
-      constraintType constY;
-    }
-    {
-      type set;
-      set outletPointSet;
+      patch walls;
       constraintType fixed;
     }
 
     {
       type patch;
-      patch defaultFaces;
-      constraintType constX;
+      patch wall;
+      constraintType fixed;
     }
 
+    {
+      type patch;
+      patch gas_to_liquid;
+      constraintType fixed;
+    }
 
+    {
+      type patch;
+      patch gas_to_metal;
+      constraintType fixed;
+    }
+
+    {
+      type patch;
+      patch liquid_to_metal;
+      constraintType fixed;
+    }
+
+    {
+      type patch;
+      patch metal_to_gas;
+      constraintType fixed;
+    }
+
+    {
+      type patch;
+      patch metal_to_liquid;
+      constraintType fixed;
+    }
+
+    {
+      type patch;
+      patch $patch_name_pos;
+      constraintType constDir;
+      direction $wedge_pos_normal;
+    }
+
+    {
+      type patch;
+      patch $patch_name_neg;
+      constraintType constDir;
+      direction $wedge_neg_normal;
+    }
 
   );
 
