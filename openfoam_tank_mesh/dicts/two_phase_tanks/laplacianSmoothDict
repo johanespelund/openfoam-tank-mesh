@@ -18,7 +18,8 @@ FoamFile
 // Prevent moving points in the boundary normal direction, for points a distance from the boundaries.
 // Not working properly. Instead, refineWallLayer is used after smoothing.
 preserveBoundaryLayer -1;//#eval {2*$cell_size};
-iters 50;
+boundaryNormalPatches ();
+iters 20;
 smoothFactor 1;
 
 #include "meshdata"
@@ -26,11 +27,6 @@ smoothFactor 1;
 constrainedPoints
   (
 
-    {
-      type set;
-      set fixedPoints;
-      constraintType fixed;
-    }
 
     {
       type patch;
