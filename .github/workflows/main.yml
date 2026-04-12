@@ -35,9 +35,21 @@ jobs:
           sudo apt-get install -y openfoam12
 
       - name: Run tests with OpenFOAM.org v12
+        shell: bash -l {0}
         run: |
+          set -euxo pipefail
           source /opt/openfoam12/etc/bashrc
-          uv run python -m pytest tests/test_ksite_mesh.py tests/test_cylinder_caps_mesh.py
+      
+          # Quick sanity checks that OpenFOAM is actually configured
+          echo "WM_PROJECT=$WM_PROJECT"
+          echo "FOAM_INST_DIR=$FOAM_INST_DIR"
+          command -v blockMesh || true
+          command -v snappyHexMesh || true
+      
+          # Run tests with full output
+          cd tests
+          uv run python -m pytest -vv -ra tests/test_ksite_mesh.py tests/test_cylinder_caps_mesh.py
+          cd -
 
       - name: Check if documentation can be built
         run: uv run mkdocs build -s
