@@ -56,6 +56,35 @@ jobs:
         uses: codecov/codecov-action@v4
         if: ${{ matrix.python-version == '3.11' }}
 
+  tests-openfoam-org-v12:
+    runs-on: ubuntu-22.04
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up the environment
+        uses: ./.github/actions/setup-python-env
+        with:
+          python-version: "3.11"
+
+      - name: Install system dependencies and OpenFOAM.org v12
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ca-certificates gnupg wget software-properties-common libglu1-mesa
+          wget -O - https://dl.openfoam.org/gpg.key | gpg --dearmor | sudo tee /usr/share/keyrings/openfoam.gpg > /dev/null
+          echo "deb [signed-by=/usr/share/keyrings/openfoam.gpg] http://dl.openfoam.org/ubuntu jammy main" \
+            | sudo tee /etc/apt/sources.list.d/openfoam.list > /dev/null
+          sudo apt-get update
+          sudo apt-get install -y openfoam12
+
+      - name: Run tests with OpenFOAM.org v12
+        run: |
+          source /opt/openfoam12/etc/bashrc
+          env -u CI uv run python -m pytest tests/test_ksite_mesh.py tests/test_cylinder_caps_mesh.py
+
   check-docs:
     runs-on: ubuntu-latest
     steps:
