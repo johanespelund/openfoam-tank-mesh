@@ -109,7 +109,7 @@ def sort_xy(points):
     _x = np.concatenate((x_sorted[i0:], x_sorted[:i0]))
     _y = np.concatenate((y_sorted[i0:], y_sorted[:i0]))
 
-    _points = [(x, y, 0) for x, y in zip(_x, _y, strict=False)]
+    _points = [(x, y, 0) for x, y in zip(_x, _y, strict=True)]
 
     return _points
 

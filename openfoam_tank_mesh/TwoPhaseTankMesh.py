@@ -62,6 +62,24 @@ class TwoPhaseTankMesh(ABC):
         "fill_level",
         "debug",
     ]
+    _ALLOWED_COMMANDS: ClassVar[set[str]] = {
+        "cartesianMesh",
+        "checkMesh",
+        "cp",
+        "createPatch",
+        "extrudeMesh",
+        "gmshToFoam",
+        "laplacianMeshSmoother",
+        "mirrorMesh",
+        "mv",
+        "rm",
+        "sed",
+        "simpleFoam",
+        "splitMeshRegions",
+        "subsetMesh",
+        "topoSet",
+        "transformPoints",
+    }
 
     def __init__(self, tank: TankProfile, input_parameters: dict) -> None:
         _setup_file_logging()
@@ -257,7 +275,12 @@ class TwoPhaseTankMesh(ABC):
             raise OpenFoamNotLoaded
 
     def _run_subprocess(self, command: str, capture_output: bool = True) -> CompletedProcess[bytes]:
-        return run(shlex.split(command), capture_output=capture_output)  # noqa: S603
+        command_parts = shlex.split(command)
+        if not command_parts:
+            raise CommandFailed(command, "Empty command")
+        if command_parts[0] not in self._ALLOWED_COMMANDS:
+            raise CommandFailed(command, f"Disallowed command: {command_parts[0]}")
+        return run(command_parts, capture_output=capture_output)  # noqa: S603
 
     def run_openfoam_utility(
         self, utility: str, foam_dict: str = "", return_exception: bool = False
@@ -407,7 +430,7 @@ class TwoPhaseTankMesh(ABC):
 
         for p in [topo_dict_path, create_dict_path, extrude_dict_path]:
             self.sed("^patchName .*;", f"patchName {patchName};", p)
-        for r, t in zip(ranges, thicknesses, strict=False):
+        for r, t in zip(ranges, thicknesses, strict=True):
             logger.info("Adding wall thickness %s in range %s", t, r)
             ys, ye = r
             n = max(3, int(self.n_wall_layers * (t / self.wall_thickness)))

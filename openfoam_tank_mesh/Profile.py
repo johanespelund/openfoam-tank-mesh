@@ -641,7 +641,7 @@ class TankProfile(Profile):
         profile_normals[0] = np.array([0, 1])
         profile_normals[-2] = np.array([0, -1])
 
-        inner_points = [p + n * self.t_BL for p, n in zip(profile_points, profile_normals, strict=False)]
+        inner_points = [p + n * self.t_BL for p, n in zip(profile_points, profile_normals, strict=True)]
 
         # Interface needs to be horizontal and held the same t_BL
         b = self.t_BL / profile_normals[i_interface][0]

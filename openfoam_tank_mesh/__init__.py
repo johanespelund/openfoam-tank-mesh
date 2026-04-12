@@ -32,7 +32,7 @@ _EXPORT_MAP = {
 
 def __getattr__(name: str) -> object:
     if name not in _EXPORT_MAP:
-        msg = f"module {__name__!r} has no attribute {name!r}"
+        msg = f"module '{__name__}' has no attribute '{name}'"
         raise AttributeError(msg)
     module = import_module(_EXPORT_MAP[name])
     return getattr(module, name)

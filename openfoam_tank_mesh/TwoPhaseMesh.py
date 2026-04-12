@@ -350,7 +350,7 @@ class KSiteMesh(TwoPhaseGmshMesh):
             hs.append(0.008)
 
         if self.obstacle:
-            for y, r, w, h in zip(ys, rs, ws, hs, strict=False):
+            for y, r, w, h in zip(ys, rs, ws, hs, strict=True):
                 y_average = (y + self.tank.get_y(r - w, 1.5, self.y_outlet)) / 2
                 n = self.tank.get_normal(y_average)
                 n = np.array([n[0], n[1], 0])
