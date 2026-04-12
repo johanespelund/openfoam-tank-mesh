@@ -96,5 +96,5 @@ mesh.generate()
 - [ ] Add option for wall thickness (hardcoded for K-Site tank now!)
 - [ ] Make more robust (breaks for certain cell size and fill level combos).
 - [ ] Add support for walls with extrude_cylinder.
-- [ ] Add Laplacian smoother to reduce non-orthogonality.
+- [x] Add Laplacian smoother to reduce non-orthogonality.
 - [ ] Add support for ESI version of OpenFOAM.
