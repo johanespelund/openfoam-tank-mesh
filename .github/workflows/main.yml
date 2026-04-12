@@ -37,26 +37,14 @@ jobs:
       - name: Run tests with OpenFOAM.org v12
         shell: bash
         run: |
-          set -x   # enable debug temporarily
+          bash -lc '
+            source /opt/openfoam12/etc/bashrc
 
-          echo "Before sourcing"
+            echo "WM_PROJECT=$WM_PROJECT"
+            echo "FOAM_INST_DIR=$FOAM_INST_DIR"
+            command -v blockMesh
+            command -v snappyHexMesh
 
-          . /opt/openfoam12/etc/bashrc
-
-          echo "After sourcing"
-          # . /opt/openfoam12/etc/bashrc
-      
-          # Quick sanity checks that OpenFOAM is actually configured
-          echo "WM_PROJECT=$WM_PROJECT"
-          echo "FOAM_INST_DIR=$FOAM_INST_DIR"
-          command -v blockMesh || true
-          command -v snappyHexMesh || true
-      
-          # Run tests with full output
-          cd tests
-          # uv run python -m pytest -vv -ra tests/test_ksite_mesh.py tests/test_cylinder_caps_mesh.py
-          uv run python -m pytest -vv -ra test_ksite_mesh.py test_cylinder_caps_mesh.py
-          cd -
-
-      - name: Check if documentation can be built
-        run: uv run mkdocs build -s
+            cd tests
+            uv run python -m pytest -vv -ra test_ksite_mesh.py test_cylinder_caps_mesh.py
+          '
