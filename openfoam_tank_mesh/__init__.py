@@ -8,6 +8,8 @@ from typing import TYPE_CHECKING
 __all__ = [
     "CylinderCapsMesh",
     "CylinderCapsTankProfile",
+    "CylinderMesh",
+    "CylinderTankProfile",
     "GmshMeshPipeline",
     "KSiteMesh",
     "KSiteProfile",
@@ -21,10 +23,12 @@ __all__ = [
 _EXPORT_MAP = {
     "GmshMeshPipeline": "openfoam_tank_mesh.TwoPhaseMesh",
     "CylinderCapsMesh": "openfoam_tank_mesh.mesh_builders",
+    "CylinderMesh": "openfoam_tank_mesh.mesh_builders",
     "KSiteMesh": "openfoam_tank_mesh.mesh_builders",
     "SphereMesh": "openfoam_tank_mesh.mesh_builders",
     "TankProfile": "openfoam_tank_mesh.Profile",
     "CylinderCapsTankProfile": "openfoam_tank_mesh.Profile",
+    "CylinderTankProfile": "openfoam_tank_mesh.Profile",
     "KSiteProfile": "openfoam_tank_mesh.Profile",
     "SphereProfile": "openfoam_tank_mesh.Profile",
     "OpenFoamMeshPipeline": "openfoam_tank_mesh.mesh_pipeline",
@@ -41,7 +45,13 @@ def __getattr__(name: str) -> object:
 
 
 if TYPE_CHECKING:
-    from openfoam_tank_mesh.mesh_builders import CylinderCapsMesh, KSiteMesh, SphereMesh
+    from openfoam_tank_mesh.mesh_builders import CylinderCapsMesh, CylinderMesh, KSiteMesh, SphereMesh
     from openfoam_tank_mesh.mesh_pipeline import OpenFoamMeshPipeline, TwoPhaseTankMesh
-    from openfoam_tank_mesh.Profile import CylinderCapsTankProfile, KSiteProfile, SphereProfile, TankProfile
+    from openfoam_tank_mesh.Profile import (
+        CylinderCapsTankProfile,
+        CylinderTankProfile,
+        KSiteProfile,
+        SphereProfile,
+        TankProfile,
+    )
     from openfoam_tank_mesh.TwoPhaseMesh import GmshMeshPipeline
