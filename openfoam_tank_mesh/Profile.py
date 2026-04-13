@@ -334,6 +334,7 @@ class TankProfile(Profile):
         outlet_radius: float,
         internal_outlet: float = 0,
         wall_thickness: float = 2.08e-3,
+        tolerance: float = 10e-3,
     ) -> None:
         super().__init__(segments=segments)
         self.name: str = ""
@@ -341,6 +342,7 @@ class TankProfile(Profile):
         self.outlet_radius: float = outlet_radius
         self.internal_outlet: float = internal_outlet
         self.wall_thickness: float = wall_thickness
+        self.tolerance: float = tolerance
         self.t_BL: float = 0
         self.N: int = 0
         self.cylinder_radius: float = 0.0
@@ -448,67 +450,80 @@ class TankProfile(Profile):
         Go through the segments and split the one where the interface is located.
         """
 
-        # Check if a split already exists at this position
-        for segment in self.segments:
-            if abs(segment.y_start - y_split) < tol / 5 or abs(segment.y_end - y_split) < tol / 5:
-                print(f"Split already exists at {y_split}, skipping.")
-                self.sort_segments()
-                self.check_segment_connectivity()
-                return segment, None
-
         for segment in self.segments:
             if segment.y_start <= y_split <= segment.y_end:
                 # Replace this segment with two segments of same type,
                 # meeting at the interface position.
                 y_start = segment.y_start
                 y_end = segment.y_end
+                r_start = segment.r_start
+                r_end = segment.r_end
                 r_split = segment.get_radius(y_split)
 
                 segment.y_start = y_start
                 segment.y_end = y_split
                 segment.r_start = segment.get_radius(y_start)
-                segment.r_end = segment.get_radius(y_split)
+                segment.r_end = r_split
                 lower_segment = copy.deepcopy(segment)
                 lower_segment.name = f"{segment.name}_lower"
 
                 # If lower segment is shorter than tol, we need to
                 # extend it downwards, and shorten the segment below.
-                if abs(segment.get_length()) < tol:
+                if abs(lower_segment.get_length()) < tol:
                     ln = segment.lowerNeighbor
-                    ln.y_end = y_start - tol
-                    ln.r_end = ln.get_radius(ln.y_end)
+                    new_ln = ln
+                    if ln.get_length() <= 2.5 * tol:
+                        y_start = ln.y_start
+                        r_start = ln.r_start
+                        new_ln = ln.lowerNeighbor
+                        self.segments.remove(ln)
+                    else:
+                        y_start = y_start - 1.0 * tol
+                        r_start = ln.get_radius(y_start)
+                        ln.y_end = y_start
+                        ln.r_end = r_start
                     # Create a LineSegment to connect the two segments
                     lower_segment = LineSegment(
                         name=f"{segment.name}_lower_extendDown",
-                        y_start=ln.y_end,
+                        y_start=y_start,
                         y_end=y_split,
-                        r_start=ln.r_end,
+                        r_start=r_start,
                         r_end=r_split,
                         length_scale=segment.length_scale,
                     )
+                    lower_segment.lowerNeighbor = new_ln
 
                 upper_segment = copy.copy(segment)
                 upper_segment.name = f"{segment.name}_upper"
                 upper_segment.y_start = y_split
                 upper_segment.y_end = y_end
-                upper_segment.r_start = upper_segment.get_radius(y_split)
-                upper_segment.r_end = upper_segment.get_radius(y_end)
+                upper_segment.r_start = r_split
+                upper_segment.r_end = r_end
 
-                if abs(upper_segment.get_length()) < tol:
-                    print(f"Segment {upper_segment.name} is too short, extending it upwards.")
+                if abs(upper_segment.get_length()) < 1.0 * tol:
                     un = upper_segment.upperNeighbor
-                    un.y_start = y_end + tol
-                    un.r_start = un.get_radius(un.y_start)
+                    if un.get_length() <= 2.5 * tol:
+                        y_end = un.y_end
+                        r_end = un.r_end
+                        new_un = un.upperNeighbor
+                        self.segments.remove(un)
+                    else:
+                        y_end = y_end + 1.0 * tol
+                        r_end = un.get_radius(y_end)
+                        un.y_start = y_end
+                        un.r_start = r_end
+                        new_un = un
 
                     # Create a LineSegment to connect the two segments
                     upper_segment = LineSegment(
                         name=f"{segment.name}_upper_extendUp",
                         y_start=y_split,
-                        y_end=un.y_start,
+                        y_end=y_end,
                         r_start=r_split,
-                        r_end=un.r_start,
+                        r_end=r_end,
                         length_scale=segment.length_scale,
                     )
+                    upper_segment.upperNeighbor = new_un
 
                 break
 
@@ -534,7 +549,7 @@ class TankProfile(Profile):
         self.t_BL = t
         self.N = n
 
-        tol = min(5 * x_wall, 2 * x_bulk)
+        tol = min(5 * x_wall, 4 * x_bulk)
         for offset in [t, -t, 0]:
             self.split_profile(self.y_interface + offset, tol=tol)
 
@@ -555,6 +570,7 @@ class TankProfile(Profile):
                 segment.N = N
                 segment.r = r_sign * r_BL
 
+            segment = bl_segments[-1]
             if n_local != self.N or segment.N <= 1:
                 segment.N += self.N - n_local
                 if segment.N <= 1:
@@ -598,15 +614,14 @@ class TankProfile(Profile):
         # point_coords = self.get_mesh_points()
         # normals = self.get_profile_normals()
         # points = point_coords.points
-        # for i, (key, item) in enumerate(points.items()):
-        #     input(f"{i=}, {key=}, {item=}")
+        # for _i, (key, item) in enumerate(points.items()):
         #     ax.plot(item[0], item[1], "ro")
         #     ax.text(item[0], item[1], f"{key}", fontsize=8, ha="right")
-        #     x1, y1 = item[0], item[1]
-        #     n = normals[i]
-        #     x2 = x1 + n[0]
-        #     y2 = y1 + n[1]
-        #     ax.plot([x1, x2], [y1, y2])
+        # x1, y1 = item[0], item[1]
+        # n = normals[i]
+        # x2 = x1 + n[0]
+        # y2 = y1 + n[1]
+        # ax.plot([x1, x2], [y1, y2])
 
         ax.set_aspect("equal")
         plt.legend()
@@ -628,11 +643,11 @@ class TankProfile(Profile):
         i_bl = 0
         i_bl_upper = 0
         for i, point in enumerate(profile_points):
-            if point[1] == self.y_interface - self.t_BL:
+            if np.isclose(point[1], self.y_interface - self.t_BL):
                 i_bl_lower = i
-            if point[1] == self.y_interface + self.t_BL:
+            if np.isclose(point[1], self.y_interface + self.t_BL):
                 i_bl_upper = i
-            if point[1] == self.y_interface:
+            if np.isclose(point[1], self.y_interface):
                 i_bl = i
 
         profile_normals = self.get_profile_normals()
