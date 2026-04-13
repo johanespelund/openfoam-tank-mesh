@@ -12,7 +12,7 @@ import pytest
 
 from openfoam_tank_mesh.Profile import CylinderCapsTankProfile, KSiteProfile
 
-HAS_OPENFOAM = shutil.which("simpleFoam") is not None
+HAS_OPENFOAM = shutil.which("blockMesh") is not None
 
 # K-Site dimensions (Stochl & Knoll, 1991)
 INCH = 0.0254
