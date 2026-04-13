@@ -255,3 +255,20 @@ def test_cylinder_profile_mesh_points_include_wall(cylinder_profile):
     assert len(pts.outer_points) >= 4
     assert len(pts.wall_points) == len(pts.outer_points)
     assert np.isfinite(np.array(pts.outer_points)).all()
+
+
+def test_cylinder_profile_corner_boundary_layer_rectangles(cylinder_profile):
+    pts = cylinder_profile.get_mesh_points()
+    t_bl = cylinder_profile.t_BL
+    r = cylinder_profile.cylinder_radius
+    h = cylinder_profile.cylinder_height
+
+    corner_outer = np.array([r - t_bl, 0.0])
+    corner_outer_top = np.array([r - t_bl, h])
+    corner_inner = np.array([r - t_bl, t_bl])
+    corner_inner_top = np.array([r - t_bl, h - t_bl])
+
+    assert any(np.allclose(point, corner_outer) for point in pts.outer_points)
+    assert any(np.allclose(point, corner_outer_top) for point in pts.outer_points)
+    assert any(np.allclose(point, corner_inner) for point in pts.inner_points)
+    assert any(np.allclose(point, corner_inner_top) for point in pts.inner_points)

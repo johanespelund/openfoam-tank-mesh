@@ -1013,8 +1013,55 @@ class CylinderTankProfile(TankProfile):
         if outlet_radius <= 0 or outlet_radius >= cylinder_radius:
             raise ValueError("outlet_radius must satisfy 0 < outlet_radius < cylinder_radius.")  # noqa: TRY003
 
-        super().__init__(
-            segments=[
+        _n_bl, t_bl_corner, _e_bl = calculate_boundary_layer(r_BL, wall_cell_size, wall_tan_cell_size)
+        corner_split_radius = cylinder_radius - t_bl_corner
+        split_corner_layers = outlet_radius < corner_split_radius < cylinder_radius
+
+        if split_corner_layers:
+            segments: list[Segment] = [
+                LineSegment(
+                    "line_bottom",
+                    0.0,
+                    0.0,
+                    0.0,
+                    corner_split_radius,
+                    length_scale=wall_tan_cell_size,
+                ),
+                LineSegment(
+                    "line_bottom_corner",
+                    0.0,
+                    0.0,
+                    corner_split_radius,
+                    cylinder_radius,
+                    length_scale=wall_tan_cell_size,
+                ),
+                LineSegment(
+                    "line_wall",
+                    0.0,
+                    cylinder_height,
+                    cylinder_radius,
+                    cylinder_radius,
+                    length_scale=wall_tan_cell_size,
+                ),
+                LineSegment(
+                    "line_top_corner",
+                    cylinder_height,
+                    cylinder_height,
+                    cylinder_radius,
+                    corner_split_radius,
+                    length_scale=wall_tan_cell_size,
+                ),
+                LineSegment(
+                    "line_top",
+                    cylinder_height,
+                    cylinder_height,
+                    corner_split_radius,
+                    outlet_radius,
+                    length_scale=wall_tan_cell_size,
+                ),
+            ]
+        else:
+            segments = [
                 LineSegment(
                     "line_bottom",
                     0.0,
@@ -1039,7 +1086,10 @@ class CylinderTankProfile(TankProfile):
                     outlet_radius,
                     length_scale=wall_tan_cell_size,
                 ),
-            ],
+            ]
+
+        super().__init__(
+            segments=segments,
             fill_level=fill_level,
             outlet_radius=outlet_radius,
             internal_outlet=internal_outlet,
