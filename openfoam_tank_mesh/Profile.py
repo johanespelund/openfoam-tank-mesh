@@ -682,24 +682,33 @@ class TankProfile(Profile):
             if np.isclose(point[1], self.y_interface):
                 i_bl = i
 
-        profile_normals = []
-        for i, segment in enumerate(self.segments):
-            normal = segment.get_normal(segment.y_start)
-            if i > 0:
-                previous = self.segments[i - 1]
-                previous_is_horizontal = np.isclose(previous.y_start, previous.y_end)
-                current_is_vertical = np.isclose(segment.r_start, segment.r_end)
-                at_tank_start = np.isclose(segment.y_start, self.y_start)
-                if previous_is_horizontal and current_is_vertical and at_tank_start:
-                    normal = previous.get_normal(previous.y_end)
-            profile_normals.append(normal)
-        profile_normals.append(self.segments[-1].get_normal(self.segments[-1].y_end))
+        profile_normals = self.get_profile_normals()
         # Make sure the normals at start and outlet are vertical
         profile_normals.append(np.array([0, -1]))
         profile_normals[0] = np.array([0, 1])
         profile_normals[-2] = np.array([0, -1])
 
         inner_points = [p + n * self.t_BL for p, n in zip(profile_points, profile_normals, strict=True)]
+
+        # At sharp corners, offset-line intersection is needed to avoid collapsing
+        # inner corner points back onto the outer wall.
+        for i in range(1, len(self.segments)):
+            previous_segment = self.segments[i - 1]
+            current_segment = self.segments[i]
+            if not isinstance(previous_segment, LineSegment) or not isinstance(current_segment, LineSegment):
+                continue
+
+            n_prev = previous_segment.get_normal(previous_segment.y_end)
+            n_curr = current_segment.get_normal(current_segment.y_start)
+            if np.isclose(abs(np.dot(n_prev, n_curr)), 1.0):
+                continue
+
+            corner_normal = n_prev + n_curr
+            corner_norm = np.linalg.norm(corner_normal)
+            if corner_norm <= 1e-12:
+                continue
+
+            inner_points[i] = profile_points[i] + self.t_BL * corner_normal / corner_norm
 
         # Interface needs to be horizontal and held the same t_BL
         b = self.t_BL / profile_normals[i_interface][0]
