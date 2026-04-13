@@ -46,5 +46,6 @@ jobs:
             command -v snappyHexMesh
 
             cd tests/
+            echo "Current dir: $(pwd)"
             uv run python -m pytest -vv -ra test_ksite_mesh.py test_cylinder_caps_mesh.py
           '
