@@ -90,6 +90,9 @@ mesh = CylinderCapsMesh(input_parameters)
 mesh.generate()
 
 ```
+Smoothing can be applied to improve non-orthogonality.
+This requires installation of [laplacianMeshSmoother](https://github.com/johanespelund/laplacianMeshSmoother),
+and setting `smoothing=True` in the input parameters.
 
 ## TODO
 
