@@ -90,9 +90,19 @@ mesh = CylinderCapsMesh(input_parameters)
 mesh.generate()
 
 ```
+### Smoothing
 Smoothing can be applied to improve non-orthogonality.
 This requires installation of [laplacianMeshSmoother](https://github.com/johanespelund/laplacianMeshSmoother),
 and setting `smoothing=True` in the input parameters.
+
+| <img width="1470" height="520" alt="bilde" src="https://github.com/user-attachments/assets/2fc6240a-d966-4109-885e-7d74ed6d77f6" /> |
+| :----------------------------------------------------------------------------------------------------------------------------------: |
+|                                                         _Grid without smoothing._                                             |
+| <img width="1455" height="525" alt="bilde" src="https://github.com/user-attachments/assets/a1cd1145-ddb1-4cb7-9ed1-2ea9c6c6075f" /> |
+|                                                         _Grid with smoothing._                                             |
+
+
+
 
 ## TODO
 
