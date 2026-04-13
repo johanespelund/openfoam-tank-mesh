@@ -682,7 +682,18 @@ class TankProfile(Profile):
             if np.isclose(point[1], self.y_interface):
                 i_bl = i
 
-        profile_normals = self.get_profile_normals()
+        profile_normals = []
+        for i, segment in enumerate(self.segments):
+            normal = segment.get_normal(segment.y_start)
+            if i > 0:
+                previous = self.segments[i - 1]
+                previous_is_horizontal = np.isclose(previous.y_start, previous.y_end)
+                current_is_vertical = np.isclose(segment.r_start, segment.r_end)
+                at_tank_start = np.isclose(segment.y_start, self.y_start)
+                if previous_is_horizontal and current_is_vertical and at_tank_start:
+                    normal = previous.get_normal(previous.y_end)
+            profile_normals.append(normal)
+        profile_normals.append(self.segments[-1].get_normal(self.segments[-1].y_end))
         # Make sure the normals at start and outlet are vertical
         profile_normals.append(np.array([0, -1]))
         profile_normals[0] = np.array([0, 1])
