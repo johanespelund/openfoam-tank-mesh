@@ -185,9 +185,10 @@ def generate_points_and_lines(  # noqa: C901
                 p1 = find_point(pts[i])
                 p2 = find_point(pts[i + 1])
                 if isinstance(seg, EllipseArc):
-                    o = add_point(seg.get_origo()[0], seg.get_origo()[1], z0, lc)
+                    _origo = seg.get_origo()
+                    o = add_point(*seg.get_origo(), z0, lc)
                     gmsh.model.setEntityName(0, o, f"origo_{seg.name}")
-                    mp = add_point(0, seg.get_rmax(), z0, lc)
+                    mp = add_point(*seg.get_major_point(), z0, lc)
                     gmsh.model.setEntityName(0, mp, f"majorPoint_{seg.name}")
                     line = add_ellipse(p1, o, mp, p2)
                 elif isinstance(seg, LineSegment):

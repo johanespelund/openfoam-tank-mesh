@@ -17,6 +17,11 @@ class SegmentNotInitialized(RuntimeError):
         super().__init__("Segment not fully initialized.")
 
 
+class BoundaryLayerTooThick(RuntimeError):
+    def __init__(self) -> None:
+        super().__init__("Boundary layer too thick!")
+
+
 class SegmentsNotConnected(ValueError):
     def __init__(self, name1: str, name2: str) -> None:
         super().__init__(f"Segments {name1} and {name2} are not connected.")

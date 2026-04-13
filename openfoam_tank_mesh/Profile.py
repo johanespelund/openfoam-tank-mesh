@@ -9,7 +9,7 @@ import numpy as np
 import scipy.integrate as spi  # type: ignore[import-untyped]
 import scipy.optimize as spo  # type: ignore[import-untyped]
 
-from openfoam_tank_mesh.exceptions import OutOfRange, SegmentNotInitialized, SegmentsNotConnected
+from openfoam_tank_mesh.exceptions import BoundaryLayerTooThick, OutOfRange, SegmentNotInitialized, SegmentsNotConnected
 
 logger = logging.getLogger(__name__)
 
@@ -187,6 +187,9 @@ class EllipseArc(Segment):
 
     def get_rmax(self) -> float:
         return self.axis_major
+
+    def get_major_point(self) -> tuple[float, float]:
+        return (self.y_offset, self.axis_major)
 
     def get_radius(self, y: float) -> float:
         A, B = self.axis_major, self.axis_minor
@@ -549,7 +552,11 @@ class TankProfile(Profile):
         self.t_BL = t
         self.N = n
 
-        tol = min(5 * x_wall, 4 * x_bulk)
+        # Check that the boundary layer is not too large.
+        if 2 * self.t_BL > min(self.y_interface, self.y_outlet - self.y_interface):
+            raise BoundaryLayerTooThick()
+
+        tol = min(5 * x_wall, 2 * x_bulk)
         for offset in [t, -t, 0]:
             self.split_profile(self.y_interface + offset, tol=tol)
 
@@ -954,6 +961,7 @@ class CylinderCapsTankProfile(TankProfile):
         self.cap_height = cap_height
         self.cylinder_radius = cylinder_radius
         self.cylinder_height = cylinder_height
+        # self.plot()
 
 
 # FEET = 0.3048
