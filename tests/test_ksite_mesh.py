@@ -1,9 +1,11 @@
-import os
+import shutil
 
 import pytest
 
+HAS_OPENFOAM = shutil.which("simpleFoam") is not None
 
-@pytest.mark.skipif("CI" in os.environ, reason="OpenFOAM is not available in CI")
+
+@pytest.mark.skipif(not HAS_OPENFOAM, reason="OpenFOAM is not available")
 def test_ksite_mesh():
     from openfoam_tank_mesh.mesh_builders import KSiteMesh
 
@@ -17,7 +19,7 @@ def test_ksite_mesh():
             "tri_bulk": False,
             "outlet_radius": 0.0127,
             "internal_outlet": 0.0127 * 4,
-            "debug": True,
+            "debug": False,
             "revolve": 0,
             "n_revolve": 0,
             "n_wall_layers": 6,
