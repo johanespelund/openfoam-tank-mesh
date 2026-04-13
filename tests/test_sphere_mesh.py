@@ -21,7 +21,7 @@ def test_ksite_mesh():
             "debug": False,
             "revolve": 0,
             "n_revolve": 0,
-            "n_wall_layers": 6
+            "n_wall_layers": 6,
         }
     )
     mesh.generate()
