@@ -692,6 +692,7 @@ class TankProfile(Profile):
 
         # At sharp corners, offset-line intersection is needed to avoid collapsing
         # inner corner points back onto the outer wall.
+        corner_norm_tol = 1e-12
         for i in range(1, len(self.segments)):
             previous_segment = self.segments[i - 1]
             current_segment = self.segments[i]
@@ -705,7 +706,7 @@ class TankProfile(Profile):
 
             corner_normal = n_prev + n_curr
             corner_norm = np.linalg.norm(corner_normal)
-            if corner_norm <= 1e-12:
+            if corner_norm <= corner_norm_tol:
                 continue
 
             inner_points[i] = profile_points[i] + self.t_BL * corner_normal / corner_norm
