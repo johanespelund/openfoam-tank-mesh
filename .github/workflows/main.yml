@@ -45,7 +45,6 @@ jobs:
             command -v blockMesh
             command -v snappyHexMesh
 
-            # cd tests/
-            uv run python -m pytest -vv -ra tests/test_ksite_mesh.py tests/test_cylinder_caps_mesh.py
-            # cd -
+            cd tests/
+            uv run python -m pytest -vv -ra test_ksite_mesh.py test_cylinder_caps_mesh.py
           '
