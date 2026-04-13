@@ -1,0 +1,90 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  2.1.0                                 |
+|   \\  /    A nd           | Web:      www.OpenFOAM.org                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+  version     2.0;
+  format      ascii;
+  class       dictionary;
+  object      laplacianSmoothDict;
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+// Prevent moving points in the boundary normal direction, for points a distance from the boundaries.
+// Not working properly. Instead, refineWallLayer is used after smoothing.
+preserveBoundaryLayer -1;//#eval {2*$cell_size};
+boundaryNormalPatches ();
+iters 20;
+smoothFactor 1;
+
+#include "meshdata"
+
+constrainedPoints
+  (
+
+
+    {
+      type patch;
+      patch walls;
+      constraintType fixed;
+    }
+
+    {
+      type patch;
+      patch wall;
+      constraintType fixed;
+    }
+
+    {
+      type patch;
+      patch gas_to_liquid;
+      constraintType fixed;
+    }
+
+    {
+      type patch;
+      patch gas_to_metal;
+      constraintType fixed;
+    }
+
+    {
+      type patch;
+      patch liquid_to_metal;
+      constraintType fixed;
+    }
+
+    {
+      type patch;
+      patch metal_to_gas;
+      constraintType fixed;
+    }
+
+    {
+      type patch;
+      patch metal_to_liquid;
+      constraintType fixed;
+    }
+
+    {
+      type patch;
+      patch $patch_name_pos;
+      constraintType constDir;
+      direction $wedge_pos_normal;
+    }
+
+    {
+      type patch;
+      patch $patch_name_neg;
+      constraintType constDir;
+      direction $wedge_neg_normal;
+    }
+
+  );
+
+
+// ************************************************************************* //

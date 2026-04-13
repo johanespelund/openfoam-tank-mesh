@@ -1,0 +1,215 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                |
+| \\      /  F ield         | cfMesh: A library for mesh generation          |
+|  \\    /   O peration     |                                                |
+|   \\  /    A nd           | Author: Franjo Juretic                         |
+|    \\/     M anipulation  | E-mail: franjo.juretic@c-fields.com            |
+\*---------------------------------------------------------------------------*/
+
+FoamFile
+{
+  version   2.0;
+  format    ascii;
+  class     dictionary;
+  location  "system";
+  object    meshDict;
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+#include "meshdata"
+
+N 1;
+
+surfaceFile $surface_file;
+
+maxCellSize $bulk_cell_size;
+
+B $y_outlet;
+
+A $interface_radius;
+
+boundaryCellSize $maxCellSize;
+
+// minCellSize 0.015;
+
+localRefinement
+{
+  // ".*"
+  // {
+  //   additionalRefinementLevels 1;
+  // }
+  // pipe
+  // {
+  //   additionalRefinementLevels $N;
+  // }
+  bottom
+  {
+    // additionalRefinementLevels $N;
+    cellSize #eval {$wall_tan_cell_size};
+  }
+
+  walls
+  {
+    // additionalRefinementLevels $N;
+    cellSize #eval {$wall_tan_cell_size};
+    // refinementThickness #eval {3*$wall_tan_cell_size};
+  }
+  pipe
+  {
+    // additionalRefinementLevels $N;
+    cellSize #eval {min($wall_tan_cell_size, $outlet_radius/4)};
+    // refinementThickness #eval {3*$wall_tan_cell_size};
+  }
+  outlet
+  {
+    // additionalRefinementLevels #eval {$N + 0};
+    // cellSize $wall_tan_cell_size;
+    cellSize #eval {min($wall_tan_cell_size, $outlet_radius/4)};
+    // refinementThickness $bulk_cell_size;
+  }
+}
+//
+  objectRefinements
+{
+  // outlet
+  // {
+  //   // additionalRefinementLevels 3;
+  //   cellSize $wall_tan_cell_size;
+  //   type box;
+  //   centre (0 $B  0);
+  //   lengthX #eval {3*$outlet_radius};
+  //   lengthY #eval {6*$outlet_radius};
+  //   lengthZ #eval {3*$outlet_radius};
+  //   // radius 0.04;
+  // }
+  corner1
+  {
+    // additionalRefinementLevels 1;
+    cellSize #eval {2*$wall_tan_cell_size};
+    type hollowCone;
+    p0 (0 -1e6 0);
+    p1 (0 1e6 0);
+    radius0_Inner #eval {$A - 2*$bulk_cell_size};
+    radius1_Inner $radius0_Inner;
+    radius0_Outer 1e6;
+    radius1_Outer $radius0_Outer;
+  }
+  // corner2
+  // {
+  //   // additionalRefinementLevels $N;
+  //   cellSize #eval {$wall_tan_cell_size};
+  //   type hollowCone;
+  //   p0 (0 -1e6 0);
+  //   p1 (0 1e6 0);
+  //   radius0_Inner #eval {$A - 3*$outlet_radius};
+  //   radius1_Inner $radius0_Inner;
+  //   radius0_Outer 1e6;
+  //   radius1_Outer $radius0_Outer;
+  // }
+  // corner3
+  // {
+  //   // additionalRefinementLevels 1;
+  //   cellSize #eval {0.5*$wall_tan_cell_size};
+  //   type hollowCone;
+  //   p0 (0 $y_interface 0);
+  //   p1 (0 #eval {$y_interface + $wall_tan_cell_size} 0);
+  //   radius0_Inner #eval {$A - 1*$wall_tan_cell_size};
+  //   radius1_Inner $radius0_Inner;
+  //   radius0_Outer 1e6;
+  //   radius1_Outer $radius0_Outer;
+  // }
+  // cone1
+  // {
+  //   // additionalRefinementLevels 1;
+  //   cellSize #eval {$wall_tan_cell_size};
+  //   type cone;
+  //   p0 (0 #eval {$B - 3*$outlet_radius} 0);
+  //   p1 (0 1e6 0);
+  //   radius0 1e6;
+  //   radius1 1e6;
+  // }
+  // cone2
+  // {
+  //   // additionalRefinementLevels $N;
+  //   cellSize #eval {$wall_tan_cell_size};
+  //   type cone;
+  //   p0 (0 #eval {$B - 2*$wall_tan_cell_size} 0);
+  //   p1 (0 1e6 0);
+  //   radius0 1e6;
+  //   radius1 1e6;
+  // }
+  // axisLine
+  // {
+  //   type line;
+  //   cellSize $wall_tan_cell_size;
+  //   p0 (0 -1e6 0);
+  //   p1 (0 1e6 0);
+  //   // refinementThickness 0.02;
+  // }
+}
+
+// anisotropicSources
+// {
+//   outletBox
+//   {
+//     type box;
+//     centre (0 $R 0);
+//     lengthX 0.03;
+//     lengthY 0.01;
+//     lengthZ 0.03;
+//     scaleX 0.5;
+//     scaleZ 0.5;
+//     scaleY 1;
+//   }
+// }
+
+// renameBoundary
+// {
+//   // defaultName walls;
+//   // defaultType wall;
+//   newPatchNames
+//   {
+//     cyclic_neg
+//     {
+//       newName cyclic_neg_temp;
+//       type patch;
+//     }
+//     outlet
+//     {
+//       newName outlet;
+//       type patch;
+//     }
+//     cyclic_pos
+//     {
+//       newName cyclic_pos_temp;
+//       type patch;
+//     }
+//     bottom
+//     {
+//       newName bottom;
+//       type wall;
+//     }
+//     walls
+//     {
+//       newName walls;
+//       type wall;
+//     }
+//   }
+// }
+
+boundaryLayers
+{
+  patchBoundaryLayers
+  {
+    "(walls|bottom)"
+    {
+      nLayers 4;
+      thicknessRatio 1.2;
+      maxFirstLayerThickness 0.0015;
+      // allowDiscontinuity 0;
+    }
+  }
+}
+
+// ************************************************************************* //
