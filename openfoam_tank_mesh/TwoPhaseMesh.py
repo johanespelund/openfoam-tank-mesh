@@ -11,7 +11,13 @@ from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn, TimeEl
 
 from openfoam_tank_mesh.gmsh_scripts.stl import generate_3D_internal_outlet_stl, generate_3D_stl
 from openfoam_tank_mesh.gmsh_scripts.two_phase import run as run_gmsh
-from openfoam_tank_mesh.Profile import CylinderCapsTankProfile, KSiteProfile, SphereProfile, TankProfile
+from openfoam_tank_mesh.Profile import (
+    CylinderCapsTankProfile,
+    CylinderTankProfile,
+    KSiteProfile,
+    SphereProfile,
+    TankProfile,
+)
 from openfoam_tank_mesh.TwoPhaseTankMesh import OpenFoamMeshPipeline, console
 
 
@@ -470,6 +476,33 @@ class CylinderCapsMesh(GmshMeshPipeline):
     @property
     def parameters_path(self) -> str:
         return f"{pathlib.Path.cwd()}/parameters.CylinderCapsMesh"
+
+
+class CylinderMesh(GmshMeshPipeline):
+    """Two-phase mesh for a cylinder with flat top and bottom (no caps)."""
+
+    def _create_profile(self, input_parameters: dict) -> CylinderTankProfile:
+        if "cylinder_radius" not in input_parameters and "cylinder_diameter" not in input_parameters:
+            raise ValueError(  # noqa: TRY003
+                "CylinderMesh requires either 'cylinder_radius' or 'cylinder_diameter' in input_parameters."
+            )
+        return CylinderTankProfile(
+            cylinder_radius=input_parameters.get("cylinder_radius", 0),
+            cylinder_height=input_parameters["cylinder_height"],
+            fill_level=input_parameters["fill_level"],
+            outlet_radius=input_parameters["outlet_radius"],
+            bulk_cell_size=input_parameters["bulk_cell_size"],
+            wall_tan_cell_size=input_parameters["wall_tan_cell_size"],
+            wall_cell_size=input_parameters["wall_cell_size"],
+            r_BL=input_parameters["r_BL"],
+            internal_outlet=input_parameters["internal_outlet"],
+            cylinder_diameter=input_parameters.get("cylinder_diameter"),
+            wall_thickness=input_parameters.get("wall_thickness", 2.08e-3),
+        )
+
+    @property
+    def parameters_path(self) -> str:
+        return f"{pathlib.Path.cwd()}/parameters.CylinderMesh"
 
 
 # Backward-compatible alias

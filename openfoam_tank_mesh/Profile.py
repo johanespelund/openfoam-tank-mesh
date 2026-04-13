@@ -145,17 +145,33 @@ class LineSegment(Segment):
             raise SegmentNotInitialized()
         if y < self.y_start or y > self.y_end:
             raise OutOfRange(y)
+        if self.y_end == self.y_start:
+            return min(self.r_start, self.r_end)
         return self.r_start + (self.r_end - self.r_start) * (y - self.y_start) / (self.y_end - self.y_start)
 
     def get_radius_derivative(self, y: float) -> float:
         if self.r_start is None or self.r_end is None or self.y_start is None or self.y_end is None:
             raise SegmentNotInitialized()
+        if self.y_end == self.y_start:
+            return 0.0
         return (self.r_end - self.r_start) / (self.y_end - self.y_start)
 
     def get_length(self) -> float:
         if self.r_start is None or self.r_end is None or self.y_start is None or self.y_end is None:
             raise SegmentNotInitialized()
         return float(sqrt((self.r_end - self.r_start) ** 2 + (self.y_end - self.y_start) ** 2))
+
+    def get_tangent(self, y: float) -> np.ndarray:
+        if self.y_end == self.y_start:
+            direction = 1.0 if self.r_end >= self.r_start else -1.0
+            return np.array([direction, 0.0])
+        return super().get_tangent(y)
+
+    def get_normal(self, y: float) -> np.ndarray:
+        if self.y_end == self.y_start:
+            direction = 1.0 if self.r_end >= self.r_start else -1.0
+            return np.array([0.0, direction])
+        return super().get_normal(y)
 
 
 class EllipseArc(Segment):
@@ -359,8 +375,9 @@ class TankProfile(Profile):
         self.volume_liquid: float = self.get_partial_volume(self.y_start, self.y_interface)
         self.volume_gas: float = self.get_partial_volume(self.y_interface, self.y_end)
 
-        self.split_profile(self.y_outlet, tol=0.000)
-        self.segments.pop()
+        _lower, upper = self.split_profile(self.y_outlet, tol=0.000)
+        if upper is not None:
+            self.segments.remove(upper)
 
     def calculate_interface_position(self) -> float:
         """
@@ -453,8 +470,13 @@ class TankProfile(Profile):
         Go through the segments and split the one where the interface is located.
         """
 
+        segment_to_split: Segment | None = None
+        upper_segment: Segment | None = None
         for segment in self.segments:
             if segment.y_start <= y_split <= segment.y_end:
+                if np.isclose(y_split, segment.y_start) or np.isclose(y_split, segment.y_end):
+                    return segment, None
+                segment_to_split = segment
                 # Replace this segment with two segments of same type,
                 # meeting at the interface position.
                 y_start = segment.y_start
@@ -530,11 +552,14 @@ class TankProfile(Profile):
 
                 break
 
+        if segment_to_split is None or upper_segment is None:
+            raise OutOfRange(y_split)
+
         upper_segment.N = closest_even(upper_segment.get_length() / upper_segment.length_scale)
         lower_segment.N = closest_even(lower_segment.get_length() / lower_segment.length_scale)
 
         # Remove old segment and add new ones
-        self.segments.remove(segment)
+        self.segments.remove(segment_to_split)
         self.segments.append(lower_segment)
         self.segments.append(upper_segment)
         self.sort_segments()
@@ -664,6 +689,28 @@ class TankProfile(Profile):
         profile_normals[-2] = np.array([0, -1])
 
         inner_points = [p + n * self.t_BL for p, n in zip(profile_points, profile_normals, strict=True)]
+
+        # At sharp corners, offset-line intersection is needed to avoid collapsing
+        # inner corner points back onto the outer wall.
+        min_corner_normal_magnitude = 1e-12
+        parallel_normal_dot_product = 1.0
+        for i in range(1, len(self.segments)):
+            previous_segment = self.segments[i - 1]
+            current_segment = self.segments[i]
+            if not isinstance(previous_segment, LineSegment) or not isinstance(current_segment, LineSegment):
+                continue
+
+            n_prev = previous_segment.get_normal(previous_segment.y_end)
+            n_curr = current_segment.get_normal(current_segment.y_start)
+            if np.isclose(abs(np.dot(n_prev, n_curr)), parallel_normal_dot_product):
+                continue
+
+            corner_normal = n_prev + n_curr
+            corner_norm = np.linalg.norm(corner_normal)
+            if corner_norm <= min_corner_normal_magnitude:
+                continue
+
+            inner_points[i] = profile_points[i] + self.t_BL * corner_normal / corner_norm
 
         # Interface needs to be horizontal and held the same t_BL
         b = self.t_BL / profile_normals[i_interface][0]
@@ -962,6 +1009,122 @@ class CylinderCapsTankProfile(TankProfile):
         self.cylinder_radius = cylinder_radius
         self.cylinder_height = cylinder_height
         # self.plot()
+
+
+class CylinderTankProfile(TankProfile):
+    """Tank profile for a cylinder with flat top and bottom (no end caps)."""
+
+    def __init__(
+        self,
+        cylinder_radius: float,
+        cylinder_height: float,
+        fill_level: float,
+        outlet_radius: float,
+        bulk_cell_size: float,
+        wall_tan_cell_size: float,
+        wall_cell_size: float,
+        r_BL: float = 1.2,
+        internal_outlet: float = 0,
+        cylinder_diameter: float | None = None,
+        wall_thickness: float = 2.08e-3,
+    ) -> None:
+        if cylinder_diameter is not None:
+            cylinder_radius = cylinder_diameter / 2.0
+        if cylinder_height <= 0:
+            raise ValueError("cylinder_height must be > 0 for CylinderTankProfile.")  # noqa: TRY003
+        if outlet_radius <= 0 or outlet_radius >= cylinder_radius:
+            raise ValueError("outlet_radius must satisfy 0 < outlet_radius < cylinder_radius.")  # noqa: TRY003
+
+        _n_bl, t_bl_corner, _e_bl = calculate_boundary_layer(r_BL, wall_cell_size, wall_tan_cell_size)
+        corner_split_radius = cylinder_radius - t_bl_corner
+        split_corner_layers = outlet_radius < corner_split_radius < cylinder_radius
+
+        if split_corner_layers:
+            segments: list[Segment] = [
+                LineSegment(
+                    "line_bottom",
+                    0.0,
+                    0.0,
+                    0.0,
+                    corner_split_radius,
+                    length_scale=wall_tan_cell_size,
+                ),
+                LineSegment(
+                    "line_bottom_corner",
+                    0.0,
+                    0.0,
+                    corner_split_radius,
+                    cylinder_radius,
+                    length_scale=wall_tan_cell_size,
+                ),
+                LineSegment(
+                    "line_wall",
+                    0.0,
+                    cylinder_height,
+                    cylinder_radius,
+                    cylinder_radius,
+                    length_scale=wall_tan_cell_size,
+                ),
+                LineSegment(
+                    "line_top_corner",
+                    cylinder_height,
+                    cylinder_height,
+                    cylinder_radius,
+                    corner_split_radius,
+                    length_scale=wall_tan_cell_size,
+                ),
+                LineSegment(
+                    "line_top",
+                    cylinder_height,
+                    cylinder_height,
+                    corner_split_radius,
+                    outlet_radius,
+                    length_scale=wall_tan_cell_size,
+                ),
+            ]
+        else:
+            segments = [
+                LineSegment(
+                    "line_bottom",
+                    0.0,
+                    0.0,
+                    0.0,
+                    cylinder_radius,
+                    length_scale=wall_tan_cell_size,
+                ),
+                LineSegment(
+                    "line_wall",
+                    0.0,
+                    cylinder_height,
+                    cylinder_radius,
+                    cylinder_radius,
+                    length_scale=wall_tan_cell_size,
+                ),
+                LineSegment(
+                    "line_top",
+                    cylinder_height,
+                    cylinder_height,
+                    cylinder_radius,
+                    outlet_radius,
+                    length_scale=wall_tan_cell_size,
+                ),
+            ]
+
+        super().__init__(
+            segments=segments,
+            fill_level=fill_level,
+            outlet_radius=outlet_radius,
+            internal_outlet=internal_outlet,
+            wall_thickness=wall_thickness,
+        )
+        self.name = "Cylinder"
+        self.add_boundary_layers(x_wall=wall_cell_size, r_BL=r_BL)
+        self.cap_height = 0.0
+        self.cylinder_radius = cylinder_radius
+        self.cylinder_height = cylinder_height
+
+    def calculate_outlet_position(self) -> float:
+        return self.y_end
 
 
 # FEET = 0.3048

@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from openfoam_tank_mesh.Profile import CylinderCapsTankProfile, KSiteProfile, SphereProfile
+from openfoam_tank_mesh.Profile import CylinderCapsTankProfile, CylinderTankProfile, KSiteProfile, SphereProfile
 
 INCH = 0.0254
 KSITE_A = 0.5 * 73 * INCH  # cap height
@@ -214,3 +214,61 @@ def test_cylinder_caps_profile_wall_thickness_parameter():
     pts = p.get_mesh_points()
     offset = np.linalg.norm(pts.outer_points[0] - pts.wall_points[0])
     assert offset == pytest.approx(wall_thickness, rel=1e-6)
+
+
+@pytest.fixture
+def cylinder_profile():
+    return CylinderTankProfile(
+        cylinder_radius=0.5,
+        cylinder_height=1.2,
+        fill_level=0.4,
+        outlet_radius=0.05,
+        bulk_cell_size=0.05,
+        wall_tan_cell_size=0.01,
+        wall_cell_size=0.005,
+        r_BL=1.1,
+    )
+
+
+def test_cylinder_profile_dimensions(cylinder_profile):
+    assert cylinder_profile.cylinder_radius == pytest.approx(0.5)
+    assert cylinder_profile.cylinder_height == pytest.approx(1.2)
+    assert cylinder_profile.cap_height == pytest.approx(0.0)
+
+
+def test_cylinder_profile_flat_endpoints_and_sidewall(cylinder_profile):
+    eps = 1e-9
+    outer_points, _ = cylinder_profile.get_profile_points()
+    assert cylinder_profile.get_radius(cylinder_profile.y_start) == pytest.approx(0.0, abs=1e-9)
+    assert outer_points[-1][0] == pytest.approx(cylinder_profile.outlet_radius)
+    assert cylinder_profile.get_radius(cylinder_profile.y_end - eps) == pytest.approx(cylinder_profile.cylinder_radius)
+    assert cylinder_profile.get_radius(0.5 * cylinder_profile.y_end) == pytest.approx(cylinder_profile.cylinder_radius)
+
+
+def test_cylinder_profile_volume(cylinder_profile):
+    expected = np.pi * cylinder_profile.cylinder_radius**2 * cylinder_profile.cylinder_height
+    assert cylinder_profile.volume == pytest.approx(expected, rel=1e-6)
+
+
+def test_cylinder_profile_mesh_points_include_wall(cylinder_profile):
+    pts = cylinder_profile.get_mesh_points()
+    assert len(pts.outer_points) >= 4
+    assert len(pts.wall_points) == len(pts.outer_points)
+    assert np.isfinite(np.array(pts.outer_points)).all()
+
+
+def test_cylinder_profile_corner_boundary_layer_rectangles(cylinder_profile):
+    pts = cylinder_profile.get_mesh_points()
+    t_bl = cylinder_profile.t_BL
+    r = cylinder_profile.cylinder_radius
+    h = cylinder_profile.cylinder_height
+
+    corner_outer = np.array([r - t_bl, 0.0])
+    corner_outer_top = np.array([r - t_bl, h])
+    corner_inner = np.array([r - t_bl, t_bl])
+    corner_inner_top = np.array([r - t_bl, h - t_bl])
+
+    assert any(np.allclose(point, corner_outer) for point in pts.outer_points)
+    assert any(np.allclose(point, corner_outer_top) for point in pts.outer_points)
+    assert any(np.allclose(point, corner_inner) for point in pts.inner_points)
+    assert any(np.allclose(point, corner_inner_top) for point in pts.inner_points)

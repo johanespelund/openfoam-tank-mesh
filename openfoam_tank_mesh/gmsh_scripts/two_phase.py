@@ -84,6 +84,13 @@ def find_line(start: Any, end: Any, tol: float = 1e-6) -> int:
     return -1
 
 
+def add_curve_loop(lines: list[int]) -> int:
+    loops = gmsh.model.geo.addCurveLoops(lines)
+    if isinstance(loops, (list, tuple, np.ndarray)):
+        return int(loops[0])
+    return int(loops)
+
+
 def sort_xy(points: list[Any]) -> list[Any]:
     x = np.array([_point[0] for _point in points])
     y = np.array([_point[1] for _point in points])
@@ -332,8 +339,8 @@ def generate_points_and_lines(  # noqa: C901
     _points.append((0, tank_profile.y_interface - tank_profile.t_BL))
 
     _lines = [find_line(_points[i], _points[(i + 1) % len(_points)]) for i in range(len(_points))]
-    clLiquid = gmsh.model.geo.addCurveLoops(_lines)
-    sLiquid = gmsh.model.geo.addPlaneSurface(clLiquid)
+    clLiquid = add_curve_loop(_lines)
+    sLiquid = add_surface(clLiquid)
     line_groups["liquid"] = [abs(ln) for ln in _lines]
 
     ## GAS REGION
@@ -346,7 +353,7 @@ def generate_points_and_lines(  # noqa: C901
     _points.append((0, tank_profile.y_interface + tank_profile.t_BL))
 
     _lines = [find_line(_points[i], _points[(i + 1) % len(_points)]) for i in range(len(_points))]
-    clGas = int(gmsh.model.geo.addCurveLoops(_lines))
+    clGas = add_curve_loop(_lines)
     sGas = add_surface(clGas)
     line_groups["gas"] = [abs(ln) for ln in _lines]
 
@@ -358,8 +365,8 @@ def generate_points_and_lines(  # noqa: C901
 
     _points = sort_xy(_points)
     _lines = [find_line(_points[i], _points[(i + 1) % len(_points)]) for i in range(len(_points))]
-    clOuterLiquidBL = gmsh.model.geo.addCurveLoops(_lines)
-    sOuterLiquidBL = gmsh.model.geo.addPlaneSurface(clOuterLiquidBL)
+    clOuterLiquidBL = add_curve_loop(_lines)
+    sOuterLiquidBL = add_surface(clOuterLiquidBL)
 
     cornersOuterLiquidBL = [
         find_point(p)
@@ -380,8 +387,8 @@ def generate_points_and_lines(  # noqa: C901
 
     _points = sort_xy(_points)
     _lines = [find_line(_points[i], _points[(i + 1) % len(_points)]) for i in range(len(_points))]
-    clInnerLiquidBL = gmsh.model.geo.addCurveLoops(_lines)
-    sInnerLiquidBL = gmsh.model.geo.addPlaneSurface(clInnerLiquidBL)
+    clInnerLiquidBL = add_curve_loop(_lines)
+    sInnerLiquidBL = add_surface(clInnerLiquidBL)
     inner_lines.extend(_lines)
 
     cornersInnerLiquidBL = [
@@ -402,8 +409,8 @@ def generate_points_and_lines(  # noqa: C901
 
     _points = sort_xy(_points)
     _lines = [find_line(_points[i], _points[(i + 1) % len(_points)]) for i in range(len(_points))]
-    clOuterGasBL = gmsh.model.geo.addCurveLoops(_lines)
-    sOuterGasBL = gmsh.model.geo.addPlaneSurface(clOuterGasBL)
+    clOuterGasBL = add_curve_loop(_lines)
+    sOuterGasBL = add_surface(clOuterGasBL)
 
     cornersOuterGasBL = [
         find_point(p)
@@ -424,8 +431,8 @@ def generate_points_and_lines(  # noqa: C901
 
     _points = sort_xy(_points)
     _lines = [find_line(_points[i], _points[(i + 1) % len(_points)]) for i in range(len(_points))]
-    clInnerGasBL = gmsh.model.geo.addCurveLoops(_lines)
-    sInnerGasBL = gmsh.model.geo.addPlaneSurface(clInnerGasBL)
+    clInnerGasBL = add_curve_loop(_lines)
+    sInnerGasBL = add_surface(clInnerGasBL)
     inner_lines.extend(_lines)
 
     cornersInnerGasBL = [
@@ -445,8 +452,8 @@ def generate_points_and_lines(  # noqa: C901
     for i in reversed(range(i_bl_upper, len(inner_points) - 1)):
         _points.append(inner_points[i])
     _lines = [find_line(_points[i], _points[(i + 1) % len(_points)]) for i in range(len(_points))]
-    clGasWall = gmsh.model.geo.addCurveLoops(_lines)
-    sGasWall = gmsh.model.geo.addPlaneSurface(clGasWall)
+    clGasWall = add_curve_loop(_lines)
+    sGasWall = add_surface(clGasWall)
     cornersGasWall = [
         find_point(p)
         for p in [
@@ -467,8 +474,8 @@ def generate_points_and_lines(  # noqa: C901
     # TODO: Sort function not working when mass center is outside surface!
 
     _lines = [find_line(_points[i], _points[(i + 1) % len(_points)]) for i in range(len(_points))]
-    clLiquidWall = gmsh.model.geo.addCurveLoops(_lines)
-    sLiquidWall = gmsh.model.geo.addPlaneSurface(clLiquidWall)
+    clLiquidWall = add_curve_loop(_lines)
+    sLiquidWall = add_surface(clLiquidWall)
     cornersLiquidWall = [
         find_point(p)
         for p in [
@@ -488,8 +495,8 @@ def generate_points_and_lines(  # noqa: C901
     ]
     _points = sort_xy(_points)
     _lines = [find_line(_points[i], _points[(i + 1) % len(_points)]) for i in range(len(_points))]
-    clInternalOutlet = gmsh.model.geo.addCurveLoops(_lines)
-    sInternalOutlet = gmsh.model.geo.addPlaneSurface(clInternalOutlet)
+    clInternalOutlet = add_curve_loop(_lines)
+    sInternalOutlet = add_surface(clInternalOutlet)
 
     ## OUTLET
     _points = [
@@ -500,8 +507,8 @@ def generate_points_and_lines(  # noqa: C901
     ]
     _points = sort_xy(_points)
     _lines = [find_line(_points[i], _points[(i + 1) % len(_points)]) for i in range(len(_points))]
-    clOutlet = gmsh.model.geo.addCurveLoops(_lines)
-    sOutlet = gmsh.model.geo.addPlaneSurface(clOutlet)
+    clOutlet = add_curve_loop(_lines)
+    sOutlet = add_surface(clOutlet)
 
     ## WALL REGION
     _points = []
@@ -512,8 +519,8 @@ def generate_points_and_lines(  # noqa: C901
         _points.append(outer_points[i])
 
     _lines = [find_line(_points[i], _points[(i + 1) % len(_points)]) for i in range(len(_points))]
-    clWall = gmsh.model.geo.addCurveLoops(_lines)
-    sWall = gmsh.model.geo.addPlaneSurface(clWall)
+    clWall = add_curve_loop(_lines)
+    sWall = add_surface(clWall)
     cornersWall = [find_point(p) for p in [outer_points[0], wall_points[0], wall_points[-1], outer_points[-1]]]
 
     gmsh.model.geo.synchronize()
