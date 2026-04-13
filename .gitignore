@@ -7,11 +7,17 @@ log.*
 *.foam
 *.stl
 *.obj
+*.eMesh
+*.extendedFeatureEdgeMesh
 parameters.*
 
-tests/constant
-tests/0
+tests/constant/**/polyMesh
+# tests/0
 tests/system
+!tests/system/*Dict
+!tests/system/fv*
+cellToRegion
+dynamicCode
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

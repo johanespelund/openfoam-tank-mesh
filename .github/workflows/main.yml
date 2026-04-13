@@ -47,5 +47,7 @@ jobs:
 
             cd tests/
             echo "Current dir: $(pwd)"
+            echo "Content of current dir:"
+            ls 
             uv run python -m pytest -vv -ra test_ksite_mesh.py test_cylinder_caps_mesh.py
           '
