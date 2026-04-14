@@ -189,7 +189,7 @@ class EllipseArc(Segment):
         return self.axis_major
 
     def get_major_point(self) -> tuple[float, float]:
-        return (self.y_offset, self.axis_major)
+        return (0, self.axis_major)
 
     def get_radius(self, y: float) -> float:
         A, B = self.axis_major, self.axis_minor
