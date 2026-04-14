@@ -10,9 +10,9 @@ _MESH_PARAMS = {
     "cylinder_radius": 1.0,
     "cylinder_height": 0.5,
     "cap_height": 0.5,
-    "fill_level": 0.9,
-    "wall_cell_size": 5.0e-3,
-    "wall_tan_cell_size": 10.0e-3,
+    "fill_level": 0.95,
+    "wall_cell_size": 2.0e-3,
+    "wall_tan_cell_size": 5.0e-3,
     "bulk_cell_size": 25e-3,
     "r_BL": 1.10,
     "tri_bulk": False,
@@ -24,7 +24,8 @@ _MESH_PARAMS = {
     "n_wall_layers": 6,
     "wall_thickness": 1e-2,
     "VoF": False,
-    "smoothing": False,
+    "smoothing": True,
+    "symmetry": True,
 }
 
 
