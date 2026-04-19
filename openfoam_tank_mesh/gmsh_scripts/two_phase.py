@@ -19,6 +19,7 @@ from openfoam_tank_mesh.Profile import EllipseArc, LineSegment, PointCoords, Tan
 from openfoam_tank_mesh.TwoPhaseTankMesh import OpenFoamMeshPipeline
 
 logger = logging.getLogger(__name__)
+MIN_TRANSFINITE_DISTANCE = 1.0
 
 
 def get_coords(pointID: int) -> tuple[float, float]:
@@ -153,7 +154,7 @@ def split_surface_with_center(
         ln = add_line(center, point_id)
         center_lines[idx] = ln
         d = np.linalg.norm(np.array((center_x, center_y)) - np.array(points[idx][:2]))
-        gmsh.model.geo.mesh.setTransfiniteCurve(ln, closest_odd(max(1.0, d / lc)))
+        gmsh.model.geo.mesh.setTransfiniteCurve(ln, closest_odd(max(MIN_TRANSFINITE_DISTANCE, d / lc)))
 
     surfaces: list[int] = []
     n_lines = len(lines)
@@ -166,8 +167,8 @@ def split_surface_with_center(
             k = (k + 1) % n_lines
 
         loop_lines = [*boundary_lines, -center_lines[i1], center_lines[i0]]
-        loop = gmsh.model.geo.addCurveLoops(loop_lines)
-        surface = gmsh.model.geo.addPlaneSurface(loop)
+        loop = gmsh.model.geo.addCurveLoop(loop_lines)
+        surface = gmsh.model.geo.addPlaneSurface([loop])
 
         corner_ids = [find_point(points[i0]), find_point(points[i1]), center]
         gmsh.model.geo.mesh.setTransfiniteSurface(surface, "Left", corner_ids)
