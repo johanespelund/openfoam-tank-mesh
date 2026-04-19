@@ -113,6 +113,69 @@ def sort_xy(points: list[Any]) -> list[Any]:
     return _points
 
 
+def split_surface_with_center(
+    points: list[Any],
+    lines: list[int],
+    corner_points: list[tuple[float, float]],
+    lc: float,
+) -> list[int]:
+    """
+    Split a closed surface into three transfinite sub-surfaces by adding a center point.
+    """
+    corner_indices: list[int] = []
+    for cp in corner_points:
+        idx = next(
+            (
+                i
+                for i, pt in enumerate(points)
+                if np.allclose((pt[0], pt[1]), (cp[0], cp[1]), atol=1e-9)
+            ),
+            -1,
+        )
+        if idx < 0:
+            return []
+        corner_indices.append(idx)
+
+    if len(set(corner_indices)) != 3:
+        return []
+
+    corner_indices = sorted(corner_indices)
+
+    center_x = float(np.mean([points[i][0] for i in corner_indices]))
+    center_y = float(np.mean([points[i][1] for i in corner_indices]))
+    center = add_point(center_x, center_y, 0, lc)
+
+    center_lines: dict[int, int] = {}
+    for idx in corner_indices:
+        point_id = find_point(points[idx])
+        if point_id < 0:
+            return []
+        ln = add_line(center, point_id)
+        center_lines[idx] = ln
+        d = np.linalg.norm(np.array((center_x, center_y)) - np.array(points[idx][:2]))
+        gmsh.model.geo.mesh.setTransfiniteCurve(ln, closest_odd(max(1.0, d / lc)))
+
+    surfaces: list[int] = []
+    n_lines = len(lines)
+    for i, i0 in enumerate(corner_indices):
+        i1 = corner_indices[(i + 1) % len(corner_indices)]
+        boundary_lines: list[int] = []
+        k = i0
+        while k != i1:
+            boundary_lines.append(lines[k])
+            k = (k + 1) % n_lines
+
+        loop_lines = [*boundary_lines, -center_lines[i1], center_lines[i0]]
+        loop = gmsh.model.geo.addCurveLoops(loop_lines)
+        surface = gmsh.model.geo.addPlaneSurface(loop)
+
+        corner_ids = [find_point(points[i0]), find_point(points[i1]), center]
+        gmsh.model.geo.mesh.setTransfiniteSurface(surface, "Left", corner_ids)
+        surfaces.append(surface)
+
+    return surfaces
+
+
 def run(mesh: OpenFoamMeshPipeline) -> None:
     debug = mesh.debug
 
@@ -160,6 +223,7 @@ def generate_points_and_lines(  # noqa: C901
     i_bl_lower = point_coords.i_bl_lower
     i_bl_upper = point_coords.i_bl_upper
     y_int_outlet = point_coords.y_int_outlet
+    split_non_bl_caps = bool(getattr(mesh, "transfinite_non_bl_caps", False))
 
     for k, v in point_coords.points.items():
         p[k] = add_point(v[0], v[1], z0, lc)
@@ -332,8 +396,20 @@ def generate_points_and_lines(  # noqa: C901
     _points.append((0, tank_profile.y_interface - tank_profile.t_BL))
 
     _lines = [find_line(_points[i], _points[(i + 1) % len(_points)]) for i in range(len(_points))]
-    clLiquid = gmsh.model.geo.addCurveLoops(_lines)
-    sLiquid = gmsh.model.geo.addPlaneSurface(clLiquid)
+    liquid_surfaces: list[int]
+    if split_non_bl_caps:
+        liquid_corners = [
+            inner_points[0],
+            inner_points[i_bl_lower],
+            (0, tank_profile.y_interface - tank_profile.t_BL),
+        ]
+        liquid_surfaces = split_surface_with_center(_points, _lines, liquid_corners, lc)
+        if not liquid_surfaces:
+            clLiquid = gmsh.model.geo.addCurveLoops(_lines)
+            liquid_surfaces = [gmsh.model.geo.addPlaneSurface(clLiquid)]
+    else:
+        clLiquid = gmsh.model.geo.addCurveLoops(_lines)
+        liquid_surfaces = [gmsh.model.geo.addPlaneSurface(clLiquid)]
     line_groups["liquid"] = [abs(ln) for ln in _lines]
 
     ## GAS REGION
@@ -346,8 +422,20 @@ def generate_points_and_lines(  # noqa: C901
     _points.append((0, tank_profile.y_interface + tank_profile.t_BL))
 
     _lines = [find_line(_points[i], _points[(i + 1) % len(_points)]) for i in range(len(_points))]
-    clGas = int(gmsh.model.geo.addCurveLoops(_lines))
-    sGas = add_surface(clGas)
+    gas_surfaces: list[int]
+    if split_non_bl_caps:
+        gas_corners = [
+            inner_points[i_bl_upper],
+            inner_points[-2],
+            (0, tank_profile.y_interface + tank_profile.t_BL),
+        ]
+        gas_surfaces = split_surface_with_center(_points, _lines, gas_corners, lc)
+        if not gas_surfaces:
+            clGas = int(gmsh.model.geo.addCurveLoops(_lines))
+            gas_surfaces = [add_surface(clGas)]
+    else:
+        clGas = int(gmsh.model.geo.addCurveLoops(_lines))
+        gas_surfaces = [add_surface(clGas)]
     line_groups["gas"] = [abs(ln) for ln in _lines]
 
     ## OUTER LIQUID BOUNDARY LAYER
@@ -528,6 +616,7 @@ def generate_points_and_lines(  # noqa: C901
     gmsh.model.geo.mesh.setTransfiniteSurface(sOutlet, "Left")
     gmsh.model.geo.mesh.setTransfiniteSurface(sWall, "Left", cornersWall)
 
+    non_bl_surfaces = [*gas_surfaces, *liquid_surfaces]
     for s in [
         sOuterLiquidBL,
         sOuterGasBL,
@@ -538,8 +627,7 @@ def generate_points_and_lines(  # noqa: C901
         sInternalOutlet,
         sOutlet,
         sWall,
-        sGas,
-        sLiquid,
+        *non_bl_surfaces,
     ]:
         gmsh.model.geo.mesh.setRecombine(2, s)
     gmsh.option.setNumber("Mesh.Algorithm", 8)  # 5 or 6
@@ -550,7 +638,7 @@ def generate_points_and_lines(  # noqa: C901
 
     # Treat curves 2, 3 and 4 as a single curve when meshing (i.e. mesh across
     # points 6 and 7)
-    gmsh.model.mesh.setCompound(1, [sGas, sOutlet, sInternalOutlet, sInnerGasBL, sOuterGasBL])
+    gmsh.model.mesh.setCompound(1, [*gas_surfaces, sOutlet, sInternalOutlet, sInnerGasBL, sOuterGasBL])
 
     gmsh.model.geo.synchronize()
     _points = []
@@ -614,8 +702,8 @@ def generate_points_and_lines(  # noqa: C901
         raise
 
     regionSurfaces = {
-        "gas": [sGas, sOuterGasBL, sInnerGasBL, sGasWall, sOutlet, sInternalOutlet],
-        "liquid": [sLiquid, sOuterLiquidBL, sInnerLiquidBL, sLiquidWall],
+        "gas": [*gas_surfaces, sOuterGasBL, sInnerGasBL, sGasWall, sOutlet, sInternalOutlet],
+        "liquid": [*liquid_surfaces, sOuterLiquidBL, sInnerLiquidBL, sLiquidWall],
         "metal": [sWall],
     }
 

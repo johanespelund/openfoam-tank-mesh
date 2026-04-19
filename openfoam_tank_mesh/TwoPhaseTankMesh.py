@@ -134,6 +134,7 @@ class OpenFoamMeshPipeline(ABC):
         self.mirror: bool = False  # Mirror the mesh about the symmetry axis (requires empty_2d=True)
         self.extrude_cylinder: float = 0  # Extrude in z to create 3D cylinder (requires empty_2d=True)
         self.smoothing: bool = False  # Run laplacianMeshSmoother after splitMeshRegions
+        self.transfinite_non_bl_caps: bool = False  # Split non-BL cap surfaces for transfinite meshing
 
         if self.VoF:
             self.regions.remove("liquid")
