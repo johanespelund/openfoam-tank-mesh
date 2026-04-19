@@ -20,6 +20,7 @@ from openfoam_tank_mesh.TwoPhaseTankMesh import OpenFoamMeshPipeline
 
 logger = logging.getLogger(__name__)
 MIN_TRANSFINITE_DIVISIONS = 1
+NUM_CAP_CORNERS = 3
 
 
 def get_coords(pointID: int) -> tuple[float, float]:
@@ -122,6 +123,22 @@ def split_surface_with_center(
 ) -> list[int]:
     """
     Split a closed surface into three transfinite sub-surfaces by adding a center point.
+
+    Parameters
+    ----------
+    points:
+        Ordered boundary points describing one closed surface loop.
+    lines:
+        Ordered curve tags connecting ``points[i] -> points[(i+1) % n]``.
+    corner_points:
+        Three existing boundary points used as split anchors.
+    lc:
+        Local characteristic length used to set transfinite resolution on new center lines.
+
+    Returns
+    -------
+    list[int]
+        Surface tags for the generated split sub-surfaces, or an empty list if splitting fails.
     """
     corner_indices: list[int] = []
     for corner_idx, cp in enumerate(corner_points):
@@ -143,7 +160,7 @@ def split_surface_with_center(
             return []
         corner_indices.append(idx)
 
-    if len(set(corner_indices)) != 3:
+    if len(set(corner_indices)) != NUM_CAP_CORNERS:
         logger.warning("Could not split non-BL cap surface: corner points must be unique, got %s.", corner_indices)
         return []
 
