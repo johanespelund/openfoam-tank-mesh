@@ -19,7 +19,7 @@ from openfoam_tank_mesh.Profile import EllipseArc, LineSegment, PointCoords, Tan
 from openfoam_tank_mesh.TwoPhaseTankMesh import OpenFoamMeshPipeline
 
 logger = logging.getLogger(__name__)
-MIN_TRANSFINITE_DISTANCE = 1.0
+MIN_TRANSFINITE_DIVISIONS = 1.0
 
 
 def get_coords(pointID: int) -> tuple[float, float]:
@@ -134,10 +134,12 @@ def split_surface_with_center(
             -1,
         )
         if idx < 0:
+            logger.warning("Could not split non-BL cap surface: corner point %s not found in surface boundary points.", cp)
             return []
         corner_indices.append(idx)
 
     if len(set(corner_indices)) != 3:
+        logger.warning("Could not split non-BL cap surface: corner points must be unique, got %s.", corner_indices)
         return []
 
     corner_indices = sorted(corner_indices)
@@ -150,11 +152,15 @@ def split_surface_with_center(
     for idx in corner_indices:
         point_id = find_point(points[idx])
         if point_id < 0:
+            logger.warning("Could not split non-BL cap surface: gmsh point for boundary index %d was not found.", idx)
             return []
         ln = add_line(center, point_id)
         center_lines[idx] = ln
-        d = np.linalg.norm(np.array((center_x, center_y)) - np.array(points[idx][:2]))
-        gmsh.model.geo.mesh.setTransfiniteCurve(ln, closest_odd(max(MIN_TRANSFINITE_DISTANCE, d / lc)))
+        distance = np.linalg.norm(np.array((center_x, center_y)) - np.array(points[idx][:2]))
+        gmsh.model.geo.mesh.setTransfiniteCurve(
+            ln,
+            closest_odd(max(MIN_TRANSFINITE_DIVISIONS, distance / lc)),
+        )
 
     surfaces: list[int] = []
     n_lines = len(lines)
