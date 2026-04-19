@@ -19,7 +19,7 @@ from openfoam_tank_mesh.Profile import EllipseArc, LineSegment, PointCoords, Tan
 from openfoam_tank_mesh.TwoPhaseTankMesh import OpenFoamMeshPipeline
 
 logger = logging.getLogger(__name__)
-MIN_TRANSFINITE_DIVISIONS = 1.0
+MIN_TRANSFINITE_DIVISIONS = 1
 
 
 def get_coords(pointID: int) -> tuple[float, float]:
@@ -124,7 +124,7 @@ def split_surface_with_center(
     Split a closed surface into three transfinite sub-surfaces by adding a center point.
     """
     corner_indices: list[int] = []
-    for cp in corner_points:
+    for corner_idx, cp in enumerate(corner_points):
         idx = next(
             (
                 i
@@ -134,7 +134,12 @@ def split_surface_with_center(
             -1,
         )
         if idx < 0:
-            logger.warning("Could not split non-BL cap surface: corner point %s not found in surface boundary points.", cp)
+            logger.warning(
+                "Could not split non-BL cap surface: corner point #%d (%s) not found in %d boundary points.",
+                corner_idx,
+                cp,
+                len(points),
+            )
             return []
         corner_indices.append(idx)
 
@@ -144,15 +149,18 @@ def split_surface_with_center(
 
     corner_indices = sorted(corner_indices)
 
-    center_x = float(np.mean([points[i][0] for i in corner_indices]))
-    center_y = float(np.mean([points[i][1] for i in corner_indices]))
+    corner_xy = np.array([[points[i][0], points[i][1]] for i in corner_indices], dtype=float)
+    center_x, center_y = np.mean(corner_xy, axis=0)
     center = add_point(center_x, center_y, 0, lc)
 
     center_lines: dict[int, int] = {}
     for idx in corner_indices:
         point_id = find_point(points[idx])
         if point_id < 0:
-            logger.warning("Could not split non-BL cap surface: gmsh point for boundary index %d was not found.", idx)
+            logger.warning(
+                "Could not split non-BL cap surface: no gmsh point ID was found for corner at boundary index %d.",
+                idx,
+            )
             return []
         ln = add_line(center, point_id)
         center_lines[idx] = ln
