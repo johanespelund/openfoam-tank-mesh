@@ -380,9 +380,12 @@ class KSiteMesh(GmshMeshPipeline):
     def _do_lid_split(self) -> None:
         """K-Site lid split using a truncated cone for precise boundary positioning.
 
-        The truncated cone is constructed from the surface normal at the lid
-        y-position (``self.tank.y_lid``) so the split aligns with the curved
-        tank wall rather than a flat horizontal plane.
+        The K-Site profile exposes ``self.tank.y_lid`` and ``self.tank.r_lid``
+        (the y-position and radius of the lid boundary on the tank wall).  A
+        truncated cone is constructed around the surface normal at ``y_lid`` so
+        the cell-zone split aligns with the curved wall rather than a flat
+        horizontal plane.  The mesh parameter ``self.lid`` should be set to the
+        same value as ``self.tank.y_lid`` when using this mesh class.
         """
         y = self.tank.y_lid  # type: ignore[attr-defined]
         r = self.tank.r_lid  # type: ignore[attr-defined]
