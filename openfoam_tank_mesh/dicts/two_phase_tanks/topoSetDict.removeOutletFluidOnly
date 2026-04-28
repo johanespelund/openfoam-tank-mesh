@@ -41,7 +41,7 @@ actions
   action delete;
   name cellsToKeep;
   type cellSet;
-  source cellZoneToCell;
+  source zoneToCell;
   zone metal;
 }
 
