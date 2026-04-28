@@ -114,7 +114,7 @@ class GmshMeshPipeline(OpenFoamMeshPipeline):
         to use a different topoSet for the splitting step, or override this
         method entirely to add extra operations.
         """
-        if self.lid > 0:
+        if self.has_lid:
             self.regions.append("lid")
             self.write_mesh_parameters()
             self._do_lid_split()
@@ -362,7 +362,7 @@ class KSiteMesh(GmshMeshPipeline):
                 n = np.array([n[0], n[1], 0])
                 tr, ty = n[1], -n[0]
                 topodict = self.dict("topoSetDict.obstacle")
-                region = "lid" if self.lid > 0 else "metal"
+                region = "lid" if self.has_lid else "metal"
                 self.sed("^obstacleRegion .*;", f"obstacleRegion {region};", topodict)
 
                 origin = np.array([r, y, -1e6]) - n * 5 * h

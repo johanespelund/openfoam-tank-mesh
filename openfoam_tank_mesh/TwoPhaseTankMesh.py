@@ -143,9 +143,9 @@ class OpenFoamMeshPipeline(ABC):
         # self.check_openfoam_loaded(version="org")
         self.validate_parameters(input_parameters)
         self.set_parameters(input_parameters)
-        if self.internal_outlet > 0 and "wall_mesh_outlet" in input_parameters and self.wall_mesh_outlet:
-            raise WallMeshOutletRequiresNoInternalOutlet()
         if self.internal_outlet > 0:
+            if "wall_mesh_outlet" in input_parameters and self.wall_mesh_outlet:
+                raise WallMeshOutletRequiresNoInternalOutlet()
             self.wall_mesh_outlet = False
         if self.mirror and not self.empty_2d:
             raise MirrorRequiresEmpty2D()
@@ -159,6 +159,15 @@ class OpenFoamMeshPipeline(ABC):
         super().__init__()
         self.cyclic = not self.symmetry
         self.write_mesh_parameters()
+
+    @property
+    def has_lid(self) -> bool:
+        """``True`` when the metal region should be split into lid and metal zones.
+
+        Equivalent to ``self.lid > 0``.  Use this property instead of the
+        raw comparison for readability.
+        """
+        return self.lid > 0
 
     @property
     @abstractmethod
