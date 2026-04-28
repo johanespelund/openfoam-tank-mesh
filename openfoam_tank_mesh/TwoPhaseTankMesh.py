@@ -143,9 +143,9 @@ class OpenFoamMeshPipeline(ABC):
         # self.check_openfoam_loaded(version="org")
         self.validate_parameters(input_parameters)
         self.set_parameters(input_parameters)
+        if self.internal_outlet > 0 and "wall_mesh_outlet" in input_parameters and self.wall_mesh_outlet:
+            raise WallMeshOutletRequiresNoInternalOutlet()
         if self.internal_outlet > 0:
-            if "wall_mesh_outlet" in input_parameters and self.wall_mesh_outlet:
-                raise WallMeshOutletRequiresNoInternalOutlet()
             self.wall_mesh_outlet = False
         if self.mirror and not self.empty_2d:
             raise MirrorRequiresEmpty2D()

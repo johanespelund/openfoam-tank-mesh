@@ -24,7 +24,8 @@ FoamFile
 actions
 (
 
-// All cells inside the outlet cylinder
+// All cells inside the outlet cylinder (1e6 ensures the cylinder extends
+// well beyond the top of the mesh)
 {
   action new;
   name cellsToKeep;
