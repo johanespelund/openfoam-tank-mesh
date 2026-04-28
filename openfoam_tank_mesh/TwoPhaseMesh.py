@@ -110,13 +110,24 @@ class GmshMeshPipeline(OpenFoamMeshPipeline):
 
         When ``lid > 0`` the metal region is split into two cell zones at
         ``y = lid``: the upper part becomes ``"lid"`` and the lower part
-        remains ``"metal"``.  Subclasses may override this hook to perform
-        additional or alternative operations.
+        remains ``"metal"``.  Subclasses may override :meth:`_do_lid_split`
+        to use a different topoSet for the splitting step, or override this
+        method entirely to add extra operations.
         """
         if self.lid > 0:
             self.regions.append("lid")
             self.write_mesh_parameters()
-            self.run_openfoam_utility("topoSet", "topoSetDict.splitMetalAtYLid")
+            self._do_lid_split()
+
+    def _do_lid_split(self) -> None:
+        """Run the topoSet that splits the metal region at ``y = lid``.
+
+        The default implementation uses a box-based selection at ``$lid``
+        (see ``topoSetDict.splitMetalAtYLid``).  Subclasses may override
+        this method to use a geometry-specific approach (e.g. a truncated
+        cone for the K-Site tank).
+        """
+        self.run_openfoam_utility("topoSet", "topoSetDict.splitMetalAtYLid")
 
     # ------------------------------------------------------------------
     # Mesh-generation pipeline
@@ -310,33 +321,19 @@ class KSiteMesh(GmshMeshPipeline):
         )
 
     def _pre_split_setup(self) -> None:
-        """K-Site-specific obstacle and lid extrusion before ``splitMeshRegions``."""
+        """K-Site-specific obstacle and lid extrusion before ``splitMeshRegions``.
+
+        Calls the base-class :meth:`~GmshMeshPipeline._pre_split_setup` for
+        lid region bookkeeping (``regions.append("lid")`` etc.) while the
+        actual topoSet splitting is delegated to :meth:`_do_lid_split`.
+        """
         if self.obstacle:
             self.add_wall_thickness("region0", "walls", [(1.849, 1e6)], [self.wall_thickness])
             self.add_wall_thickness("region0", "walls", [(1.859, 1e6)], [10e-3 - self.wall_thickness])
             self.add_wall_thickness("region0", "walls", [(0.9136, 0.9605)], [self.wall_thickness])
 
-        if self.lid > 0:
-            self.regions.append("lid")
-            self.write_mesh_parameters()
-
-            y = self.tank.y_lid  # type: ignore[attr-defined]
-            r = self.tank.r_lid  # type: ignore[attr-defined]
-            nx, ny = self.tank.get_normal(y)
-            r1, y1 = r - nx / 4, y - ny / 4
-            r2, y2 = r + nx, y + ny
-            y_duct = y - ny * self.wall_thickness
-
-            topodict = self.dict("topoSetDict.splitMetalRegions")
-            self.sed("radius1 .*;", f"radius1 {r1:.4f};", topodict)
-            self.sed("radius2 .*;", f"radius2 {r2:.4f};", topodict)
-            self.sed("point1 .*;", f"point1 (0 {y1:.4f} 0);", topodict)
-            self.sed("point2 .*;", f"point2 (0 {y2:.4f} 0);", topodict)
-
-            topodict = self.dict("topoSetDict.metal_patches")
-            self.sed("p2 .*;", f"p2 (0 {y_duct:.4f} 0);", topodict)
-
-            self.run_openfoam_utility("topoSet", "topoSetDict.splitMetalRegions")
+        # Delegates lid region setup + _do_lid_split() to the base class.
+        super()._pre_split_setup()
 
         # Build the ring of y/r/w/h values used by the obstacle extrusion.
         ys = [self.tank.y_lid]  # type: ignore[attr-defined]
@@ -380,7 +377,32 @@ class KSiteMesh(GmshMeshPipeline):
 
                 self.run_openfoam_utility("topoSet", "topoSetDict.obstacle")
 
-    # -- overrides ------------------------------------------------------
+    def _do_lid_split(self) -> None:
+        """K-Site lid split using a truncated cone for precise boundary positioning.
+
+        The truncated cone is constructed from the surface normal at the lid
+        y-position (``self.tank.y_lid``) so the split aligns with the curved
+        tank wall rather than a flat horizontal plane.
+        """
+        y = self.tank.y_lid  # type: ignore[attr-defined]
+        r = self.tank.r_lid  # type: ignore[attr-defined]
+        nx, ny = self.tank.get_normal(y)
+        r1, y1 = r - nx / 4, y - ny / 4
+        r2, y2 = r + nx, y + ny
+        y_duct = y - ny * self.wall_thickness
+
+        topodict = self.dict("topoSetDict.splitMetalRegions")
+        self.sed("radius1 .*;", f"radius1 {r1:.4f};", topodict)
+        self.sed("radius2 .*;", f"radius2 {r2:.4f};", topodict)
+        self.sed("point1 .*;", f"point1 (0 {y1:.4f} 0);", topodict)
+        self.sed("point2 .*;", f"point2 (0 {y2:.4f} 0);", topodict)
+
+        topodict = self.dict("topoSetDict.metal_patches")
+        self.sed("p2 .*;", f"p2 (0 {y_duct:.4f} 0);", topodict)
+
+        self.run_openfoam_utility("topoSet", "topoSetDict.splitMetalRegions")
+
+
 
     def generate(self) -> None:
         """K-Site generation: verify OpenFOAM is loaded, then run the standard pipeline."""
