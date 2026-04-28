@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from openfoam_tank_mesh.exceptions import CommandFailed, MissingParameter, WallMeshOutletRequiresNoInternalOutlet
+from openfoam_tank_mesh.exceptions import CommandFailed, LidAboveOrAtOutlet, LidNotAFloat, MissingParameter, WallMeshOutletRequiresNoInternalOutlet
 from openfoam_tank_mesh.mesh_pipeline import OpenFoamMeshPipeline
 
 
@@ -130,9 +130,9 @@ def test_lid_defaults_to_zero(tmp_path):
 
 def test_lid_positive_float(tmp_path):
     """lid > 0 should be accepted as the y-position of the lid boundary."""
-    params = {**_valid_parameters(), "lid": 1.5}
+    params = {**_valid_parameters(), "lid": 0.05}
     mesh = _DummyPipeline(params, str(tmp_path / "parameters"), str(tmp_path / "dicts"))
-    assert mesh.lid == 1.5
+    assert mesh.lid == 0.05
     assert mesh.has_lid is True
 
 
@@ -170,8 +170,36 @@ def test_lid_written_to_parameters_file_on_init_default(tmp_path):
 def test_lid_written_to_parameters_file_on_init_positive(tmp_path):
     """A positive lid y-position must appear in the parameters file after init."""
     params_path = str(tmp_path / "parameters")
-    params = {**_valid_parameters(), "lid": 1.5}
+    params = {**_valid_parameters(), "lid": 0.05}
     _DummyPipeline(params, params_path, str(tmp_path / "dicts"))
     content = (tmp_path / "parameters").read_text()
-    assert "lid 1.5;" in content
+    assert "lid 0.05;" in content
 
+
+def test_lid_not_a_float_raises(tmp_path):
+    """Passing a non-float lid (e.g. a string) must raise LidNotAFloat."""
+    params = {**_valid_parameters(), "lid": "0.05"}
+    with pytest.raises(LidNotAFloat):
+        _DummyPipeline(params, str(tmp_path / "parameters"), str(tmp_path / "dicts"))
+
+
+def test_lid_integer_raises(tmp_path):
+    """Passing an int for lid must raise LidNotAFloat."""
+    params = {**_valid_parameters(), "lid": 0}
+    with pytest.raises(LidNotAFloat):
+        _DummyPipeline(params, str(tmp_path / "parameters"), str(tmp_path / "dicts"))
+
+
+def test_lid_at_outlet_raises(tmp_path):
+    """lid equal to y_outlet must raise LidAboveOrAtOutlet."""
+    # dummy tank has y_outlet=0.1
+    params = {**_valid_parameters(), "lid": 0.1}
+    with pytest.raises(LidAboveOrAtOutlet):
+        _DummyPipeline(params, str(tmp_path / "parameters"), str(tmp_path / "dicts"))
+
+
+def test_lid_above_outlet_raises(tmp_path):
+    """lid greater than y_outlet must raise LidAboveOrAtOutlet."""
+    params = {**_valid_parameters(), "lid": 0.5}
+    with pytest.raises(LidAboveOrAtOutlet):
+        _DummyPipeline(params, str(tmp_path / "parameters"), str(tmp_path / "dicts"))

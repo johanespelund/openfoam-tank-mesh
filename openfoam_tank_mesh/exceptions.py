@@ -63,6 +63,22 @@ class WallMeshOutletRequiresNoInternalOutlet(ValueError):
         super().__init__(msg)
 
 
+class LidNotAFloat(TypeError):
+    def __init__(self) -> None:
+        msg = "lid must be a float"
+        logger.error(msg)
+        console.print(f"[bold red]{msg}[/bold red]")
+        super().__init__(msg)
+
+
+class LidAboveOrAtOutlet(ValueError):
+    def __init__(self) -> None:
+        msg = "lid must be below y_outlet"
+        logger.error(msg)
+        console.print(f"[bold red]{msg}[/bold red]")
+        super().__init__(msg)
+
+
 class CommandFailed(Exception):
     def __init__(self, command: str, output: str = "") -> None:
         self.command = command

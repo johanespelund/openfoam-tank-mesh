@@ -16,6 +16,8 @@ from rich.table import Table
 from openfoam_tank_mesh.exceptions import (
     CommandFailed,
     ExtrudeCylinderRequiresEmpty2D,
+    LidAboveOrAtOutlet,
+    LidNotAFloat,
     MirrorRequiresEmpty2D,
     MissingParameter,
     OpenFoamNotLoaded,
@@ -143,6 +145,10 @@ class OpenFoamMeshPipeline(ABC):
         # self.check_openfoam_loaded(version="org")
         self.validate_parameters(input_parameters)
         self.set_parameters(input_parameters)
+        if not isinstance(self.lid, float):
+            raise LidNotAFloat()
+        if self.lid >= self.y_outlet:
+            raise LidAboveOrAtOutlet()
         if self.internal_outlet > 0:
             if "wall_mesh_outlet" in input_parameters and self.wall_mesh_outlet:
                 raise WallMeshOutletRequiresNoInternalOutlet()
