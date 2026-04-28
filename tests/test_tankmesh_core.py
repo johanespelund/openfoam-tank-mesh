@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from openfoam_tank_mesh.exceptions import CommandFailed, MissingParameter
+from openfoam_tank_mesh.exceptions import CommandFailed, MissingParameter, WallMeshOutletRequiresNoInternalOutlet
 from openfoam_tank_mesh.mesh_pipeline import OpenFoamMeshPipeline
 
 
@@ -85,3 +85,38 @@ def test_run_command_raises_command_failed(monkeypatch: pytest.MonkeyPatch, tmp_
 
     with pytest.raises(CommandFailed):
         mesh.run_command("bad-command")
+
+
+def test_wall_mesh_outlet_defaults_to_true(tmp_path):
+    """wall_mesh_outlet should be True by default."""
+    mesh = _DummyPipeline(_valid_parameters(), str(tmp_path / "parameters"), str(tmp_path / "dicts"))
+    assert mesh.wall_mesh_outlet is True
+
+
+def test_wall_mesh_outlet_can_be_set_false(tmp_path):
+    """wall_mesh_outlet=False should be accepted."""
+    params = {**_valid_parameters(), "wall_mesh_outlet": False}
+    mesh = _DummyPipeline(params, str(tmp_path / "parameters"), str(tmp_path / "dicts"))
+    assert mesh.wall_mesh_outlet is False
+
+
+def test_wall_mesh_outlet_true_with_internal_outlet_raises(tmp_path):
+    """wall_mesh_outlet=True is not possible when internal_outlet > 0."""
+    params = {**_valid_parameters(), "internal_outlet": 0.05, "wall_mesh_outlet": True}
+    with pytest.raises(WallMeshOutletRequiresNoInternalOutlet):
+        _DummyPipeline(params, str(tmp_path / "parameters"), str(tmp_path / "dicts"))
+
+
+def test_wall_mesh_outlet_auto_false_when_internal_outlet_set(tmp_path):
+    """When internal_outlet > 0 and wall_mesh_outlet is not explicitly set, it should be forced False."""
+    params = {**_valid_parameters(), "internal_outlet": 0.05}
+    mesh = _DummyPipeline(params, str(tmp_path / "parameters"), str(tmp_path / "dicts"))
+    assert mesh.wall_mesh_outlet is False
+
+
+def test_wall_mesh_outlet_false_explicit_with_internal_outlet(tmp_path):
+    """wall_mesh_outlet=False is allowed with internal_outlet > 0."""
+    params = {**_valid_parameters(), "internal_outlet": 0.05, "wall_mesh_outlet": False}
+    mesh = _DummyPipeline(params, str(tmp_path / "parameters"), str(tmp_path / "dicts"))
+    assert mesh.wall_mesh_outlet is False
+

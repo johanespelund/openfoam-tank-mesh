@@ -55,6 +55,14 @@ class ExtrudeCylinderRequiresEmpty2D(ValueError):
         super().__init__(msg)
 
 
+class WallMeshOutletRequiresNoInternalOutlet(ValueError):
+    def __init__(self) -> None:
+        msg = "wall_mesh_outlet=True is not compatible with internal_outlet > 0"
+        logger.error(msg)
+        console.print(f"[bold red]{msg}[/bold red]")
+        super().__init__(msg)
+
+
 class CommandFailed(Exception):
     def __init__(self, command: str, output: str = "") -> None:
         self.command = command

@@ -19,6 +19,7 @@ from openfoam_tank_mesh.exceptions import (
     MirrorRequiresEmpty2D,
     MissingParameter,
     OpenFoamNotLoaded,
+    WallMeshOutletRequiresNoInternalOutlet,
 )
 from openfoam_tank_mesh.Profile import TankProfile
 
@@ -134,6 +135,7 @@ class OpenFoamMeshPipeline(ABC):
         self.mirror: bool = False  # Mirror the mesh about the symmetry axis (requires empty_2d=True)
         self.extrude_cylinder: float = 0  # Extrude in z to create 3D cylinder (requires empty_2d=True)
         self.smoothing: bool = False  # Run laplacianMeshSmoother after splitMeshRegions
+        self.wall_mesh_outlet: bool = True  # Wall mesh covers the outlet boundary
 
         if self.VoF:
             self.regions.remove("liquid")
@@ -141,6 +143,10 @@ class OpenFoamMeshPipeline(ABC):
         # self.check_openfoam_loaded(version="org")
         self.validate_parameters(input_parameters)
         self.set_parameters(input_parameters)
+        if self.internal_outlet > 0:
+            if "wall_mesh_outlet" in input_parameters and self.wall_mesh_outlet:
+                raise WallMeshOutletRequiresNoInternalOutlet()
+            self.wall_mesh_outlet = False
         if self.mirror and not self.empty_2d:
             raise MirrorRequiresEmpty2D()
         if self.extrude_cylinder and not self.empty_2d:
@@ -414,6 +420,23 @@ class OpenFoamMeshPipeline(ABC):
         self.run_openfoam_utility("topoSet", "topoSetDict.pipe2outlet")
         self.run_openfoam_utility("createPatch -overwrite", "createPatchDict.pipe2outlet")
         # self.y_outlet = self.tank.y2 - self.internal_outlet
+        self.write_mesh_parameters()
+
+    def remove_outlet(self) -> None:
+        """Remove fluid cells at the outlet while keeping wall (metal) cells.
+
+        Used when ``wall_mesh_outlet=True``: the metal region is preserved at
+        the outlet so that it covers the outlet boundary after
+        ``splitMeshRegions``.
+        """
+        self.run_command("rm -rf 0/cellToRegion")
+        self.run_openfoam_utility("topoSet", "topoSetDict.removeOutletFluidOnly")
+        self.run_command("cp -r 0 0.temp")
+        self.run_command("subsetMesh cellsToKeep -overwrite -patch outlet")
+        self.run_command("rm -r 0")
+        self.run_command("mv 0.temp 0")
+        self.run_openfoam_utility("topoSet", "topoSetDict.pipe2outlet")
+        self.run_openfoam_utility("createPatch -overwrite", "createPatchDict.pipe2outlet")
         self.write_mesh_parameters()
 
     def add_wall_thickness(

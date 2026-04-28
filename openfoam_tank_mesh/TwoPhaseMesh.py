@@ -186,6 +186,8 @@ class GmshMeshPipeline(OpenFoamMeshPipeline):
             progress.update(task, description=f"[bold]Stage {stage}/{_n}[/bold] Outlet configuration")
             if self.internal_outlet:
                 self.create_internal_outlet()
+            elif self.wall_mesh_outlet:
+                self.remove_outlet()
             else:
                 self.remove_wall_outlet()
             self.run_command("rm -rf 0/cellToRegion")
