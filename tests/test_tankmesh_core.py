@@ -153,3 +153,25 @@ def test_lid_negative_means_no_lid(tmp_path):
     assert mesh.has_lid is False
     assert "lid" not in mesh.regions
 
+
+def test_lid_written_to_parameters_file_on_init_default(tmp_path):
+    """lid 0.0 must appear in the parameters file after initialisation (default case).
+
+    The topoSetDict.splitMetalAtYLid dict resolves ``$lid`` via ``#include``.
+    If lid is a bool (the old default ``False``) write_mesh_parameters skips it
+    and OpenFOAM cannot resolve the variable.  This test guards against that.
+    """
+    params_path = str(tmp_path / "parameters")
+    mesh = _DummyPipeline(_valid_parameters(), params_path, str(tmp_path / "dicts"))
+    content = (tmp_path / "parameters").read_text()
+    assert "lid 0.0;" in content
+
+
+def test_lid_written_to_parameters_file_on_init_positive(tmp_path):
+    """A positive lid y-position must appear in the parameters file after init."""
+    params_path = str(tmp_path / "parameters")
+    params = {**_valid_parameters(), "lid": 1.5}
+    _DummyPipeline(params, params_path, str(tmp_path / "dicts"))
+    content = (tmp_path / "parameters").read_text()
+    assert "lid 1.5;" in content
+
