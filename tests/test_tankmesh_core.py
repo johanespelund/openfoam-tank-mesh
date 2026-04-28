@@ -120,3 +120,32 @@ def test_wall_mesh_outlet_false_explicit_with_internal_outlet(tmp_path):
     mesh = _DummyPipeline(params, str(tmp_path / "parameters"), str(tmp_path / "dicts"))
     assert mesh.wall_mesh_outlet is False
 
+
+def test_lid_defaults_to_zero(tmp_path):
+    """lid should default to 0.0 (no lid)."""
+    mesh = _DummyPipeline(_valid_parameters(), str(tmp_path / "parameters"), str(tmp_path / "dicts"))
+    assert mesh.lid == 0.0
+
+
+def test_lid_positive_float(tmp_path):
+    """lid > 0 should be accepted as the y-position of the lid boundary."""
+    params = {**_valid_parameters(), "lid": 1.5}
+    mesh = _DummyPipeline(params, str(tmp_path / "parameters"), str(tmp_path / "dicts"))
+    assert mesh.lid == 1.5
+
+
+def test_lid_zero_means_no_lid(tmp_path):
+    """lid = 0.0 means no lid region is created."""
+    params = {**_valid_parameters(), "lid": 0.0}
+    mesh = _DummyPipeline(params, str(tmp_path / "parameters"), str(tmp_path / "dicts"))
+    assert mesh.lid == 0.0
+    assert "lid" not in mesh.regions
+
+
+def test_lid_negative_means_no_lid(tmp_path):
+    """lid <= 0 means no lid region is created."""
+    params = {**_valid_parameters(), "lid": -1.0}
+    mesh = _DummyPipeline(params, str(tmp_path / "parameters"), str(tmp_path / "dicts"))
+    assert mesh.lid == -1.0
+    assert "lid" not in mesh.regions
+

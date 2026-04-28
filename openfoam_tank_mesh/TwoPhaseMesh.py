@@ -108,8 +108,15 @@ class GmshMeshPipeline(OpenFoamMeshPipeline):
     def _pre_split_setup(self) -> None:
         """Run just before ``splitMeshRegions`` inside :meth:`generate`.
 
-        Default implementation does nothing.
+        When ``lid > 0`` the metal region is split into two cell zones at
+        ``y = lid``: the upper part becomes ``"lid"`` and the lower part
+        remains ``"metal"``.  Subclasses may override this hook to perform
+        additional or alternative operations.
         """
+        if self.lid > 0:
+            self.regions.append("lid")
+            self.write_mesh_parameters()
+            self.run_openfoam_utility("topoSet", "topoSetDict.splitMetalAtYLid")
 
     # ------------------------------------------------------------------
     # Mesh-generation pipeline
@@ -309,7 +316,7 @@ class KSiteMesh(GmshMeshPipeline):
             self.add_wall_thickness("region0", "walls", [(1.859, 1e6)], [10e-3 - self.wall_thickness])
             self.add_wall_thickness("region0", "walls", [(0.9136, 0.9605)], [self.wall_thickness])
 
-        if self.lid:
+        if self.lid > 0:
             self.regions.append("lid")
             self.write_mesh_parameters()
 
@@ -358,7 +365,7 @@ class KSiteMesh(GmshMeshPipeline):
                 n = np.array([n[0], n[1], 0])
                 tr, ty = n[1], -n[0]
                 topodict = self.dict("topoSetDict.obstacle")
-                region = "lid" if self.lid else "metal"
+                region = "lid" if self.lid > 0 else "metal"
                 self.sed("^obstacleRegion .*;", f"obstacleRegion {region};", topodict)
 
                 origin = np.array([r, y, -1e6]) - n * 5 * h

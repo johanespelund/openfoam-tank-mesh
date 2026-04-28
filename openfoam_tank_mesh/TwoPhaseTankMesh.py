@@ -125,7 +125,7 @@ class OpenFoamMeshPipeline(ABC):
         self.patch_name_pos = "wedgePos"
         self.patch_name_neg = "wedgeNeg"
         self.ymax = tank.ymax()
-        self.lid = False
+        self.lid: float = 0.0  # y-position of lid boundary; <= 0 means no lid
         self.obstacle = False
         self.regions = ["gas", "liquid", "metal"]
         self.VoF = False
