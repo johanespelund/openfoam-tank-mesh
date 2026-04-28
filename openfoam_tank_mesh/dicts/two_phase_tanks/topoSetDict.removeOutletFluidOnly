@@ -1,0 +1,57 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Website:  https://openfoam.org                  |
+|   \\  /    A nd           | Version:  12                                    |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    format      ascii;
+    class       dictionary;
+    object      topoSetDict;
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+#include "meshdata"
+
+// Select fluid cells at the outlet and remove them while keeping the metal
+// (wall) cells.  This is used when wall_mesh_outlet=True so that the metal
+// region covers the outlet boundary after splitMeshRegions.
+
+actions
+(
+
+// All cells inside the outlet cylinder (1e6 ensures the cylinder extends
+// well beyond the top of the mesh)
+{
+  action new;
+  name cellsToKeep;
+  type cellSet;
+  source cylinderToCell;
+  p1  (0 $y_outlet 0);
+  p2  (0 1e6 0);
+  radius $outlet_radius;
+}
+
+// Remove metal cells from the set so only fluid cells remain
+{
+  action delete;
+  name cellsToKeep;
+  type cellSet;
+  source zoneToCell;
+  zone metal;
+}
+
+// Invert: cellsToKeep now contains every cell EXCEPT fluid cells in the
+// outlet cylinder (i.e. metal cells everywhere + fluid cells outside cylinder)
+{
+  action invert;
+  name cellsToKeep;
+  type cellSet;
+}
+
+);
+
+// ************************************************************************* //
