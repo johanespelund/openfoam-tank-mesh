@@ -36,7 +36,7 @@ actions
         name    lidCells;
         type    cellSet;
         action  subset;
-        source  cellZoneToCell;
+        source  zoneToCell;
         zone    metal;
     }
 
@@ -45,8 +45,8 @@ actions
         name    metalCells;
         type    cellSet;
         action  new;
-        source  cellZoneToCell;
-        zone    metal;
+        source  boxToCell;
+        boxes   ((-1e6 -1e6 -1e6) (1e6 1e6 1e6));
     }
     {
         name    metalCells;
@@ -54,6 +54,13 @@ actions
         action  delete;
         source  cellToCell;
         set     lidCells;
+    }
+    {
+        name    metalCells;
+        type    cellSet;
+        action  subset;
+        source  zoneToCell;
+        zone    metal;
     }
 
     // Re-assign cell zones
