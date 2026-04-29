@@ -22,15 +22,16 @@ KSITE_C = 1.5 * INCH  # cylinder height
 
 # Common mesh parameters shared by both tests below.
 _MESH_PARAMS = {
-    "fill_level": 0.49,
+    "fill_level": 0.83,
     "wall_cell_size": 5.0e-3,
-    "wall_tan_cell_size": 5.0e-3,
-    "bulk_cell_size": 25e-3,
-    "r_BL": 1.05,
+    "wall_tan_cell_size": 15.0e-3,
+    "bulk_cell_size": 15e-3,
+    "r_BL": 1.1,
     "tri_bulk": False,
     "outlet_radius": 0.0127,
     "internal_outlet": 0.0127 * 4,
-    "debug": False,
+    "debug": True,
+    "lid": 0.8,
     "revolve": 0,
     "n_revolve": 0,
     "n_wall_layers": 6,
