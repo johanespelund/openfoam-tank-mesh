@@ -23,18 +23,19 @@ KSITE_C = 1.5 * INCH  # cylinder height
 # Common mesh parameters shared by both tests below.
 _MESH_PARAMS = {
     "fill_level": 0.83,
-    "wall_cell_size": 5.0e-3,
-    "wall_tan_cell_size": 15.0e-3,
-    "bulk_cell_size": 15e-3,
-    "r_BL": 1.1,
+    "wall_cell_size": 0.75e-3,
+    "wall_tan_cell_size": 3.0e-3,
+    "bulk_cell_size": 6.0e-3,
+    "r_BL": 1.05,
     "tri_bulk": False,
-    "outlet_radius": 0.0127,
-    "internal_outlet": 0.0127 * 4,
-    "debug": True,
-    "lid": 0.8,
+    "outlet_radius": 0.012,
+    "internal_outlet": 0.0127 * 0,
+    "debug": False,
+    "lid": 0.0,
     "revolve": 0,
     "n_revolve": 0,
-    "n_wall_layers": 6,
+    "n_wall_layers": 8,
+    "smoothing": True,
     "VoF": False,
 }
 
@@ -195,5 +196,6 @@ def test_cylinder_caps_mesh_matches_ksite_mesh():
 
 
 if __name__ == "__main__":
-    test_cylinder_caps_mesh()
+    # test_cylinder_caps_mesh()
+    test_cylinder_caps_mesh_matches_ksite_mesh()
     print("test_cylinder_caps_mesh passed")

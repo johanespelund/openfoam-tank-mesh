@@ -309,6 +309,8 @@ class KSiteMesh(GmshMeshPipeline):
     # -- hooks ----------------------------------------------------------
 
     def _create_profile(self, input_parameters: dict) -> KSiteProfile:
+        extrude = input_parameters.get("empty_2d", False)
+        extrude_thickness = input_parameters.get("empty_2d_thickness", 0.0) or input_parameters["bulk_cell_size"]
         return KSiteProfile(
             fill_level=input_parameters["fill_level"],
             outlet_radius=input_parameters["outlet_radius"],
@@ -318,6 +320,8 @@ class KSiteMesh(GmshMeshPipeline):
             r_BL=input_parameters["r_BL"],
             internal_outlet=input_parameters["internal_outlet"],
             wall_thickness=input_parameters.get("wall_thickness", 2.08e-3),
+            extrude=extrude,
+            extrude_thickness=extrude_thickness,
         )
 
     def _pre_split_setup(self) -> None:
@@ -405,8 +409,6 @@ class KSiteMesh(GmshMeshPipeline):
 
         self.run_openfoam_utility("topoSet", "topoSetDict.splitMetalRegions")
 
-
-
     def generate(self) -> None:
         """K-Site generation: verify OpenFOAM is loaded, then run the standard pipeline."""
         self.check_openfoam_loaded(version="org")
@@ -441,6 +443,8 @@ class SphereMesh(GmshMeshPipeline):
     """Two-phase mesh for a spherical tank."""
 
     def _create_profile(self, input_parameters: dict) -> SphereProfile:
+        extrude = input_parameters.get("empty_2d", False)
+        extrude_thickness = input_parameters.get("empty_2d_thickness", 0.0) or input_parameters["bulk_cell_size"]
         return SphereProfile(
             radius=input_parameters["radius"],
             fill_level=input_parameters["fill_level"],
@@ -451,6 +455,8 @@ class SphereMesh(GmshMeshPipeline):
             r_BL=input_parameters["r_BL"],
             internal_outlet=input_parameters["internal_outlet"],
             wall_thickness=input_parameters.get("wall_thickness", 2.08e-3),
+            extrude=extrude,
+            extrude_thickness=extrude_thickness,
         )
 
     def generate_leak_boundaries(self) -> None:
@@ -486,6 +492,8 @@ class CylinderCapsMesh(GmshMeshPipeline):
             raise ValueError(  # noqa: TRY003
                 "CylinderCapsMesh requires either 'cylinder_radius' or 'cylinder_diameter' in input_parameters."
             )
+        extrude = input_parameters.get("empty_2d", False)
+        extrude_thickness = input_parameters.get("empty_2d_thickness", 0.0) or input_parameters["bulk_cell_size"]
         return CylinderCapsTankProfile(
             cylinder_radius=input_parameters.get("cylinder_radius", 0),
             cylinder_height=input_parameters["cylinder_height"],
@@ -499,6 +507,8 @@ class CylinderCapsMesh(GmshMeshPipeline):
             internal_outlet=input_parameters["internal_outlet"],
             cylinder_diameter=input_parameters.get("cylinder_diameter"),
             wall_thickness=input_parameters.get("wall_thickness", 2.08e-3),
+            extrude=extrude,
+            extrude_thickness=extrude_thickness,
         )
 
     @property
