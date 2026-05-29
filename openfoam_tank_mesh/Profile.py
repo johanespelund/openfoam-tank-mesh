@@ -1,15 +1,47 @@
 import copy
+import importlib.util
 import logging
+import sys
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from math import sqrt
 
-import matplotlib.pyplot as plt
-import numpy as np
-import scipy.integrate as spi  # type: ignore[import-untyped]
-import scipy.optimize as spo  # type: ignore[import-untyped]
+# ---------------------------------------------------------------------------
+# mpl_toolkits workaround
+# The system-installed mpl_toolkits (/usr/lib/python3/dist-packages) is a
+# namespace package that shadows the pip-installed version under ~/.local and
+# is incompatible with the pip matplotlib.  Load the pip copy explicitly
+# before matplotlib.pyplot is imported so that the '3d' projection registers.
+# ---------------------------------------------------------------------------
+_pip_mplot3d = "/home/johan/.local/lib/python3.10/site-packages/mpl_toolkits/mplot3d"
+for _mod_name, _rel in [
+    ("mpl_toolkits.mplot3d", "__init__.py"),
+    ("mpl_toolkits.mplot3d.proj3d", "proj3d.py"),
+    ("mpl_toolkits.mplot3d.art3d", "art3d.py"),
+    ("mpl_toolkits.mplot3d.axis3d", "axis3d.py"),
+    ("mpl_toolkits.mplot3d.axes3d", "axes3d.py"),
+]:
+    if _mod_name not in sys.modules:
+        _spec = importlib.util.spec_from_file_location(
+            _mod_name,
+            f"{_pip_mplot3d}/{_rel}",
+            submodule_search_locations=[_pip_mplot3d],
+        )
+        _m = importlib.util.module_from_spec(_spec)
+        sys.modules[_mod_name] = _m
+        _spec.loader.exec_module(_m)
 
-from openfoam_tank_mesh.exceptions import BoundaryLayerTooThick, OutOfRange, SegmentNotInitialized, SegmentsNotConnected
+import matplotlib.pyplot as plt  # noqa: E402
+import numpy as np  # noqa: E402
+import scipy.integrate as spi  # type: ignore[import-untyped]  # noqa: E402
+import scipy.optimize as spo  # type: ignore[import-untyped]  # noqa: E402
+
+from openfoam_tank_mesh.exceptions import (  # noqa: E402
+    BoundaryLayerTooThick,
+    OutOfRange,
+    SegmentNotInitialized,
+    SegmentsNotConnected,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -226,8 +258,15 @@ class CircleArc(EllipseArc):
 
 
 class Profile:
-    def __init__(self, segments: list[Segment]) -> None:
+    def __init__(
+        self,
+        segments: list[Segment],
+        extrude: bool = False,
+        extrude_thickness: float = 0.0,
+    ) -> None:
         self.segments: list[Segment] = segments
+        self.extrude: bool = extrude
+        self.extrude_thickness: float = extrude_thickness
         self.sort_segments()
         self.check_segment_connectivity()
 
@@ -300,20 +339,42 @@ class Profile:
         """
         Get the volume between y1 and y2, where y1 < y2
         and y1, y2 are in the range [-height/2, height/2].
+
+        For a revolved (axisymmetric) geometry the standard solid-of-revolution
+        formula is used: V = ∫ π r(y)² dy.
+
+        For an extruded (empty_2d) geometry the cross-section is a rectangle of
+        width 2·r(y) and depth ``extrude_thickness``:
+        V = ∫ 2 · r(y) · t dy
         """
         r = lambda y: self.get_radius(y)
-        integrand = lambda y: np.pi * r(y) ** 2
+        if self.extrude:
+            t = self.extrude_thickness
+            integrand = lambda y: 2 * r(y) * t
+        else:
+            integrand = lambda y: np.pi * r(y) ** 2
         return float(spi.quad(integrand, y1, y2)[0])
 
     def get_partial_area(self, y1: float, y2: float) -> float:
         """
-        Get the area between y1 and y2, where y1 < y2
+        Get the lateral wall area between y1 and y2, where y1 < y2
         and y1, y2 are in the range [-height/2, height/2].
-        """
 
+        For a revolved (axisymmetric) geometry the surface-of-revolution formula
+        is used: A = ∫ 2π r(y) √(1 + (dr/dy)²) dy.
+
+        For an extruded (empty_2d) geometry the lateral wall consists of two
+        flat side walls (front and back) of thickness ``extrude_thickness``:
+        A = ∫ 2 · t · √(1 + (dr/dy)²) dy
+        The flat end caps (the empty_pos / empty_neg faces) are excluded.
+        """
         r = lambda y: self.get_radius(y)
         drdy = lambda y: self.get_radius_derivative(y)
-        integrand = lambda y: 2 * np.pi * r(y) * np.sqrt(1 + drdy(y) ** 2)
+        if self.extrude:
+            t = self.extrude_thickness
+            integrand = lambda y: 2 * t * np.sqrt(1 + drdy(y) ** 2)
+        else:
+            integrand = lambda y: 2 * np.pi * r(y) * np.sqrt(1 + drdy(y) ** 2)
         return float(spi.quad(integrand, y1, y2)[0])
 
     def get_y(self, radius: float, ymin: float, ymax: float) -> float:
@@ -338,8 +399,10 @@ class TankProfile(Profile):
         internal_outlet: float = 0,
         wall_thickness: float = 2.08e-3,
         tolerance: float = 10e-3,
+        extrude: bool = False,
+        extrude_thickness: float = 0.0,
     ) -> None:
-        super().__init__(segments=segments)
+        super().__init__(segments=segments, extrude=extrude, extrude_thickness=extrude_thickness)
         self.name: str = ""
         self.fill_level: float = fill_level
         self.outlet_radius: float = outlet_radius
@@ -358,6 +421,9 @@ class TankProfile(Profile):
         self.area_gas: float = self.get_partial_area(self.y_interface, self.y_end)
         self.volume_liquid: float = self.get_partial_volume(self.y_start, self.y_interface)
         self.volume_gas: float = self.get_partial_volume(self.y_interface, self.y_end)
+
+        # Save full segments (before outlet truncation) for visualization.
+        self._viz_segments: list[Segment] = copy.deepcopy(self.segments)
 
         self.split_profile(self.y_outlet, tol=0.000)
         self.segments.pop()
@@ -634,6 +700,272 @@ class TankProfile(Profile):
         plt.legend()
         plt.show()
 
+    def plot_3d(self, wedge_angle: float = 30.0) -> None:
+        """
+        Plot the tank geometry in 3D.
+
+        The full tank wall is shown as a surface of revolution around the
+        vertical (y) axis.  Liquid and gas regions are coloured differently.
+        The simulation wedge domain (±wedge_angle/2 degrees) is overlaid as
+        wireframe lines.
+
+        Parameters
+        ----------
+        wedge_angle:
+            Total wedge angle in degrees (default 30°).  The wedge is centred
+            on the xz-plane (phi = 0) and spans ±wedge_angle/2.
+        """
+        N_phi = 180  # azimuthal resolution for the surface
+        N_y = 300  # axial resolution for the surface
+
+        fig = plt.figure(figsize=(8, 10))
+        ax = fig.add_subplot(111, projection="3d")
+
+        # Coordinate convention: the symmetry axis (y in Profile) maps to the
+        # vertical Z axis of the 3D plot so that "up" is visually correct.
+        # Radial directions map to X and Y of the 3D plot.
+        # Profile y  →  plot Z
+        # r·cos(φ)   →  plot X
+        # r·sin(φ)   →  plot Y
+
+        # ------------------------------------------------------------------
+        # Use full pre-outlet segments for a smooth surface to the axis
+        # ------------------------------------------------------------------
+        viz_segs = getattr(self, "_viz_segments", self.segments)
+        y_viz_start = viz_segs[0].y_start
+        y_viz_end = viz_segs[-1].y_end
+
+        def _viz_radius(y: float) -> float:
+            for seg in viz_segs:
+                if seg.y_start <= y <= seg.y_end:
+                    return seg.get_radius(y)
+            raise OutOfRange(y)
+
+        y_all = np.linspace(y_viz_start, y_viz_end, N_y)
+        r_all = np.array([_viz_radius(yi) for yi in y_all])
+
+        phi = np.linspace(0, 2 * np.pi, N_phi)
+
+        def _surface(y_arr: np.ndarray, r_arr: np.ndarray, color: str, alpha: float = 0.55) -> None:
+            Z_s, P = np.meshgrid(y_arr, phi)
+            R = np.tile(r_arr, (N_phi, 1))
+            X_s = R * np.cos(P)
+            Y_s = R * np.sin(P)
+            ax.plot_surface(X_s, Y_s, Z_s, color=color, alpha=alpha, linewidth=0, antialiased=True, shade=True)
+
+        # Liquid region (y_start → y_interface)
+        y_liq = np.linspace(y_viz_start, self.y_interface, N_y)
+        r_liq = np.array([_viz_radius(yi) for yi in y_liq])
+        _surface(y_liq, r_liq, color="#4499cc", alpha=0.6)  # blue
+
+        # Gas region (y_interface → y_end)
+        y_gas = np.linspace(self.y_interface, y_viz_end, N_y)
+        r_gas = np.array([_viz_radius(yi) for yi in y_gas])
+        _surface(y_gas, r_gas, color="#dddddd", alpha=0.35)  # light grey
+
+        # Liquid-gas interface disk
+        r_int = _viz_radius(self.y_interface)
+        r_disk = np.linspace(0, r_int, 40)
+        P_disk, R_disk = np.meshgrid(phi, r_disk)
+        X_disk = R_disk * np.cos(P_disk)
+        Y_disk = R_disk * np.sin(P_disk)
+        Z_disk = np.full_like(X_disk, self.y_interface)
+        ax.plot_surface(X_disk, Y_disk, Z_disk, color="#4499cc", alpha=0.5, linewidth=0, antialiased=True, shade=False)
+
+        # ------------------------------------------------------------------
+        # Wedge domain wireframe
+        # ------------------------------------------------------------------
+        half = np.radians(wedge_angle / 2.0)
+        wedge_phis = [half, -half]
+        lw, col = 1.5, "k"
+
+        for phi_w in wedge_phis:
+            xw = r_all * np.cos(phi_w)
+            yw = r_all * np.sin(phi_w)
+
+            # Profile outline on this wedge face
+            ax.plot(xw, yw, y_all, color=col, lw=lw)
+
+            # Bottom radial edge (axis → wall)
+            ax.plot([0, xw[0]], [0, yw[0]], [y_viz_start, y_viz_start], color=col, lw=lw)
+
+            # Top radial edge (axis → wall)
+            ax.plot([0, xw[-1]], [0, yw[-1]], [y_viz_end, y_viz_end], color=col, lw=lw)
+
+            # Interface line (axis → wall at y_interface)
+            r_if = _viz_radius(self.y_interface)
+            ax.plot(
+                [0, r_if * np.cos(phi_w)],
+                [0, r_if * np.sin(phi_w)],
+                [self.y_interface, self.y_interface],
+                color=col,
+                lw=lw,
+                ls="--",
+            )
+
+        # Arcs connecting the two wedge faces at y_start, y_interface, y_end
+        for y_arc, r_arc in [
+            (y_viz_start, r_all[0]),
+            (self.y_interface, _viz_radius(self.y_interface)),
+            (y_viz_end, r_all[-1]),
+        ]:
+            phi_arc = np.linspace(-half, half, 60)
+            ax.plot(r_arc * np.cos(phi_arc), r_arc * np.sin(phi_arc), np.full_like(phi_arc, y_arc), color=col, lw=lw)
+
+        # Axis line — extends 10 % of tank height above and below
+        tank_height = y_viz_end - y_viz_start
+        ax_ext = 0.10 * tank_height
+        ax.plot([0, 0], [0, 0], [y_viz_start - ax_ext, y_viz_end + ax_ext], color="k", lw=1.5, ls="--", alpha=0.6)
+
+        # Axis line on each wedge face (vertical edge at r=0)
+        for _phi_w in wedge_phis:
+            ax.plot([0, 0], [0, 0], [y_viz_start, y_viz_end], color=col, lw=lw)
+
+        # ------------------------------------------------------------------
+        # Formatting
+        # ------------------------------------------------------------------
+        ax.set_axis_off()
+        ax.set_box_aspect([np.ptp(r_all) * 2, np.ptp(r_all) * 2, np.ptp(y_all)])
+        plt.tight_layout()
+        plt.show()
+
+    def plot_3d_horizontal(self) -> None:
+        """
+        Plot the tank as a horizontal cylinder for the empty_2d (extruded) case.
+
+        The tank cross-section (the r(y) profile) is in the X-Z plane with Z
+        vertical (profile y-axis → plot Z).  The cylinder is extruded along Y
+        (into the page) to a total length of 6·diameter.  A rectangular
+        simulation slab of depth 0.5·diameter is shown as wireframe lines
+        centred at y=0.  The cut ends are softened with a small fillet.
+        Liquid and gas regions are shown in different colours.
+
+        Coordinate mapping
+        ------------------
+        Profile x (radius, ±r(y))  →  plot X
+        Profile y (height)         →  plot Z   (vertical)
+        Extrusion direction        →  plot Y   (into the page)
+        """
+        N_profile = 500  # points along the profile outline
+
+        fig = plt.figure(figsize=(11, 7))
+        ax = fig.add_subplot(111, projection="3d")
+
+        # ------------------------------------------------------------------
+        # Profile geometry (use full pre-outlet segments)
+        # ------------------------------------------------------------------
+        viz_segs = getattr(self, "_viz_segments", self.segments)
+        y_viz_start = viz_segs[0].y_start
+        y_viz_end = viz_segs[-1].y_end
+
+        def _viz_radius(y: float) -> float:
+            for seg in viz_segs:
+                if seg.y_start <= y <= seg.y_end:
+                    return seg.get_radius(y)
+            raise OutOfRange(y)
+
+        # Sample the profile
+        z_prof = np.linspace(y_viz_start, y_viz_end, N_profile)  # plot Z
+        r_prof = np.array([_viz_radius(zi) for zi in z_prof])
+
+        diameter = 2.0 * np.max(r_prof)
+        half_len = 2.0 * diameter  # half of total 4d extrusion length (plot Y)
+        slab_depth = 0.25 * diameter  # simulation domain: symmetry plane to one side
+
+        # ------------------------------------------------------------------
+        # Ruled wall surface helper:
+        # surface spans x_out/z_out outline at two y (extrusion) positions
+        # ------------------------------------------------------------------
+        def _wall_surface(x_out: np.ndarray, z_out: np.ndarray, y0: float, y1: float, color: str, alpha: float) -> None:
+            n = len(x_out)
+            X_s = np.array([x_out, x_out])
+            Z_s = np.array([z_out, z_out])
+            Y_s = np.array([[y0] * n, [y1] * n])
+            ax.plot_surface(X_s, Y_s, Z_s, color=color, alpha=alpha, linewidth=0, antialiased=True, shade=True)
+
+        # ------------------------------------------------------------------
+        # Split outline at interface height
+        i_if = np.searchsorted(z_prof, self.y_interface)
+        r_if = _viz_radius(self.y_interface)
+
+        x_liq = np.concatenate([r_prof[: i_if + 1], -r_prof[: i_if + 1][::-1], [r_prof[0]]])
+        z_liq = np.concatenate([z_prof[: i_if + 1], z_prof[: i_if + 1][::-1], [z_prof[0]]])
+
+        x_gas = np.concatenate([r_prof[i_if:], -r_prof[i_if:][::-1], [r_prof[i_if]]])
+        z_gas = np.concatenate([z_prof[i_if:], z_prof[i_if:][::-1], [z_prof[i_if]]])
+
+        _wall_surface(x_liq, z_liq, -half_len, half_len, "#4499cc", 0.55)
+        _wall_surface(x_gas, z_gas, -half_len, half_len, "#cccccc", 0.30)
+
+        # ------------------------------------------------------------------
+        # End cap disks at y = ±half_len, split liquid/gas
+        # ------------------------------------------------------------------
+        def _end_disk(y_val: float) -> None:
+            z_d = np.linspace(y_viz_start, self.y_interface, 200)
+            r_d = np.array([_viz_radius(zi) for zi in z_d])
+            X_d = np.array([-r_d, r_d])
+            Z_d = np.array([z_d, z_d])
+            Y_d = np.full_like(X_d, y_val)
+            ax.plot_surface(X_d, Y_d, Z_d, color="#4499cc", alpha=0.45, linewidth=0, antialiased=True, shade=False)
+            z_g = np.linspace(self.y_interface, y_viz_end, 200)
+            r_g = np.array([_viz_radius(zi) for zi in z_g])
+            X_g = np.array([-r_g, r_g])
+            Z_g = np.array([z_g, z_g])
+            Y_g = np.full_like(X_g, y_val)
+            ax.plot_surface(X_g, Y_g, Z_g, color="#cccccc", alpha=0.25, linewidth=0, antialiased=True, shade=False)
+
+        _end_disk(-half_len)
+        _end_disk(half_len)
+
+        # ------------------------------------------------------------------
+        # Interface plane (rectangle at z = y_interface, full length in Y)
+        # ------------------------------------------------------------------
+        y_range = np.array([-half_len, half_len])
+        x_range = np.array([-r_if, r_if])
+        X_if, Y_if = np.meshgrid(x_range, y_range)
+        Z_if = np.full_like(X_if, self.y_interface)
+        ax.plot_surface(X_if, Y_if, Z_if, color="#88bbdd", alpha=0.25, linewidth=0, antialiased=True, shade=False)
+
+        # ------------------------------------------------------------------
+        # Simulation slab wireframe
+        # Domain is a quarter-slice: x in [0, r(y)], y in [0, slab_depth].
+        # x=0 is the tank symmetry axis, y=0 is the extrusion symmetry plane.
+        # Show: right-side profile outline on both y-faces + interface lines.
+        # ------------------------------------------------------------------
+        lw, col = 1.5, "k"
+
+        # Left-side half of the profile outline (x <= 0)
+        x_right = -r_prof  # x = -r(z)
+        z_right = z_prof  # z = profile height
+
+        for y_face in [0.0, slab_depth]:
+            # Right-side profile outline (wall)
+            ax.plot(x_right, np.full_like(x_right, y_face), z_right, color=col, lw=lw)
+            # Axis line on this face (x=0, full height)
+            ax.plot([0, 0], [y_face, y_face], [y_viz_start, y_viz_end], color=col, lw=lw)
+            # Interface line on this face (axis to wall)
+            ax.plot([0, -r_if], [y_face, y_face], [self.y_interface, self.y_interface], color=col, lw=lw, ls="--")
+
+        # Connecting interface edge between the two y-faces (at x=-r_if)
+        ax.plot([-r_if, -r_if], [0.0, slab_depth], [self.y_interface, self.y_interface], color=col, lw=lw, ls="--")
+        # Connecting interface edge at the axis (x=0)
+        ax.plot([0, 0], [0.0, slab_depth], [self.y_interface, self.y_interface], color=col, lw=lw, ls="--")
+        # Connecting axis edge between the two y-faces (at x=0, top and bottom)
+        for z_edge in [y_viz_start, y_viz_end]:
+            ax.plot([0, 0], [0.0, slab_depth], [z_edge, z_edge], color=col, lw=lw)
+        # Connecting wall edge between the two y-faces (at x=-r, top and bottom)
+        for z_edge, r_edge in [(y_viz_start, r_prof[0]), (y_viz_end, r_prof[-1])]:
+            ax.plot([-r_edge, -r_edge], [0.0, slab_depth], [z_edge, z_edge], color=col, lw=lw)
+
+        # ------------------------------------------------------------------
+        # Formatting
+        # ------------------------------------------------------------------
+        ax.set_axis_off()
+        ax.set_box_aspect([diameter, 2 * half_len, y_viz_end - y_viz_start])
+        ax.view_init(elev=18, azim=120)
+        plt.tight_layout()
+        plt.show()
+
     def get_mesh_points(self) -> PointCoords:
         """
         Get the mesh points for use in gmsh.
@@ -739,26 +1071,6 @@ class TankProfile(Profile):
 
         return groups
 
-    def get_partial_area(self, y1: float, y2: float) -> float:
-        """
-        Get the area between y1 and y2, where y1 < y2
-        and y1, y2 are in the range [-height/2, height/2].
-        """
-
-        r = lambda y: self.get_radius(y)
-        drdy = lambda y: self.get_radius_derivative(y)
-        integrand = lambda y: 2 * np.pi * r(y) * np.sqrt(1 + drdy(y) ** 2)
-        return float(spi.quad(integrand, y1, y2)[0])
-
-    def get_partial_volume(self, y1: float, y2: float) -> float:
-        """
-        Get the volume between y1 and y2, where y1 < y2
-        and y1, y2 are in the range [-height/2, height/2].
-        """
-        r = lambda y: self.get_radius(y)
-        integrand = lambda y: np.pi * r(y) ** 2
-        return float(spi.quad(integrand, y1, y2)[0])
-
 
 INCH = 0.0254
 A = 0.5 * 73 * INCH
@@ -777,6 +1089,8 @@ class KSiteProfile(TankProfile):
         r_BL: float = 1.2,
         internal_outlet: float = 0,
         wall_thickness: float = 2.08e-3,
+        extrude: bool = False,
+        extrude_thickness: float = 0.0,
     ) -> None:
         super().__init__(
             segments=[
@@ -796,6 +1110,8 @@ class KSiteProfile(TankProfile):
             outlet_radius=outlet_radius,
             internal_outlet=internal_outlet,
             wall_thickness=wall_thickness,
+            extrude=extrude,
+            extrude_thickness=extrude_thickness,
         )
         self.name = "KSite"
         self.add_boundary_layers(x_wall=wall_cell_size, r_BL=r_BL)
@@ -820,6 +1136,8 @@ class SphereProfile(TankProfile):
         r_BL: float = 1.2,
         internal_outlet: float = 0,
         wall_thickness: float = 2.08e-3,
+        extrude: bool = False,
+        extrude_thickness: float = 0.0,
     ) -> None:
         super().__init__(
             segments=[
@@ -837,6 +1155,8 @@ class SphereProfile(TankProfile):
             outlet_radius=outlet_radius,
             internal_outlet=internal_outlet,
             wall_thickness=wall_thickness,
+            extrude=extrude,
+            extrude_thickness=extrude_thickness,
         )
         self.name = "Sphere"
         self.add_boundary_layers(x_wall=wall_cell_size, r_BL=r_BL)
@@ -912,6 +1232,8 @@ class CylinderCapsTankProfile(TankProfile):
         internal_outlet: float = 0,
         cylinder_diameter: float | None = None,
         wall_thickness: float = 2.08e-3,
+        extrude: bool = False,
+        extrude_thickness: float = 0.0,
     ) -> None:
         if cylinder_diameter is not None:
             cylinder_radius = cylinder_diameter / 2.0
@@ -955,6 +1277,8 @@ class CylinderCapsTankProfile(TankProfile):
             outlet_radius=outlet_radius,
             internal_outlet=internal_outlet,
             wall_thickness=wall_thickness,
+            extrude=extrude,
+            extrude_thickness=extrude_thickness,
         )
         self.name = "CylinderCaps"
         self.add_boundary_layers(x_wall=wall_cell_size, r_BL=r_BL)
