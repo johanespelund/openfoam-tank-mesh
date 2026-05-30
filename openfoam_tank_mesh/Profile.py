@@ -45,6 +45,10 @@ from openfoam_tank_mesh.exceptions import (  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
+MM_PER_INCH = 25.4
+ELSEVIER_5P_PAGEWIDTH_MM = 190.0
+ONE_HALF_PAGEWIDTH_INCH = ELSEVIER_5P_PAGEWIDTH_MM / MM_PER_INCH / 2.0
+
 
 @dataclass
 class PointCoords:
@@ -700,7 +704,14 @@ class TankProfile(Profile):
         plt.legend()
         plt.show()
 
-    def plot_3d(self, wedge_angle: float = 30.0) -> None:
+    def plot_3d(  # noqa: C901
+        self,
+        wedge_angle: float = 20.0,
+        save_path: str | None = None,
+        dpi: int = 600,
+        show: bool = True,
+        sim_domain_plane_only: bool = False,
+    ) -> None:
         """
         Plot the tank geometry in 3D.
 
@@ -714,11 +725,20 @@ class TankProfile(Profile):
         wedge_angle:
             Total wedge angle in degrees (default 30°).  The wedge is centred
             on the xz-plane (phi = 0) and spans ±wedge_angle/2.
+        save_path:
+            Optional output path for saving the figure as an image.
+        dpi:
+            Resolution used when saving the figure.
+        show:
+            If True, display the figure interactively.
+        sim_domain_plane_only:
+            If True, draw the simulation domain as a single symmetry plane
+            (phi=0) instead of a wedge volume.
         """
         N_phi = 180  # azimuthal resolution for the surface
-        N_y = 300  # axial resolution for the surface
+        N_y = 500  # axial resolution for the surface
 
-        fig = plt.figure(figsize=(8, 10))
+        fig = plt.figure()  # figsize=(ONE_HALF_PAGEWIDTH_INCH, ONE_HALF_PAGEWIDTH_INCH * (10.0 / 8.0)))
         ax = fig.add_subplot(111, projection="3d")
 
         # Coordinate convention: the symmetry axis (y in Profile) maps to the
@@ -744,98 +764,227 @@ class TankProfile(Profile):
         y_all = np.linspace(y_viz_start, y_viz_end, N_y)
         r_all = np.array([_viz_radius(yi) for yi in y_all])
 
-        phi = np.linspace(0, 2 * np.pi, N_phi)
+        half = np.radians(wedge_angle / 2.0)
+        phi_full = np.linspace(0, 2 * np.pi, N_phi)
+        n_wedge = max(24, int(N_phi * wedge_angle / 360.0))
+        phi_wedge = np.linspace(-half, half, n_wedge)
 
-        def _surface(y_arr: np.ndarray, r_arr: np.ndarray, color: str, alpha: float = 0.55) -> None:
-            Z_s, P = np.meshgrid(y_arr, phi)
-            R = np.tile(r_arr, (N_phi, 1))
+        def _surface(y_arr: np.ndarray, r_arr: np.ndarray, phi_arr: np.ndarray, color: str, alpha: float) -> None:
+            Z_s, P = np.meshgrid(y_arr, phi_arr)
+            R = np.tile(r_arr, (len(phi_arr), 1))
             X_s = R * np.cos(P)
             Y_s = R * np.sin(P)
-            ax.plot_surface(X_s, Y_s, Z_s, color=color, alpha=alpha, linewidth=0, antialiased=True, shade=True)
+            ax.plot_surface(
+                X_s,
+                Y_s,
+                Z_s,
+                color=color,
+                alpha=alpha,
+                linewidth=0,
+                antialiased=True,
+                shade=True,
+                rcount=Z_s.shape[0],
+                ccount=Z_s.shape[1],
+            )
 
         # Liquid region (y_start → y_interface)
         y_liq = np.linspace(y_viz_start, self.y_interface, N_y)
         r_liq = np.array([_viz_radius(yi) for yi in y_liq])
-        _surface(y_liq, r_liq, color="#4499cc", alpha=0.6)  # blue
+        _surface(y_liq, r_liq, phi_full, color="#4499cc", alpha=0.3)
+        if not sim_domain_plane_only:
+            _surface(y_liq, r_liq, phi_wedge, color="#4499cc", alpha=0.6)
 
         # Gas region (y_interface → y_end)
         y_gas = np.linspace(self.y_interface, y_viz_end, N_y)
         r_gas = np.array([_viz_radius(yi) for yi in y_gas])
-        _surface(y_gas, r_gas, color="#dddddd", alpha=0.35)  # light grey
+        _surface(y_gas, r_gas, phi_full, color="#dddddd", alpha=0.10)
+        if not sim_domain_plane_only:
+            _surface(y_gas, r_gas, phi_wedge, color="#dddddd", alpha=0.38)
 
         # Liquid-gas interface disk
         r_int = _viz_radius(self.y_interface)
         r_disk = np.linspace(0, r_int, 40)
-        P_disk, R_disk = np.meshgrid(phi, r_disk)
-        X_disk = R_disk * np.cos(P_disk)
-        Y_disk = R_disk * np.sin(P_disk)
-        Z_disk = np.full_like(X_disk, self.y_interface)
-        ax.plot_surface(X_disk, Y_disk, Z_disk, color="#4499cc", alpha=0.5, linewidth=0, antialiased=True, shade=False)
-
-        # ------------------------------------------------------------------
-        # Wedge domain wireframe
-        # ------------------------------------------------------------------
-        half = np.radians(wedge_angle / 2.0)
-        wedge_phis = [half, -half]
-        lw, col = 1.5, "k"
-
-        for phi_w in wedge_phis:
-            xw = r_all * np.cos(phi_w)
-            yw = r_all * np.sin(phi_w)
-
-            # Profile outline on this wedge face
-            ax.plot(xw, yw, y_all, color=col, lw=lw)
-
-            # Bottom radial edge (axis → wall)
-            ax.plot([0, xw[0]], [0, yw[0]], [y_viz_start, y_viz_start], color=col, lw=lw)
-
-            # Top radial edge (axis → wall)
-            ax.plot([0, xw[-1]], [0, yw[-1]], [y_viz_end, y_viz_end], color=col, lw=lw)
-
-            # Interface line (axis → wall at y_interface)
-            r_if = _viz_radius(self.y_interface)
-            ax.plot(
-                [0, r_if * np.cos(phi_w)],
-                [0, r_if * np.sin(phi_w)],
-                [self.y_interface, self.y_interface],
-                color=col,
-                lw=lw,
-                ls="--",
+        disk_sets: list[tuple[np.ndarray, float]] = [(phi_full, 0.14)]
+        if not sim_domain_plane_only:
+            disk_sets.append((phi_wedge, 0.50))
+        for phi_disk, alpha_disk in disk_sets:
+            P_disk, R_disk = np.meshgrid(phi_disk, r_disk)
+            X_disk = R_disk * np.cos(P_disk)
+            Y_disk = R_disk * np.sin(P_disk)
+            Z_disk = np.full_like(X_disk, self.y_interface)
+            ax.plot_surface(
+                X_disk,
+                Y_disk,
+                Z_disk,
+                color="#4499cc",
+                alpha=alpha_disk,
+                linewidth=0,
+                antialiased=True,
+                shade=False,
+                rcount=Z_disk.shape[0],
+                ccount=Z_disk.shape[1],
             )
 
-        # Arcs connecting the two wedge faces at y_start, y_interface, y_end
-        for y_arc, r_arc in [
-            (y_viz_start, r_all[0]),
-            (self.y_interface, _viz_radius(self.y_interface)),
-            (y_viz_end, r_all[-1]),
-        ]:
-            phi_arc = np.linspace(-half, half, 60)
-            ax.plot(r_arc * np.cos(phi_arc), r_arc * np.sin(phi_arc), np.full_like(phi_arc, y_arc), color=col, lw=lw)
+        if sim_domain_plane_only:
+            s_plane = np.linspace(0.0, 1.0, 52)
+
+            def _sim_plane(y_arr: np.ndarray, r_arr: np.ndarray, color: str, alpha: float) -> None:
+                S, Z_p = np.meshgrid(s_plane, y_arr, indexing="ij")
+                X_p = S * r_arr[None, :]
+                Y_p = np.zeros_like(X_p)
+                ax.plot_surface(
+                    X_p,
+                    Y_p,
+                    Z_p,
+                    color=color,
+                    alpha=alpha,
+                    linewidth=0,
+                    antialiased=True,
+                    shade=False,
+                    rcount=Z_p.shape[0],
+                    ccount=Z_p.shape[1],
+                )
+
+            _sim_plane(y_liq, r_liq, color="#4499cc", alpha=0.48)
+            _sim_plane(y_gas, r_gas, color="#dddddd", alpha=0.30)
+        else:
+            # Filled wedge side faces (phi = ±half), split by phase at y_interface.
+            s_face = np.linspace(0.0, 1.0, 28)
+
+            def _wedge_side_face(
+                y_arr: np.ndarray, r_arr: np.ndarray, phi_face: float, color: str, alpha: float
+            ) -> None:
+                S, Z_f = np.meshgrid(s_face, y_arr, indexing="ij")
+                R_f = S * r_arr[None, :]
+                X_f = R_f * np.cos(phi_face)
+                Y_f = R_f * np.sin(phi_face)
+                ax.plot_surface(
+                    X_f,
+                    Y_f,
+                    Z_f,
+                    color=color,
+                    alpha=alpha,
+                    linewidth=0,
+                    antialiased=True,
+                    shade=True,
+                    rcount=Z_f.shape[0],
+                    ccount=Z_f.shape[1],
+                )
+
+            for phi_w in [half, -half]:
+                _wedge_side_face(y_liq, r_liq, phi_w, color="#4499cc", alpha=0.40)
+                _wedge_side_face(y_gas, r_gas, phi_w, color="#dddddd", alpha=0.24)
+
+        # ------------------------------------------------------------------
+        # Simulation domain wireframe
+        # ------------------------------------------------------------------
+        lw, col = 1.0, "k"
+        r_if = _viz_radius(self.y_interface)
+        if sim_domain_plane_only:
+            ax.plot(r_all, np.zeros_like(r_all), y_all, color=col, lw=lw, zorder=100)
+            ax.plot([0, r_all[0]], [0, 0], [y_viz_start, y_viz_start], color=col, lw=lw, zorder=100)
+            ax.plot([0, r_all[-1]], [0, 0], [y_viz_end, y_viz_end], color=col, lw=lw, zorder=100)
+            ax.plot([0, r_if], [0, 0], [self.y_interface, self.y_interface], color=col, lw=lw, ls="--", zorder=100)
+        else:
+            wedge_phis = [half, -half]
+            for phi_w in wedge_phis:
+                xw = r_all * np.cos(phi_w)
+                yw = r_all * np.sin(phi_w)
+
+                # Profile outline on this wedge face
+                ax.plot(xw, yw, y_all, color=col, lw=lw, zorder=100)
+
+                # Bottom radial edge (axis → wall)
+                ax.plot([0, xw[0]], [0, yw[0]], [y_viz_start, y_viz_start], color=col, lw=lw, zorder=100)
+
+                # Top radial edge (axis → wall)
+                ax.plot([0, xw[-1]], [0, yw[-1]], [y_viz_end, y_viz_end], color=col, lw=lw, zorder=100)
+
+                # Interface line (axis → wall at y_interface)
+                ax.plot(
+                    [0, r_if * np.cos(phi_w)],
+                    [0, r_if * np.sin(phi_w)],
+                    [self.y_interface, self.y_interface],
+                    color=col,
+                    lw=lw,
+                    ls="--",
+                    zorder=100,
+                )
+
+            # Arcs connecting the two wedge faces at y_start, y_interface, y_end
+            for y_arc, r_arc in [
+                (y_viz_start, r_all[0]),
+                (self.y_interface, r_if),
+                (y_viz_end, r_all[-1]),
+            ]:
+                phi_arc = np.linspace(-half, half, 60)
+                ax.plot(
+                    r_arc * np.cos(phi_arc),
+                    r_arc * np.sin(phi_arc),
+                    np.full_like(phi_arc, y_arc),
+                    color=col,
+                    lw=lw,
+                    zorder=100,
+                )
 
         # Axis line — extends 10 % of tank height above and below
         tank_height = y_viz_end - y_viz_start
-        ax_ext = 0.10 * tank_height
-        ax.plot([0, 0], [0, 0], [y_viz_start - ax_ext, y_viz_end + ax_ext], color="k", lw=1.5, ls="--", alpha=0.6)
+        ax_ext = 0.20 * tank_height
+        ax.plot(
+            [0, 0],
+            [0, 0],
+            [y_viz_start - ax_ext, y_viz_end + ax_ext],
+            color="k",
+            lw=1.5,
+            ls="dashdot",
+            alpha=0.6,
+            zorder=-5,
+        )
 
         # Axis line on each wedge face (vertical edge at r=0)
-        for _phi_w in wedge_phis:
-            ax.plot([0, 0], [0, 0], [y_viz_start, y_viz_end], color=col, lw=lw)
+        if not sim_domain_plane_only:
+            wedge_phis = [half, -half]
+            for _phi_w in wedge_phis:
+                ax.plot([0, 0], [0, 0], [y_viz_start, y_viz_end], color=col, lw=lw)
 
         # ------------------------------------------------------------------
         # Formatting
         # ------------------------------------------------------------------
         ax.set_axis_off()
-        ax.set_box_aspect([np.ptp(r_all) * 2, np.ptp(r_all) * 2, np.ptp(y_all)])
-        plt.tight_layout()
-        plt.show()
+        r_max = np.max(r_all)
+        tank_height = y_viz_end - y_viz_start
+        z_min = y_viz_start - ax_ext
+        z_max = y_viz_end + ax_ext
 
-    def plot_3d_horizontal(self) -> None:
+        # Keep limits tight so the tank uses the full canvas.
+        ax.set_xlim(-r_max, r_max)
+        ax.set_ylim(-r_max, r_max)
+        ax.set_zlim(z_min, z_max)
+        ax.set_box_aspect([2 * r_max, 2 * r_max, z_max - z_min])
+
+        # 3D + axis-off can still leave large default subplot margins.
+        ax.set_position([0.0, 0.0, 1.0, 1.0])
+        fig.subplots_adjust(left=0.0, right=1.0, bottom=0.0, top=1.0)
+        if save_path is not None:
+            fig.savefig(save_path, dpi=dpi, bbox_inches="tight", pad_inches=0)
+        if show:
+            plt.show()
+        else:
+            plt.close(fig)
+
+    def plot_3d_horizontal(  # noqa: C901
+        self,
+        save_path: str | None = None,
+        dpi: int = 600,
+        show: bool = True,
+        sim_domain_plane_only: bool = False,
+    ) -> None:
         """
         Plot the tank as a horizontal cylinder for the empty_2d (extruded) case.
 
         The tank cross-section (the r(y) profile) is in the X-Z plane with Z
         vertical (profile y-axis → plot Z).  The cylinder is extruded along Y
-        (into the page) to a total length of 6·diameter.  A rectangular
+        (into the page) to a compact visualization length of 2·diameter.  A rectangular
         simulation slab of depth 0.5·diameter is shown as wireframe lines
         centred at y=0.  The cut ends are softened with a small fillet.
         Liquid and gas regions are shown in different colours.
@@ -845,10 +994,22 @@ class TankProfile(Profile):
         Profile x (radius, ±r(y))  →  plot X
         Profile y (height)         →  plot Z   (vertical)
         Extrusion direction        →  plot Y   (into the page)
+
+        Parameters
+        ----------
+        save_path:
+            Optional output path for saving the figure as an image.
+        dpi:
+            Resolution used when saving the figure.
+        show:
+            If True, display the figure interactively.
+        sim_domain_plane_only:
+            If True, draw the simulation domain as a single symmetry plane
+            (y=0) instead of an extrusion slab.
         """
         N_profile = 500  # points along the profile outline
 
-        fig = plt.figure(figsize=(11, 7))
+        fig = plt.figure(figsize=(1.5 * ONE_HALF_PAGEWIDTH_INCH, 1.5 * ONE_HALF_PAGEWIDTH_INCH * (9.0 / 11.0)))
         ax = fig.add_subplot(111, projection="3d")
 
         # ------------------------------------------------------------------
@@ -869,8 +1030,8 @@ class TankProfile(Profile):
         r_prof = np.array([_viz_radius(zi) for zi in z_prof])
 
         diameter = 2.0 * np.max(r_prof)
-        half_len = 2.0 * diameter  # half of total 4d extrusion length (plot Y)
-        slab_depth = 0.25 * diameter  # simulation domain: symmetry plane to one side
+        half_len = 1.5 * diameter  # half of total 2d extrusion length (plot Y)
+        slab_depth = 0.20 * diameter  # simulation domain: symmetry plane to one side
 
         # ------------------------------------------------------------------
         # Ruled wall surface helper:
@@ -881,7 +1042,18 @@ class TankProfile(Profile):
             X_s = np.array([x_out, x_out])
             Z_s = np.array([z_out, z_out])
             Y_s = np.array([[y0] * n, [y1] * n])
-            ax.plot_surface(X_s, Y_s, Z_s, color=color, alpha=alpha, linewidth=0, antialiased=True, shade=True)
+            ax.plot_surface(
+                X_s,
+                Y_s,
+                Z_s,
+                color=color,
+                alpha=alpha,
+                linewidth=0,
+                antialiased=True,
+                shade=True,
+                rcount=Z_s.shape[0],
+                ccount=Z_s.shape[1],
+            )
 
         # ------------------------------------------------------------------
         # Split outline at interface height
@@ -894,28 +1066,63 @@ class TankProfile(Profile):
         x_gas = np.concatenate([r_prof[i_if:], -r_prof[i_if:][::-1], [r_prof[i_if]]])
         z_gas = np.concatenate([z_prof[i_if:], z_prof[i_if:][::-1], [z_prof[i_if]]])
 
-        _wall_surface(x_liq, z_liq, -half_len, half_len, "#4499cc", 0.55)
-        _wall_surface(x_gas, z_gas, -half_len, half_len, "#cccccc", 0.30)
+        # Full geometry as context (more transparent).
+        _wall_surface(x_liq, z_liq, -half_len, half_len, "#4499cc", 0.20)
+        _wall_surface(x_gas, z_gas, -half_len, half_len, "#cccccc", 0.12)
+
+        # Simulation slab highlighted (less transparent), only on sim-side half.
+        x_liq_side = -r_prof[: i_if + 1]
+        z_liq_side = z_prof[: i_if + 1]
+        x_gas_side = -r_prof[i_if:]
+        z_gas_side = z_prof[i_if:]
+        if not sim_domain_plane_only:
+            _wall_surface(x_liq_side, z_liq_side, 0.0, slab_depth, "#4499cc", 0.58)
+            _wall_surface(x_gas_side, z_gas_side, 0.0, slab_depth, "#cccccc", 0.36)
 
         # ------------------------------------------------------------------
         # End cap disks at y = ±half_len, split liquid/gas
         # ------------------------------------------------------------------
-        def _end_disk(y_val: float) -> None:
+        def _end_disk(y_val: float, alpha_scale: float = 1.0, half_only: bool = False) -> None:
             z_d = np.linspace(y_viz_start, self.y_interface, 200)
             r_d = np.array([_viz_radius(zi) for zi in z_d])
-            X_d = np.array([-r_d, r_d])
+            X_d = np.array([-r_d, np.zeros_like(r_d)]) if half_only else np.array([-r_d, r_d])
             Z_d = np.array([z_d, z_d])
             Y_d = np.full_like(X_d, y_val)
-            ax.plot_surface(X_d, Y_d, Z_d, color="#4499cc", alpha=0.45, linewidth=0, antialiased=True, shade=False)
+            ax.plot_surface(
+                X_d,
+                Y_d,
+                Z_d,
+                color="#4499cc",
+                alpha=0.45 * alpha_scale,
+                linewidth=0,
+                antialiased=True,
+                shade=False,
+                rcount=Z_d.shape[0],
+                ccount=Z_d.shape[1],
+            )
             z_g = np.linspace(self.y_interface, y_viz_end, 200)
             r_g = np.array([_viz_radius(zi) for zi in z_g])
-            X_g = np.array([-r_g, r_g])
+            X_g = np.array([-r_g, np.zeros_like(r_g)]) if half_only else np.array([-r_g, r_g])
             Z_g = np.array([z_g, z_g])
             Y_g = np.full_like(X_g, y_val)
-            ax.plot_surface(X_g, Y_g, Z_g, color="#cccccc", alpha=0.25, linewidth=0, antialiased=True, shade=False)
+            ax.plot_surface(
+                X_g,
+                Y_g,
+                Z_g,
+                color="#cccccc",
+                alpha=0.25 * alpha_scale,
+                linewidth=0,
+                antialiased=True,
+                shade=False,
+                rcount=Z_g.shape[0],
+                ccount=Z_g.shape[1],
+            )
 
-        _end_disk(-half_len)
-        _end_disk(half_len)
+        _end_disk(-half_len, alpha_scale=0.45)
+        _end_disk(half_len, alpha_scale=0.45)
+        _end_disk(0.0, alpha_scale=0.95, half_only=True)
+        if not sim_domain_plane_only:
+            _end_disk(slab_depth, alpha_scale=0.95, half_only=True)
 
         # ------------------------------------------------------------------
         # Interface plane (rectangle at z = y_interface, full length in Y)
@@ -924,7 +1131,36 @@ class TankProfile(Profile):
         x_range = np.array([-r_if, r_if])
         X_if, Y_if = np.meshgrid(x_range, y_range)
         Z_if = np.full_like(X_if, self.y_interface)
-        ax.plot_surface(X_if, Y_if, Z_if, color="#88bbdd", alpha=0.25, linewidth=0, antialiased=True, shade=False)
+        ax.plot_surface(
+            X_if,
+            Y_if,
+            Z_if,
+            color="#88bbdd",
+            alpha=0.12,
+            linewidth=0,
+            antialiased=True,
+            shade=False,
+            rcount=Z_if.shape[0],
+            ccount=Z_if.shape[1],
+        )
+
+        # Interface slab highlight (simulation domain only).
+        y_range_slab = np.array([0.0, 0.0]) if sim_domain_plane_only else np.array([0.0, slab_depth])
+        x_range_slab = np.array([-r_if, 0.0])
+        X_if_slab, Y_if_slab = np.meshgrid(x_range_slab, y_range_slab)
+        Z_if_slab = np.full_like(X_if_slab, self.y_interface)
+        ax.plot_surface(
+            X_if_slab,
+            Y_if_slab,
+            Z_if_slab,
+            color="#88bbdd",
+            alpha=0.34,
+            linewidth=0,
+            antialiased=True,
+            shade=False,
+            rcount=Z_if_slab.shape[0],
+            ccount=Z_if_slab.shape[1],
+        )
 
         # ------------------------------------------------------------------
         # Simulation slab wireframe
@@ -932,39 +1168,77 @@ class TankProfile(Profile):
         # x=0 is the tank symmetry axis, y=0 is the extrusion symmetry plane.
         # Show: right-side profile outline on both y-faces + interface lines.
         # ------------------------------------------------------------------
-        lw, col = 1.5, "k"
+        lw, col = 1.0, "k"
 
         # Left-side half of the profile outline (x <= 0)
         x_right = -r_prof  # x = -r(z)
         z_right = z_prof  # z = profile height
 
-        for y_face in [0.0, slab_depth]:
+        sim_faces = [0.0] if sim_domain_plane_only else [0.0, slab_depth]
+        for y_face in sim_faces:
             # Right-side profile outline (wall)
-            ax.plot(x_right, np.full_like(x_right, y_face), z_right, color=col, lw=lw)
-            # Axis line on this face (x=0, full height)
-            ax.plot([0, 0], [y_face, y_face], [y_viz_start, y_viz_end], color=col, lw=lw)
+            ax.plot(x_right, np.full_like(x_right, y_face), z_right, color=col, lw=lw, zorder=100)
+            # # Axis line on this face (x=0, full height)
+            # ax.plot([0, 0], [y_face, y_face], [y_viz_start, y_viz_end], color=col, lw=lw, zorder=100)
             # Interface line on this face (axis to wall)
-            ax.plot([0, -r_if], [y_face, y_face], [self.y_interface, self.y_interface], color=col, lw=lw, ls="--")
+            ax.plot(
+                [0, -r_if],
+                [y_face, y_face],
+                [self.y_interface, self.y_interface],
+                color=col,
+                lw=lw,
+                ls="--",
+                zorder=100,
+            )
 
-        # Connecting interface edge between the two y-faces (at x=-r_if)
-        ax.plot([-r_if, -r_if], [0.0, slab_depth], [self.y_interface, self.y_interface], color=col, lw=lw, ls="--")
-        # Connecting interface edge at the axis (x=0)
-        ax.plot([0, 0], [0.0, slab_depth], [self.y_interface, self.y_interface], color=col, lw=lw, ls="--")
-        # Connecting axis edge between the two y-faces (at x=0, top and bottom)
-        for z_edge in [y_viz_start, y_viz_end]:
-            ax.plot([0, 0], [0.0, slab_depth], [z_edge, z_edge], color=col, lw=lw)
-        # Connecting wall edge between the two y-faces (at x=-r, top and bottom)
-        for z_edge, r_edge in [(y_viz_start, r_prof[0]), (y_viz_end, r_prof[-1])]:
-            ax.plot([-r_edge, -r_edge], [0.0, slab_depth], [z_edge, z_edge], color=col, lw=lw)
+        if not sim_domain_plane_only:
+            # Connecting interface edge between the two y-faces (at x=-r_if)
+            ax.plot([-r_if, -r_if], [0.0, slab_depth], [self.y_interface, self.y_interface], color=col, lw=lw, ls="--")
+            # Connecting interface edge at the axis (x=0)
+            ax.plot([0, 0], [0.0, slab_depth], [self.y_interface, self.y_interface], color=col, lw=lw, ls="--")
+            # Connecting axis edge between the two y-faces (at x=0, top and bottom)
+            for z_edge in [y_viz_start, y_viz_end]:
+                ax.plot([0, 0], [0.0, slab_depth], [z_edge, z_edge], color=col, lw=lw)
+            # Connecting wall edge between the two y-faces (at x=-r, top and bottom)
+            for z_edge, r_edge in [(y_viz_start, r_prof[0]), (y_viz_end, r_prof[-1])]:
+                ax.plot([-r_edge, -r_edge], [0.0, slab_depth], [z_edge, z_edge], color=col, lw=lw)
+
+        # Axis line — extends 10 % of tank height above and below
+        tank_height = y_viz_end - y_viz_start
+        ax_ext = 0.20 * tank_height
+        ax.plot(
+            [0, 0],
+            [0, 0],
+            [y_viz_start - ax_ext, y_viz_end + ax_ext],
+            color="k",
+            lw=1.5,
+            ls="dashdot",
+            alpha=0.6,
+            zorder=-5,
+        )
 
         # ------------------------------------------------------------------
         # Formatting
         # ------------------------------------------------------------------
         ax.set_axis_off()
-        ax.set_box_aspect([diameter, 2 * half_len, y_viz_end - y_viz_start])
-        ax.view_init(elev=18, azim=120)
-        plt.tight_layout()
-        plt.show()
+
+        # Keep limits tight so the geometry fills the figure area.
+        ax.set_xlim(-0.25 * diameter, 0.25 * diameter)
+        ax.set_ylim(-half_len, half_len)
+        ax.set_zlim(y_viz_start, y_viz_end)
+        # ax.set_box_aspect([diameter, 2 * half_len, y_viz_end - y_viz_start])
+        ax.set_aspect("equal")
+        ax.view_init(elev=18, azim=116)
+
+        # 3D + axis-off can still leave large default subplot margins.
+        ax.set_position([0.0, 0.0, 1.0, 1.0])
+        fig.subplots_adjust(left=0.0, right=1.0, bottom=0.0, top=1.0)
+        if save_path is not None:
+            fig.savefig(save_path, dpi=dpi, bbox_inches="tight", pad_inches=0)
+        if show:
+            plt.show()
+        else:
+            plt.close(fig)
 
     def get_mesh_points(self) -> PointCoords:
         """
