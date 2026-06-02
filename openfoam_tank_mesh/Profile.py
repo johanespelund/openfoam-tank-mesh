@@ -461,14 +461,20 @@ class TankProfile(Profile):
 
     def get_area_wall_liquid(self) -> float:
         """Return wall area in the liquid region (from ``y_start`` to ``y_interface``)."""
+        if hasattr(self, "area_wall_liquid"):
+            return float(self.area_wall_liquid)
         return self.get_partial_area(self.y_start, self.y_interface)
 
     def get_area_wall_gas(self) -> float:
         """Return wall area in the gas region (from ``y_interface`` to ``y_end``)."""
+        if hasattr(self, "area_wall_gas"):
+            return float(self.area_wall_gas)
         return self.get_partial_area(self.y_interface, self.y_end)
 
     def get_area_interface(self) -> float:
         """Return liquid-gas interface area at ``y_interface``."""
+        if hasattr(self, "area_interface"):
+            return float(self.area_interface)
         return self.get_interface_area(self.y_interface)
 
     @property
