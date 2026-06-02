@@ -381,6 +381,21 @@ class Profile:
             integrand = lambda y: 2 * np.pi * r(y) * np.sqrt(1 + drdy(y) ** 2)
         return float(spi.quad(integrand, y1, y2)[0])
 
+    def get_interface_area(self, y: float) -> float:
+        """
+        Get cross-sectional area at height ``y``.
+
+        For a revolved (axisymmetric) geometry this is a disk area,
+        ``pi * r(y)^2``.
+
+        For an extruded (empty_2d) geometry this is a rectangle area,
+        ``2 * r(y) * extrude_thickness``.
+        """
+        r = self.get_radius(y)
+        if self.extrude:
+            return float(2 * r * self.extrude_thickness)
+        return float(np.pi * r**2)
+
     def get_y(self, radius: float, ymin: float, ymax: float) -> float:
         def objective(y: float) -> float:
             current_radius = self.get_radius(y)
@@ -421,8 +436,9 @@ class TankProfile(Profile):
         self.y_interface: float = self.calculate_interface_position()
         self.y_outlet: float = self.calculate_outlet_position()
         self.interface_radius: float = self.get_radius(self.y_interface)
-        self.area_liquid: float = self.get_partial_area(self.y_start, self.y_interface)
-        self.area_gas: float = self.get_partial_area(self.y_interface, self.y_end)
+        self.area_wall_liquid: float = self.get_area_wall_liquid()
+        self.area_wall_gas: float = self.get_area_wall_gas()
+        self.area_interface: float = self.get_area_interface()
         self.volume_liquid: float = self.get_partial_volume(self.y_start, self.y_interface)
         self.volume_gas: float = self.get_partial_volume(self.y_interface, self.y_end)
 
@@ -442,6 +458,28 @@ class TankProfile(Profile):
             return current_volume - self.fill_level * self.volume
 
         return float(spo.brentq(objective, self.y_start, self.y_end))
+
+    def get_area_wall_liquid(self) -> float:
+        """Return wall area in the liquid region (from ``y_start`` to ``y_interface``)."""
+        return self.get_partial_area(self.y_start, self.y_interface)
+
+    def get_area_wall_gas(self) -> float:
+        """Return wall area in the gas region (from ``y_interface`` to ``y_end``)."""
+        return self.get_partial_area(self.y_interface, self.y_end)
+
+    def get_area_interface(self) -> float:
+        """Return liquid-gas interface area at ``y_interface``."""
+        return self.get_interface_area(self.y_interface)
+
+    @property
+    def area_liquid(self) -> float:
+        """Backward-compatible alias for ``area_wall_liquid``."""
+        return self.area_wall_liquid
+
+    @property
+    def area_gas(self) -> float:
+        """Backward-compatible alias for ``area_wall_gas``."""
+        return self.area_wall_gas
 
     def calculate_outlet_position(self) -> float:
         """
@@ -782,7 +820,7 @@ class TankProfile(Profile):
                 alpha=alpha,
                 linewidth=0,
                 antialiased=True,
-                shade=True,
+                shade=False,
                 rcount=Z_s.shape[0],
                 ccount=Z_s.shape[1],
             )
@@ -820,7 +858,7 @@ class TankProfile(Profile):
                 alpha=alpha_disk,
                 linewidth=0,
                 antialiased=True,
-                shade=False,
+                shade=True,
                 rcount=Z_disk.shape[0],
                 ccount=Z_disk.shape[1],
             )
@@ -1050,7 +1088,7 @@ class TankProfile(Profile):
                 alpha=alpha,
                 linewidth=0,
                 antialiased=True,
-                shade=True,
+                shade=False,
                 rcount=Z_s.shape[0],
                 ccount=Z_s.shape[1],
             )
@@ -1113,7 +1151,7 @@ class TankProfile(Profile):
                 alpha=0.25 * alpha_scale,
                 linewidth=0,
                 antialiased=True,
-                shade=False,
+                shade=True,
                 rcount=Z_g.shape[0],
                 ccount=Z_g.shape[1],
             )

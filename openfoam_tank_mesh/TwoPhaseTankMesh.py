@@ -102,6 +102,9 @@ class OpenFoamMeshPipeline(ABC):
         self.interface_radius = tank.interface_radius
         self.area_liquid = tank.area_liquid
         self.area_gas = tank.area_gas
+        self.area_wall_liquid = tank.area_wall_liquid
+        self.area_wall_gas = tank.area_wall_gas
+        self.area_interface = tank.area_interface
 
         # Will be defined in set_parameters()
         self.bulk_cell_size: float = 0  # Bulk cell size

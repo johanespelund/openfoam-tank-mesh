@@ -86,6 +86,63 @@ def test_sphere_profile_volume_conservation(sphere_profile):
     assert np.isclose(sphere_profile.volume_liquid + sphere_profile.volume_gas, sphere_profile.volume, rtol=1e-3)
 
 
+def test_sphere_interface_area_revolved():
+    p = SphereProfile(
+        radius=1.0,
+        fill_level=0.5,
+        outlet_radius=0.05,
+        bulk_cell_size=0.1,
+        wall_tan_cell_size=0.05,
+        wall_cell_size=0.01,
+        r_BL=1.1,
+    )
+    assert p.area_interface == pytest.approx(np.pi * p.interface_radius**2, rel=1e-9)
+
+
+def test_sphere_interface_area_empty_2d():
+    t = 0.2
+    p = SphereProfile(
+        radius=1.0,
+        fill_level=0.5,
+        outlet_radius=0.05,
+        bulk_cell_size=0.1,
+        wall_tan_cell_size=0.05,
+        wall_cell_size=0.01,
+        r_BL=1.1,
+        extrude=True,
+        extrude_thickness=t,
+    )
+    assert p.area_interface == pytest.approx(2 * p.interface_radius * t, rel=1e-9)
+
+
+def test_sphere_wall_area_scales_with_empty_2d_thickness():
+    p_a = SphereProfile(
+        radius=1.0,
+        fill_level=0.5,
+        outlet_radius=0.05,
+        bulk_cell_size=0.1,
+        wall_tan_cell_size=0.05,
+        wall_cell_size=0.01,
+        r_BL=1.1,
+        extrude=True,
+        extrude_thickness=0.1,
+    )
+    p_b = SphereProfile(
+        radius=1.0,
+        fill_level=0.5,
+        outlet_radius=0.05,
+        bulk_cell_size=0.1,
+        wall_tan_cell_size=0.05,
+        wall_cell_size=0.01,
+        r_BL=1.1,
+        extrude=True,
+        extrude_thickness=0.3,
+    )
+    assert p_b.area_wall_liquid / p_a.area_wall_liquid == pytest.approx(3.0, rel=1e-3)
+    assert p_b.area_wall_gas / p_a.area_wall_gas == pytest.approx(3.0, rel=1e-3)
+    assert p_b.area_interface / p_a.area_interface == pytest.approx(3.0, rel=1e-6)
+
+
 # ---------------------------------------------------------------------------
 # CylinderCapsTankProfile
 # ---------------------------------------------------------------------------
@@ -176,6 +233,11 @@ def test_cylinder_caps_profile_volume_conservation(cylinder_caps_profile):
     assert cylinder_caps_profile.volume_liquid + cylinder_caps_profile.volume_gas == pytest.approx(
         cylinder_caps_profile.volume, rel=1e-3
     )
+
+
+def test_cylinder_caps_area_aliases_match_new_names(cylinder_caps_profile):
+    assert cylinder_caps_profile.area_liquid == pytest.approx(cylinder_caps_profile.area_wall_liquid, rel=1e-12)
+    assert cylinder_caps_profile.area_gas == pytest.approx(cylinder_caps_profile.area_wall_gas, rel=1e-12)
 
 
 def test_cylinder_caps_profile_interface_inside_tank(cylinder_caps_profile):
