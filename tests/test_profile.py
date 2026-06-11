@@ -276,3 +276,19 @@ def test_cylinder_caps_profile_wall_thickness_parameter():
     pts = p.get_mesh_points()
     offset = np.linalg.norm(pts.outer_points[0] - pts.wall_points[0])
     assert offset == pytest.approx(wall_thickness, rel=1e-6)
+
+
+def test_plot_3d_raises_clear_error_when_projection_unavailable(sphere_profile, monkeypatch: pytest.MonkeyPatch):
+    class DummyFigure:
+        def add_subplot(self, *args, **kwargs):
+            raise _ProjectionUnavailableImportError()
+
+    monkeypatch.setattr("matplotlib.pyplot.figure", lambda *args, **kwargs: DummyFigure())
+
+    with pytest.raises(RuntimeError, match="Unable to create a 3D matplotlib axis"):
+        sphere_profile.plot_3d(wedge_angle=30)
+
+
+class _ProjectionUnavailableImportError(ImportError):
+    def __init__(self) -> None:
+        super().__init__("projection unavailable")

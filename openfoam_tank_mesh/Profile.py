@@ -1,42 +1,15 @@
 import copy
-import importlib.util
 import logging
-import sys
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from math import sqrt
 
-# ---------------------------------------------------------------------------
-# mpl_toolkits workaround
-# The system-installed mpl_toolkits (/usr/lib/python3/dist-packages) is a
-# namespace package that shadows the pip-installed version under ~/.local and
-# is incompatible with the pip matplotlib.  Load the pip copy explicitly
-# before matplotlib.pyplot is imported so that the '3d' projection registers.
-# ---------------------------------------------------------------------------
-_pip_mplot3d = "/home/johan/.local/lib/python3.10/site-packages/mpl_toolkits/mplot3d"
-for _mod_name, _rel in [
-    ("mpl_toolkits.mplot3d", "__init__.py"),
-    ("mpl_toolkits.mplot3d.proj3d", "proj3d.py"),
-    ("mpl_toolkits.mplot3d.art3d", "art3d.py"),
-    ("mpl_toolkits.mplot3d.axis3d", "axis3d.py"),
-    ("mpl_toolkits.mplot3d.axes3d", "axes3d.py"),
-]:
-    if _mod_name not in sys.modules:
-        _spec = importlib.util.spec_from_file_location(
-            _mod_name,
-            f"{_pip_mplot3d}/{_rel}",
-            submodule_search_locations=[_pip_mplot3d],
-        )
-        _m = importlib.util.module_from_spec(_spec)
-        sys.modules[_mod_name] = _m
-        _spec.loader.exec_module(_m)
+import matplotlib.pyplot as plt
+import numpy as np
+import scipy.integrate as spi  # type: ignore[import-untyped]
+import scipy.optimize as spo  # type: ignore[import-untyped]
 
-import matplotlib.pyplot as plt  # noqa: E402
-import numpy as np  # noqa: E402
-import scipy.integrate as spi  # type: ignore[import-untyped]  # noqa: E402
-import scipy.optimize as spo  # type: ignore[import-untyped]  # noqa: E402
-
-from openfoam_tank_mesh.exceptions import (  # noqa: E402
+from openfoam_tank_mesh.exceptions import (
     BoundaryLayerTooThick,
     OutOfRange,
     SegmentNotInitialized,
@@ -48,6 +21,22 @@ logger = logging.getLogger(__name__)
 MM_PER_INCH = 25.4
 ELSEVIER_5P_PAGEWIDTH_MM = 190.0
 ONE_HALF_PAGEWIDTH_INCH = ELSEVIER_5P_PAGEWIDTH_MM / MM_PER_INCH / 2.0
+
+
+class Plot3DAxisUnavailableError(RuntimeError):
+    def __init__(self) -> None:
+        super().__init__(
+            "Unable to create a 3D matplotlib axis. "
+            "This usually means matplotlib and mpl_toolkits are from different installations. "
+            "Reinstall matplotlib in a clean environment."
+        )
+
+
+def _create_3d_axis(fig: plt.Figure) -> object:
+    try:
+        return fig.add_subplot(111, projection="3d")
+    except Exception as exc:  # pragma: no cover - depends on local matplotlib install
+        raise Plot3DAxisUnavailableError() from exc
 
 
 @dataclass
@@ -783,7 +772,7 @@ class TankProfile(Profile):
         N_y = 500  # axial resolution for the surface
 
         fig = plt.figure()  # figsize=(ONE_HALF_PAGEWIDTH_INCH, ONE_HALF_PAGEWIDTH_INCH * (10.0 / 8.0)))
-        ax = fig.add_subplot(111, projection="3d")
+        ax = _create_3d_axis(fig)
 
         # Coordinate convention: the symmetry axis (y in Profile) maps to the
         # vertical Z axis of the 3D plot so that "up" is visually correct.
@@ -1054,7 +1043,7 @@ class TankProfile(Profile):
         N_profile = 500  # points along the profile outline
 
         fig = plt.figure(figsize=(1.5 * ONE_HALF_PAGEWIDTH_INCH, 1.5 * ONE_HALF_PAGEWIDTH_INCH * (9.0 / 11.0)))
-        ax = fig.add_subplot(111, projection="3d")
+        ax = _create_3d_axis(fig)
 
         # ------------------------------------------------------------------
         # Profile geometry (use full pre-outlet segments)
