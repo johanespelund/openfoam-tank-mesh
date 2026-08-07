@@ -21,7 +21,7 @@ _MESH_PARAMS = {
     "tri_bulk": False,
     "outlet_radius": 0.5 * 24 * INCH,
     "internal_outlet": 0.0,
-    "debug": True,
+    "debug": False,
     "revolve": 0,
     "n_revolve": 0,
     "n_wall_layers": 6,
