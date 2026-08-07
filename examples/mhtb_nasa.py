@@ -9,7 +9,7 @@ INCH = 0.0254
 CYLINDER_DIAMETER = 3.05
 CYLINDER_HEIGHT = CYLINDER_DIAMETER
 CAP_HEIGHT = CYLINDER_DIAMETER / 4
-OUTLET_DIAMETER = 24 * INCH
+OUTLET_RADIUS = 0.5 * 24 * INCH
 WALL_THICKNESS = 0.5 * INCH
 
 _MESH_PARAMS = {
@@ -22,7 +22,7 @@ _MESH_PARAMS = {
     "bulk_cell_size": 75.0e-3,
     "r_BL": 1.10,
     "tri_bulk": False,
-    "outlet_radius": 0.5 * OUTLET_DIAMETER,
+    "outlet_radius": OUTLET_RADIUS,
     "internal_outlet": 0.0,
     "debug": False,
     "revolve": 0,
