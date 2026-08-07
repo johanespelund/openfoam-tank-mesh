@@ -57,6 +57,8 @@ mesh.generate()
 
 ```
 
+See [`examples/mhtb_nasa.py`](examples/mhtb_nasa.py) for a full MHTB NASA tank example.
+
 A 3D horizontal cylinder tank can be generated using this script (flat ends, no walls for now).
 Yields mesh shown in figure above.
 
