@@ -7,11 +7,14 @@ from openfoam_tank_mesh.mesh_builders import CylinderCapsMesh
 INCH = 0.0254
 
 CYLINDER_DIAMETER = 3.05
+CYLINDER_HEIGHT = CYLINDER_DIAMETER
 CAP_HEIGHT = CYLINDER_DIAMETER / 4
+OUTLET_DIAMETER = 24 * INCH
+WALL_THICKNESS = 0.5 * INCH
 
 _MESH_PARAMS = {
     "cylinder_diameter": CYLINDER_DIAMETER,
-    "cylinder_height": 3.05,
+    "cylinder_height": CYLINDER_HEIGHT,
     "cap_height": CAP_HEIGHT,
     "fill_level": 0.90,
     "wall_cell_size": 6.0e-3,
@@ -19,13 +22,13 @@ _MESH_PARAMS = {
     "bulk_cell_size": 75.0e-3,
     "r_BL": 1.10,
     "tri_bulk": False,
-    "outlet_radius": 0.5 * 24 * INCH,
+    "outlet_radius": 0.5 * OUTLET_DIAMETER,
     "internal_outlet": 0.0,
     "debug": False,
     "revolve": 0,
     "n_revolve": 0,
     "n_wall_layers": 6,
-    "wall_thickness": 0.5 * INCH,
+    "wall_thickness": WALL_THICKNESS,
     "VoF": False,
     "smoothing": True,
     "symmetry": True,
