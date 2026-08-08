@@ -346,7 +346,6 @@ def test_ellipse_arc_length_ksite_cap():
     """Arc length of the KSite bottom cap must be close to a quarter ellipse perimeter."""
     import math
 
-    INCH = 0.0254
     A_ks = 0.5 * 73 * INCH   # axial semi-axis
     B_ks = 0.5 * 87.6 * INCH  # radial semi-axis
 
