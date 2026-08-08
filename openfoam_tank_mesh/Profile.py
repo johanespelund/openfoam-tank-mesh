@@ -214,7 +214,7 @@ class EllipseArc(Segment):
         return self.axis_major
 
     def get_major_point(self) -> tuple[float, float]:
-        return (0, self.axis_major)
+        return (self.axis_major, self.axis_minor + self.y_offset)
 
     def get_radius(self, y: float) -> float:
         A, B = self.axis_major, self.axis_minor
@@ -232,9 +232,11 @@ class EllipseArc(Segment):
         return -float(A * _y / (B**2 * denom) if denom != 0 else 0.0)
 
     def get_length(self) -> float:
-        y_vals = np.linspace(self.y_start, self.y_end, 1000)
-        drdy = np.array([self.get_radius_derivative(yi) for yi in y_vals])
-        return float(spi.trapezoid(np.sqrt(drdy**2 + 1), y_vals))
+        def integrand(y: float) -> float:
+            drdy = self.get_radius_derivative(y)
+            return float(np.sqrt(drdy**2 + 1))
+
+        return float(spi.quad(integrand, self.y_start, self.y_end)[0])
 
 
 class CircleArc(EllipseArc):

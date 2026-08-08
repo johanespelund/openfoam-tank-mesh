@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from openfoam_tank_mesh.Profile import CylinderCapsTankProfile, KSiteProfile, SphereProfile
+from openfoam_tank_mesh.Profile import CylinderCapsTankProfile, EllipseArc, KSiteProfile, SphereProfile
 
 INCH = 0.0254
 KSITE_A = 0.5 * 73 * INCH  # cap height
@@ -292,3 +292,70 @@ def test_plot_3d_raises_clear_error_when_projection_unavailable(sphere_profile, 
 class _ProjectionUnavailableImportError(ImportError):
     def __init__(self) -> None:
         super().__init__("projection unavailable")
+
+
+# ---------------------------------------------------------------------------
+# EllipseArc: get_major_point and get_length
+# ---------------------------------------------------------------------------
+
+
+def test_ellipse_arc_major_point_circle():
+    """For a circle (axis_major == axis_minor), major point lies on the radial axis at the equator."""
+    R = 1.0
+    arc = EllipseArc("circle", 0, R, R, R, y_offset=0.0, length_scale=0.1)
+    r, y = arc.get_major_point()
+    assert r == pytest.approx(R, rel=1e-12)
+    assert y == pytest.approx(R, rel=1e-12)  # axis_minor + y_offset = R
+
+
+def test_ellipse_arc_major_point_non_circular():
+    """For a non-circular ellipse the major point must differ from the old (0, axis_major) value."""
+    A_major = 1.5  # radial semi-axis
+    B_minor = 0.8  # axial semi-axis
+    arc = EllipseArc("ellipse", 0, B_minor, A_major, B_minor, y_offset=0.0, length_scale=0.1)
+    r, y = arc.get_major_point()
+    # Major axis tip: (axis_major, axis_minor + y_offset) = (1.5, 0.8)
+    assert r == pytest.approx(A_major, rel=1e-12)
+    assert y == pytest.approx(B_minor, rel=1e-12)
+    # Confirm old (wrong) value is no longer returned
+    assert r != pytest.approx(0.0, abs=1e-9)
+
+
+def test_ellipse_arc_major_point_with_y_offset():
+    """y_offset must be included in the y-coordinate of the major point."""
+    A_major = 1.2
+    B_minor = 0.5
+    y_off = 0.3
+    arc = EllipseArc("ellipse_offset", 0, B_minor, A_major, B_minor, y_offset=y_off, length_scale=0.1)
+    r, y = arc.get_major_point()
+    assert r == pytest.approx(A_major, rel=1e-12)
+    assert y == pytest.approx(B_minor + y_off, rel=1e-12)
+
+
+def test_ellipse_arc_length_sphere_quarter():
+    """Arc length of a circular quarter arc (sphere cap) must be π*R/2."""
+    import math
+
+    R = 1.0
+    arc = EllipseArc("sphere_bottom", 0, R, R, R, y_offset=0.0, length_scale=0.1)
+    expected = math.pi * R / 2
+    assert arc.get_length() == pytest.approx(expected, rel=1e-4)
+
+
+def test_ellipse_arc_length_ksite_cap():
+    """Arc length of the KSite bottom cap must be close to a quarter ellipse perimeter."""
+    import math
+
+    INCH = 0.0254
+    A_ks = 0.5 * 73 * INCH   # axial semi-axis
+    B_ks = 0.5 * 87.6 * INCH  # radial semi-axis
+
+    arc = EllipseArc("ksite_bottom", 0, A_ks, B_ks, A_ks, y_offset=0.0, length_scale=5e-3)
+
+    # Ramanujan approximation for a quarter of the full ellipse perimeter
+    a, b = B_ks, A_ks
+    h = ((a - b) / (a + b)) ** 2
+    quarter_exact = math.pi * (a + b) * (1 + 3 * h / (10 + math.sqrt(4 - 3 * h))) / 4
+
+    assert arc.get_length() == pytest.approx(quarter_exact, rel=1e-3)
+
